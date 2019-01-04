@@ -45,6 +45,7 @@ extern "C" {
   int openmc_finalize();
   int openmc_find_cell(double* xyz, int32_t* index, int32_t* instance);
   int openmc_get_cell_index(int32_t id, int32_t* index);
+  int openmc_get_entropy_p(double** entropy_p, int32_t* n);
   int openmc_get_filter_index(int32_t id, int32_t* index);
   void openmc_get_filter_next_id(int32_t* id);
   int openmc_get_keff(double k_combined[]);

@@ -87,6 +87,9 @@ contains
 
       subroutine free_memory_cmfd() bind(C)
       end subroutine free_memory_cmfd
+
+      subroutine free_memory_entropy() bind(C)
+      end subroutine free_memory_entropy
     end interface
 
     call free_memory_geometry()
@@ -105,6 +108,7 @@ contains
     call free_memory_tally_derivative()
     call free_memory_bank()
     call free_memory_cmfd()
+    call free_memory_entropy()
 #ifdef DAGMC
     call free_memory_dagmc()
 #endif
