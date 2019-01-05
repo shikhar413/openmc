@@ -699,7 +699,12 @@ openmc_get_entropy_p(double** entropy_p, int32_t* n)
 
   simulation::p_vector.clear();
   for (auto i = 0; i < p.size(); i++) {
-    simulation::p_vector.push_back(p[i]);
+    if (mpi::master) {
+      simulation::p_vector.push_back(p[i]);
+    }
+    else {
+      simulation::p_vector.push_back(1.0);
+    }
   }
 
   *entropy_p = simulation::p_vector.data();
