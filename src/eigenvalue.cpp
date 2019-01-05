@@ -699,7 +699,6 @@ openmc_get_entropy_p(double** entropy_p, int32_t* n)
 
   simulation::p_vector.clear();
   for (auto i = 0; i < p.size(); i++) {
-    std::cout << i << ": " << p[i] << std::endl;
     simulation::p_vector.push_back(p[i]);
   }
 
