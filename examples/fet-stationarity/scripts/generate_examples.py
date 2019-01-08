@@ -165,16 +165,15 @@ def get_num_nodes(cluster, prob_type, num_neutrons):
                 40000000: 10 # TODO How many nodes on INL?
             },
             '3d-exasmr': {
-                100000: 15, # TODO Confirm these values
-                1000000: 10, # TODO Confirm these values
+                100000: 5,
+                1000000: 10, # TODO How many nodes on INL?
                 10000000: 10, # TODO How many nodes on INL?
                 40000000: 10 # TODO How many nodes on INL?
             },
             '3d-homog': {
+                10000: 10, # TODO Confirm these values
                 100000: 15, # TODO Confirm these values
-                1000000: 10, # TODO Confirm these values
-                10000000: 10, # TODO How many nodes on INL?
-                40000000: 10 # TODO How many nodes on INL?
+                1000000: 10 # TODO How many nodes on INL?
             }
         }
         return num_node_dict[prob_type][num_neutrons]
