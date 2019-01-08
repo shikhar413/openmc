@@ -1,0 +1,15 @@
+#!/bin/bash
+#PBS -l nodes={num_nodes}:ppn={procs_per_node}
+#PBS -l walltime=72:00:00
+#PBS -j oe
+#PBS -q default
+#PBS -N {filename}.pbs
+
+
+hostname
+cd $PBS_O_WORKDIR
+cat $PBS_NODEFILE | sort | uniq > hostfile
+cat hostfile
+
+mpiexec -machinefile hostfile -n {num_mpi_procs} python3 run_openmc_capi.py {num_omp_threads} {prob_type}
+touch done.out

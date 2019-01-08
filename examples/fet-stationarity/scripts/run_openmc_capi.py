@@ -100,17 +100,18 @@ def get_conv_tally_id(tallies, problem_type):
 
 
 if __name__ == "__main__":
-    # Define problem specific parameters
-    problem_type = '1d-homog'
-    problem_type = '2d-beavrs'
-    problem_type = '3d-exasmr'
-    problem_type = '3d-homog'
-
     # Define MPI communicator
     comm = MPI.COMM_WORLD
 
     # Get number of OMP threads as command line arg
     num_omp_threads = sys.argv[1]
+
+    # Get problem_type as command line arg
+    problem_type = sys.argv[2]
+
+    if problem_type not in ['1d-homog', '2d-beavrs', '3d-exasmr', '3d-homog']:
+        print('Unrecognized problem type ', problem_type)
+        sys.exit()
 
     # Find restart file
     statepoints = glob.glob(os.path.join("statepoint.*.h5"))
@@ -156,6 +157,7 @@ if __name__ == "__main__":
         tally_data = tally.mean.ravel()
 
         entropy_p = capi.entropy_p()
+        # TODO: get all other entropies! Probably have to define base entropy
         entropy = np.sum(np.log(entropy_p[entropy_p>0])/(np.log(2)) * entropy_p[entropy_p>0])*-1
 
         # Reset tally
