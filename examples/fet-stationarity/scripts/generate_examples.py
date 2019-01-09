@@ -233,7 +233,7 @@ def build_pbs_batch_script(ppn, spn, num_nodes, name, dir, run_file,
         os.chdir(dir)
         # TODO Add some check to see if run command should be issued
         print("Running job in directory {}".format(dir))
-        os.system('sbatch ' + outfile)
+        os.system('qsub ' + outfile)
         os.chdir("./..")
 
 
