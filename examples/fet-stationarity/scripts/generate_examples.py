@@ -244,7 +244,7 @@ def build_slurm_batch_script(ppn, spn, num_nodes, name, dir, run_file,
     num_omp_threads = int(ppn / spn)
 
     replace_dict = {
-        '{num_procs}': str(ppn),
+        '{num_procs}': str(ppn*num_nodes),
         '{num_nodes}': str(num_nodes),
         '{filename}': str(name),
         '{num_mpi_procs}': num_mpi_procs,
@@ -281,6 +281,7 @@ def build_batch_script_files(cluster, prob_type, num_neutrons, name, dir,
     if 'slurm' in cluster_type:
         build_slurm_batch_script(ppn, spn, num_nodes, name, dir, run_file,
                                  prob_type)
+    os.system('cp ../../scripts/run_openmc_capi.py {}'.format(dir))
 
 
 def build_benchmark_input_files(prob_type, params, dir, num_batch,
