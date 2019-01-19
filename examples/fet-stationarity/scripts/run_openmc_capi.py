@@ -126,7 +126,7 @@ if __name__ == "__main__":
         prev_sp = res_file
         labels = np.load('labels.npy')
         # TODO UPDATE
-        coeffs = get_coeffs_from_dataframe(problem_type, labels=labels)
+        coeffs = get_coeffs_from_dataframe(problem_type, labels=labels)[1]
         fet_data = np.load('fet_data.npy')
         entropy_data = np.load('entropy_data.npy')
 
@@ -167,6 +167,9 @@ if __name__ == "__main__":
         if curr_gen == 1:
             # Create statepoint
             capi.statepoint_write()
+            # Put time delay since statepoint tried to be read before being generated
+            # TODO: put while loop instead to check if statepoint generated
+            time.sleep(5)
             statepoint = glob.glob(os.path.join("statepoint.*.h5"))[0]
 
             # Extract tally labels from statepoint and compute coeffs
