@@ -166,11 +166,8 @@ if __name__ == "__main__":
         # If first batch, get labels and coeff data from statepoint file
         if curr_gen == 1:
             # Create statepoint
-            capi.statepoint_write()
-            # Put time delay since statepoint tried to be read before being generated
-            # TODO: put while loop instead to check if statepoint generated
-            time.sleep(5)
-            statepoint = glob.glob(os.path.join("statepoint.*.h5"))[0]
+            statepoint = 'statepoint.1.h5'
+            capi.statepoint_write(filename=statepoint)
 
             # Extract tally labels from statepoint and compute coeffs
             with StatePoint(statepoint) as sp:
@@ -201,14 +198,15 @@ if __name__ == "__main__":
                 np.save("entropy_data", entropy_data)
                 np.save("fet_data", fet_data)
 
-            capi.statepoint_write()
+            statepoint = 'statepoint.{}.h5'.format(str(curr_gen))
+            capi.statepoint_write(filename=statepoint)
 
             # Remove previous statepoint if more than one exists
             if curr_gen != statepoint_interval and comm.Get_rank() == 0:
                 os.system('rm {}'.format(prev_sp))
 
             # Update previous statepoint
-            prev_sp = glob.glob(os.path.join("statepoint.*.h5"))[0]
+            prev_sp = statepoint
 
         # End of loop, save numpy arrays
         if status != 0:
