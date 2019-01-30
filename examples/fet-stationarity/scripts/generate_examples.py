@@ -162,18 +162,18 @@ def get_num_nodes(cluster, prob_type, num_neutrons):
                 1000000: 10,
                 4000000: 10,
                 10000000: 15,
-                40000000: 10 # TODO How many nodes on INL?
+                40000000: 60
             },
             '3d-exasmr': {
                 100000: 5,
-                1000000: 10, # TODO How many nodes on INL?
-                10000000: 10, # TODO How many nodes on INL?
-                40000000: 10 # TODO How many nodes on INL?
+                1000000: 30,
+                10000000: 60,
+                40000000: 60
             },
             '3d-homog': {
-                10000: 10, # TODO Confirm these values
-                100000: 15, # TODO Confirm these values
-                1000000: 10 # TODO How many nodes on INL?
+                10000: 5,
+                100000: 10,
+                1000000: 60
             }
         }
         return num_node_dict[prob_type][num_neutrons]
@@ -213,7 +213,7 @@ def create_file_from_template(replace_dict, template_path, outfile, dir):
 
 
 def build_pbs_batch_script(ppn, spn, num_nodes, name, dir, run_file,
-                           prob_type):
+                           prob_type, is_inl):
     num_mpi_procs = num_nodes * spn
     num_omp_threads = int(ppn / spn)
 
@@ -225,7 +225,10 @@ def build_pbs_batch_script(ppn, spn, num_nodes, name, dir, run_file,
         '{num_omp_threads}': str(num_omp_threads),
         '{prob_type}': str(prob_type)
     }
-    template_path = '../../scripts/batch_script_template.qsub'
+    if is_inl:
+        template_path = '../../scripts/inl_batch_script_template.qsub'
+    else:
+        template_path = '../../scripts/nse_batch_script_template.qsub'
     outfile = name + '.pbs'
     create_file_from_template(replace_dict, template_path, outfile, dir)
 
@@ -268,7 +271,7 @@ def build_batch_script_files(cluster, prob_type, num_neutrons, name, dir,
         'SK Linux': {'ppn': 8, 'spn': 1, 'cluster_type': ['pbs', 'slurm']},
         'NSE Cluster': {'ppn': 12, 'spn': 2, 'cluster_type': ['pbs']},
         'Green Cluster': {'ppn': 32, 'spn': 2, 'cluster_type': ['slurm']},
-        'INL Cluster': {'ppn': 50, 'spn': 1, 'cluster_type': ['pbs']} # TODO Fill out proper values
+        'INL Cluster': {'ppn': 36, 'spn': 2, 'cluster_type': ['pbs']}
     }
     cluster_type = cluster_param_dict[cluster]['cluster_type']
     ppn = cluster_param_dict[cluster]['ppn']
@@ -276,8 +279,9 @@ def build_batch_script_files(cluster, prob_type, num_neutrons, name, dir,
     num_nodes = get_num_nodes(cluster, prob_type, num_neutrons)
 
     if 'pbs' in cluster_type:
+        is_inl = cluster == 'INL Cluster'
         build_pbs_batch_script(ppn, spn, num_nodes, name, dir, run_file,
-                               prob_type)
+                               prob_type, is_inl)
     if 'slurm' in cluster_type:
         build_slurm_batch_script(ppn, spn, num_nodes, name, dir, run_file,
                                  prob_type)
@@ -460,15 +464,6 @@ def get_problem_params(prob_type, cluster):
                 'zern_tally_order': 20,
                 'num_neutrons': [100000],
                 'SE_dim': [28, 28, 20]
-            },
-            '3d-homog': {
-                'tally_order': 30,
-                'num_neutrons': [10000, 100000],
-                'SE_dim': [16, 16, 16],
-                'bc': ['reflective', 'reflective', 'reflective', 'reflective',
-                       'reflective', 'reflective'],
-                'prob_sizes': [(100., 100., 100.), (200., 200., 200.),
-                               (400., 400., 400.)]
             }
         },
         'INL Cluster': {
@@ -485,7 +480,7 @@ def get_problem_params(prob_type, cluster):
             },
             '3d-homog': {
                 'tally_order': 30,
-                'num_neutrons': [1000000],
+                'num_neutrons': [10000, 10000, 1000000],
                 'SE_dim': [16, 16, 16],
                 'bc': ['reflective', 'reflective', 'reflective', 'reflective',
                        'reflective', 'reflective'],
@@ -513,9 +508,8 @@ def get_cluster(socket_name):
         return "Green Cluster"
     elif socket_name.startswith('sk-linux'):
         return "SK Linux"
-    # TODO add case for INL cluster
-    #elif socket_name.startswith('nsecluster'):
-    #    return "INL Cluster"
+    elif socket_name.startswith('falcon'):
+        return "INL Cluster"
     else:
         print('Unrecognized socket name')
         sys.exit()
