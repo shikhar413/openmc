@@ -29,9 +29,11 @@ def get_coeffs_from_dataframe(problem_type, dataframe=None, labels=None):
 
     elif problem_type == '3d-exasmr':
         if labels is not None:
+            define_labels = False
             leg_bins = [label.split("-")[1] for label in labels]
             zern_bins = [label.split("-")[0] for label in labels]
         else:
+            define_labels = True
             leg_bins = dataframe['spatiallegendre'].values
             zern_bins = dataframe['zernike'].values
             labels = np.zeros((0,),dtype=str)
@@ -50,7 +52,7 @@ def get_coeffs_from_dataframe(problem_type, dataframe=None, labels=None):
           else:
             coeffs[j,0] = 2*n + 2
           coeffs[j, 1] = (2*int(leg.split("P")[-1])+1)/2
-          if labels is None:
+          if define_labels:
               labels = np.append(labels, zern + "-" + leg)
 
     elif problem_type == '3d-homog':
