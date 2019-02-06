@@ -155,7 +155,7 @@ def get_num_nodes(cluster, prob_type, num_neutrons):
                 10000: 5,
                 100000: 5,
                 1000000: 5,
-                10000000: 10
+                10000000: 20
             },
             '2d-beavrs': {
                 100000: 10,
@@ -444,6 +444,19 @@ def get_problem_params(prob_type, cluster):
             }
         },
         'Green Cluster': {
+            '2d-beavrs': {
+                'tally_order': 20,
+                'num_neutrons': [100000, 1000000, 4000000],
+                'SE_dim': [68, 68, 1]
+            },
+            '3d-exasmr': {
+                'leg_tally_order': 30,
+                'zern_tally_order': 20,
+                'num_neutrons': [100000],
+                'SE_dim': [28, 28, 20]
+            }
+        },
+        'INL Cluster': {
             '1d-homog': {
                 'tally_order': 30,
                 'num_neutrons': [10000000],
@@ -456,20 +469,7 @@ def get_problem_params(prob_type, cluster):
             },
             '2d-beavrs': {
                 'tally_order': 20,
-                'num_neutrons': [100000, 1000000, 4000000, 10000000],
-                'SE_dim': [68, 68, 1]
-            },
-            '3d-exasmr': {
-                'leg_tally_order': 30,
-                'zern_tally_order': 20,
-                'num_neutrons': [100000],
-                'SE_dim': [28, 28, 20]
-            }
-        },
-        'INL Cluster': {
-            '2d-beavrs': {
-                'tally_order': 20,
-                'num_neutrons': [40000000],
+                'num_neutrons': [10000000, 40000000],
                 'SE_dim': [68, 68, 1]
             },
             '3d-exasmr': {
