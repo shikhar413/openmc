@@ -215,3 +215,6 @@ if __name__ == "__main__":
             if comm.Get_rank() == 0:
                 np.save("entropy_data", entropy_data)
                 np.save("fet_data", fet_data)
+
+    capi.simulation_finalize()
+    capi.finalize()
