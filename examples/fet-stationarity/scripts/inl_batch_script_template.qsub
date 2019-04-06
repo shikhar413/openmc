@@ -1,6 +1,6 @@
 #!/bin/bash
 #PBS -l select={num_nodes}:ncpus={procs_per_node}
-#PBS -l walltime=72:00:00
+#PBS -l walltime=12:00:00
 #PBS -j oe
 #PBS -P neup
 #PBS -q general
