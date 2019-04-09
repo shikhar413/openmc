@@ -135,7 +135,7 @@ def get_num_batches(prob_type, prob_size = None):
             800.: [1499, 2999]
         },
         '2d-beavrs': [499, 999],
-        '3d-exasmr': [499, 999],
+        '3d-exasmr': [149, 199],
         '3d-homog': [499]
     }
 
@@ -167,8 +167,8 @@ def get_num_nodes(cluster, prob_type, num_neutrons):
             '3d-exasmr': {
                 100000: 5,
                 1000000: 15,
-                10000000: 60,
-                40000000: 60
+                10000000: 30,
+                40000000: 30
             },
             '3d-homog': {
                 10000: 5,
