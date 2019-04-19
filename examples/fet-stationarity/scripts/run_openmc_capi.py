@@ -30,8 +30,8 @@ def get_coeffs_from_dataframe(problem_type, dataframe=None, labels=None):
     elif problem_type == '3d-exasmr':
         if labels is not None:
             define_labels = False
-            leg_bins = [label.split("-")[1] for label in labels]
-            zern_bins = [label.split("-")[0] for label in labels]
+            leg_bins = ["P"+label.split("-P")[1] for label in labels]
+            zern_bins = [label.split("-P")[0] for label in labels]
         else:
             define_labels = True
             leg_bins = dataframe['spatiallegendre'].values

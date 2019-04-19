@@ -480,7 +480,7 @@ def get_problem_params(prob_type, cluster):
             },
             '3d-homog': {
                 'tally_order': 30,
-                'num_neutrons': [10000, 10000, 1000000],
+                'num_neutrons': [10000, 100000, 1000000],
                 'SE_dim': [16, 16, 16],
                 'bc': ['reflective', 'reflective', 'reflective', 'reflective',
                        'reflective', 'reflective'],
