@@ -36,6 +36,9 @@ _dll.openmc_find_cell.argtypes = [POINTER(c_double*3), POINTER(c_int32),
                                   POINTER(c_int32)]
 _dll.openmc_find_cell.restype = c_int
 _dll.openmc_find_cell.errcheck = _error_handler
+_dll.openmc_get_entropy_p.argtypes = [
+    POINTER(POINTER(c_double)), POINTER(c_int)]
+_dll.openmc_get_entropy_p.restype = c_int
 _dll.openmc_hard_reset.restype = c_int
 _dll.openmc_hard_reset.errcheck = _error_handler
 _dll.openmc_init.argtypes = [c_int, POINTER(POINTER(c_char)), c_void_p]
@@ -90,6 +93,16 @@ def current_batch():
 
     """
     return c_int.in_dll(_dll, 'current_batch').value
+
+
+def entropy_p():
+    """Return entropy p variable in memory. This variable
+    stores the fraction of neutrons in each entropy mesh
+    """
+    data = POINTER(c_double)()
+    shape = c_int32()
+    _dll.openmc_get_entropy_p(data, shape)
+    return as_array(data, (shape.value,))
 
 
 def finalize():

@@ -45,6 +45,7 @@ void free_memory()
   free_memory_tally();
   free_memory_bank();
   free_memory_cmfd();
+  free_memory_entropy();
 #ifdef DAGMC
   free_memory_dagmc();
 #endif
