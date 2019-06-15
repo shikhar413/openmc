@@ -179,13 +179,14 @@ if __name__ == "__main__":
                                                            dataframe=df)
                 np.save("labels", labels)
 
-            # Remove statepoint file
-            if comm.Get_rank() == 0:
-                os.system('rm {}'.format(statepoint))
-
             # Define empty arrays to store FET and entropy data
             fet_data = np.empty((0,1+len(labels)), float)
             entropy_data = np.empty((0,2+len(entropy_p)), float)
+
+        if curr_gen == 2:
+            # Remove statepoint file
+            if comm.Get_rank() == 0:
+                os.system('rm {}'.format(statepoint))
 
         # Compute scaled FET coefficients
         a_n = np.product(coeffs, axis=1) * tally_data
