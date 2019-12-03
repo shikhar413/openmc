@@ -17,6 +17,8 @@ import sys
 import time
 from ctypes import c_int
 import warnings
+import configparser
+import json
 
 import numpy as np
 from scipy import sparse
@@ -187,6 +189,1071 @@ class CMFDMesh(object):
         for m in meshmap:
             check_value('CMFD mesh map', m, [0, 1])
         self._map = meshmap
+
+
+class EnsAvgCMFDRun(object):
+    r"""Class for running ensemble averaged CMFD acceleration with global synchronous update.
+
+    Attributes
+    ----------
+    TODO all stuff up to calc_fission_source happens here
+    TODO figure out how to set n_threads for running CMFD
+    TODO figure out how to split communicator between OpenMC ensembles
+    """
+
+    def __init__(self):
+        """Constructor for CMFDRun class. Default values for instance variables
+        set in this method.
+
+        """
+        # Variables that users can modify
+        self._tally_begin = 1
+        self._solver_begin = 1
+        self._ref_d = np.array([])
+        self._display = {'balance': False, 'dominance': False,
+                         'entropy': False, 'source': False}
+        self._downscatter = False
+        self._feedback = False
+        self._cmfd_ktol = 1.e-8
+        self._mesh = None
+        self._norm = 1.
+        self._power_monitor = False
+        self._w_shift = 1.e6
+        self._stol = 1.e-8
+        self._write_matrices = False
+        self._spectral = 0.0
+        self._gauss_seidel_tolerance = [1.e-10, 1.e-5]
+        self._window_type = 'none'
+        self._window_size = 10
+        self._intracomm = None
+        self._use_all_threads = False
+
+        # Variables that users can modify specific to ensemble-averaging
+        self._n_inactive = None
+        self._n_batches = None
+        self._n_particles = None
+        self._n_openmc_threads = 1
+        self._n_cmfd_threads = 1
+        self._n_seeds = 1
+        self._config_file = None
+        self._verbosity = 7
+        self._restart_file = None
+        self._restart_run = False # TODO
+        self._openmc_args = {} # TODO
+        self._cmfd_args = {} # TODO
+
+        # External variables used during runtime but users cannot control
+        self._set_reference_params = False
+        self._indices = np.zeros(4, dtype=np.int32)
+        self._albedo = None
+        self._coremap = None
+        self._cmfd_on = False
+        self._mat_dim = _CMFD_NOACCEL
+        self._keff_bal = None
+        self._keff = None
+        self._phi = None
+        self._openmc_src_rate = None
+        self._flux_rate = None
+        self._total_rate = None
+        self._p1scatt_rate = None
+        self._scatt_rate = None
+        self._nfiss_rate = None
+        self._current_rate = None
+        self._flux = None
+        self._totalxs = None
+        self._p1scattxs = None
+        self._scattxs = None
+        self._nfissxs = None
+        self._diffcof = None
+        self._dtilde = None
+        self._dhat = None
+        self._hxyz = None
+        self._current = None
+        self._cmfd_src = None
+        self._openmc_src = None
+        self._entropy = []
+        self._balance = []
+        self._src_cmp = []
+        self._dom = []
+        self._k_cmfd = []
+        self._resnb = None
+        self._time_cmfd = None
+        self._time_cmfdbuild = None
+        self._time_cmfdsolve = None
+
+        # All index-related variables, for numpy vectorization
+        self._first_x_accel = None
+        self._last_x_accel = None
+        self._first_y_accel = None
+        self._last_y_accel = None
+        self._first_z_accel = None
+        self._last_z_accel = None
+        self._notfirst_x_accel = None
+        self._notlast_x_accel = None
+        self._notfirst_y_accel = None
+        self._notlast_y_accel = None
+        self._notfirst_z_accel = None
+        self._notlast_z_accel = None
+        self._is_adj_ref_left = None
+        self._is_adj_ref_right = None
+        self._is_adj_ref_back = None
+        self._is_adj_ref_front = None
+        self._is_adj_ref_bottom = None
+        self._is_adj_ref_top = None
+        self._accel_idxs = None
+        self._accel_neig_left_idxs = None
+        self._accel_neig_right_idxs = None
+        self._accel_neig_back_idxs = None
+        self._accel_neig_front_idxs = None
+        self._accel_neig_bot_idxs = None
+        self._accel_neig_top_idxs = None
+        self._loss_row = None
+        self._loss_col = None
+        self._prod_row = None
+        self._prod_col = None
+
+    @property
+    def tally_begin(self):
+        return self._tally_begin
+
+    @property
+    def solver_begin(self):
+        return self._solver_begin
+
+    @property
+    def ref_d(self):
+        return self._ref_d
+
+    @property
+    def display(self):
+        return self._display
+
+    @property
+    def downscatter(self):
+        return self._downscatter
+
+    @property
+    def feedback(self):
+        return self._feedback
+
+    @property
+    def cmfd_ktol(self):
+        return self._cmfd_ktol
+
+    @property
+    def mesh(self):
+        return self._mesh
+
+    @property
+    def norm(self):
+        return self._norm
+
+    @property
+    def window_type(self):
+        return self._window_type
+
+    @property
+    def window_size(self):
+        return self._window_size
+
+    @property
+    def power_monitor(self):
+        return self._power_monitor
+
+    @property
+    def w_shift(self):
+        return self._w_shift
+
+    @property
+    def stol(self):
+        return self._stol
+
+    @property
+    def spectral(self):
+        return self._spectral
+
+    @property
+    def write_matrices(self):
+        return self._write_matrices
+
+    @property
+    def gauss_seidel_tolerance(self):
+        return self._gauss_seidel_tolerance
+
+    @property
+    def indices(self):
+        return self._indices
+
+    @property
+    def use_all_threads(self):
+        return self._use_all_threads
+
+    @property
+    def cmfd_src(self):
+        return self._cmfd_src
+
+    @property
+    def dom(self):
+        return self._dom
+
+    @property
+    def src_cmp(self):
+        return self._src_cmp
+
+    @property
+    def balance(self):
+        return self._balance
+
+    @property
+    def entropy(self):
+        return self._entropy
+
+    @property
+    def k_cmfd(self):
+        return self._k_cmfd
+
+    @property
+    def n_inactive(self):
+        return self._n_inactive
+
+    @property
+    def n_batches(self):
+        return self._n_batches
+
+    @property
+    def n_particles(self):
+        return self._n_particles
+
+    @property
+    def n_openmc_threads(self):
+        return self._n_openmc_threads
+
+    @property
+    def n_cmfd_threads(self):
+        return self._n_cmfd_threads
+
+    @property
+    def n_seeds(self):
+        return self._n_seeds
+
+    @property
+    def config_file(self):
+        return self._config_file
+
+    @property
+    def verbosity(self):
+        return self._verbosity
+
+    @property
+    def restart_file(self):
+        return self._restart_file
+
+    @tally_begin.setter
+    def tally_begin(self, begin):
+        check_type('CMFD tally begin batch', begin, Integral)
+        check_greater_than('CMFD tally begin batch', begin, 0)
+        self._tally_begin = begin
+
+    @solver_begin.setter
+    def solver_begin(self, begin):
+        check_type('CMFD feedback begin batch', begin, Integral)
+        check_greater_than('CMFD feedback begin batch', begin, 0)
+        self._solver_begin = begin
+
+    @ref_d.setter
+    def ref_d(self, diff_params):
+        check_type('Reference diffusion params', diff_params,
+                   Iterable, Real)
+        self._ref_d = np.array(diff_params)
+
+    @display.setter
+    def display(self, display):
+        check_type('display', display, Mapping)
+        for key, value in display.items():
+            check_value('display key', key,
+                        ('balance', 'entropy', 'dominance', 'source'))
+            check_type("display['{}']".format(key), value, bool)
+            self._display[key] = value
+
+    @downscatter.setter
+    def downscatter(self, downscatter):
+        check_type('CMFD downscatter', downscatter, bool)
+        self._downscatter = downscatter
+
+    @feedback.setter
+    def feedback(self, feedback):
+        check_type('CMFD feedback', feedback, bool)
+        self._feedback = feedback
+
+    @cmfd_ktol.setter
+    def cmfd_ktol(self, cmfd_ktol):
+        check_type('CMFD eigenvalue tolerance', cmfd_ktol, Real)
+        self._cmfd_ktol = cmfd_ktol
+
+    @mesh.setter
+    def mesh(self, cmfd_mesh):
+        check_type('CMFD mesh', cmfd_mesh, CMFDMesh)
+
+        # Check dimension defined
+        if cmfd_mesh.dimension is None:
+            raise ValueError('CMFD mesh requires spatial '
+                             'dimensions to be specified')
+
+        # Check lower left defined
+        if cmfd_mesh.lower_left is None:
+            raise ValueError('CMFD mesh requires lower left coordinates '
+                             'to be specified')
+
+        # Check that both upper right and width both not defined
+        if cmfd_mesh.upper_right is not None and cmfd_mesh.width is not None:
+            raise ValueError('Both upper right coordinates and width '
+                             'cannot be specified for CMFD mesh')
+
+        # Check that at least one of width or upper right is defined
+        if cmfd_mesh.upper_right is None and cmfd_mesh.width is None:
+            raise ValueError('CMFD mesh requires either upper right '
+                             'coordinates or width to be specified')
+
+        # Check width and lower length are same dimension and define
+        # upper_right
+        if cmfd_mesh.width is not None:
+            check_length('CMFD mesh width', cmfd_mesh.width,
+                         len(cmfd_mesh.lower_left))
+            cmfd_mesh.upper_right = np.array(cmfd_mesh.lower_left) + \
+                np.array(cmfd_mesh.width) * np.array(cmfd_mesh.dimension)
+
+        # Check upper_right and lower length are same dimension and define
+        # width
+        elif cmfd_mesh.upper_right is not None:
+            check_length('CMFD mesh upper right', cmfd_mesh.upper_right,
+                         len(cmfd_mesh.lower_left))
+            # Check upper right coordinates are greater than lower left
+            if np.any(np.array(cmfd_mesh.upper_right) <=
+                      np.array(cmfd_mesh.lower_left)):
+                raise ValueError('CMFD mesh requires upper right '
+                                 'coordinates to be greater than lower '
+                                 'left coordinates')
+            cmfd_mesh.width = np.true_divide((np.array(cmfd_mesh.upper_right) -
+                                             np.array(cmfd_mesh.lower_left)),
+                                             np.array(cmfd_mesh.dimension))
+        self._mesh = cmfd_mesh
+
+    @norm.setter
+    def norm(self, norm):
+        check_type('CMFD norm', norm, Real)
+        self._norm = norm
+
+    @window_type.setter
+    def window_type(self, window_type):
+        check_type('CMFD window type', window_type, str)
+        check_value('CMFD window type', window_type,
+                    ['none', 'rolling', 'expanding'])
+        self._window_type = window_type
+
+    @window_size.setter
+    def window_size(self, window_size):
+        check_type('CMFD window size', window_size, Integral)
+        check_greater_than('CMFD window size', window_size, 0)
+        if self._window_type != 'rolling':
+            warn_msg = 'Window size will have no effect on CMFD simulation ' \
+                       'unless window type is set to "rolling".'
+            warnings.warn(warn_msg, RuntimeWarning)
+        self._window_size = window_size
+
+    @power_monitor.setter
+    def power_monitor(self, power_monitor):
+        check_type('CMFD power monitor', power_monitor, bool)
+        self._power_monitor = power_monitor
+
+    @w_shift.setter
+    def w_shift(self, w_shift):
+        check_type('CMFD Wielandt shift', w_shift, Real)
+        self._w_shift = w_shift
+
+    @stol.setter
+    def stol(self, stol):
+        check_type('CMFD fission source tolerance', stol, Real)
+        self._stol = stol
+
+    @spectral.setter
+    def spectral(self, spectral):
+        check_type('CMFD spectral radius', spectral, Real)
+        self._spectral = spectral
+
+    @write_matrices.setter
+    def write_matrices(self, write_matrices):
+        check_type('CMFD write matrices', write_matrices, bool)
+        self._write_matrices = write_matrices
+
+    @gauss_seidel_tolerance.setter
+    def gauss_seidel_tolerance(self, gauss_seidel_tolerance):
+        check_type('CMFD Gauss-Seidel tolerance', gauss_seidel_tolerance,
+                   Iterable, Real)
+        check_length('Gauss-Seidel tolerance', gauss_seidel_tolerance, 2)
+        self._gauss_seidel_tolerance = gauss_seidel_tolerance
+
+    @n_inactive.setter
+    def n_inactive(self, n_inactive):
+        check_type('OpenMC num inactive', n_inactive, Integral)
+        check_greater_than('OpenMC num active', n_inactive, 0)
+        self._n_inactive = n_inactive
+
+    @n_batches.setter
+    def n_batches(self, n_batches):
+        check_type('OpenMC num batches', n_batches, Integral)
+        check_greater_than('OpenMC num batches', n_batches, 0)
+        self._n_batches = n_batches
+
+    @n_particles.setter
+    def n_particles(self, n_particles):
+        check_type('OpenMC num particles', n_particles, Integral)
+        check_greater_than('OpenMC num particles', n_particles, 0)
+        self._n_particles = n_particles
+
+    @n_openmc_threads.setter
+    def n_openmc_threads(self, n_openmc_threads):
+        check_type('OpenMC num threads', n_openmc_threads, Integral)
+        check_greater_than('OpenMC num threads', n_openmc_threads, 0)
+        self._n_openmc_threads = n_openmc_threads
+
+    @n_cmfd_threads.setter
+    def n_cmfd_threads(self, n_cmfd_threads):
+        check_type('CMFD num threads', n_cmfd_threads, Integral)
+        check_greater_than('CMFD num threads', n_cmfd_threads, 0)
+        self._n_cmfd_threads = n_cmfd_threads
+
+    @n_seeds.setter
+    def n_seeds(self, n_seeds):
+        check_type('Ensemble num seeds', n_seeds, Integral)
+        check_greater_than('Ensemble num seeds', n_seeds, 0)
+        self._n_seeds = n_seeds
+
+    @config_file.setter
+    def config_file(self, config_file):
+        check_type('Config file', config_file, str)
+        self._config_file = config_file
+
+    @verbosity.setter
+    def verbosity(self, verbosity):
+        check_type('Verbosity', verbosity, Integral)
+        self._verbosity = verbosity
+
+    @restart_file.setter
+    def restart_file(self, restart_file):
+        check_type('Ensemble average restart file', restart_file, str)
+        self._restart_file = restart_file
+
+    @contextmanager
+    def run_in_memory(self, **kwargs):
+        """ Context manager for running ensemble-averaged CMFD.
+
+        This function can be used with a 'with' statement to ensure the
+        EnsAvgCMFDRun class is properly initialized/finalized. For example::
+
+            from openmc import cmfd
+            ea_cmfd_run = cmfd.EnsAvgCMFDRun()
+            with ea_cmfd_run.run_in_memory():
+                do_stuff_before_simulation_start()
+                for _ in ea_cmfd_run.iter_batches():
+                    do_stuff_between_batches()
+
+        Parameters
+        ----------
+        **kwargs
+            All keyword arguments passed to :func:`cmfd.EnsAvgCMFDRun.init`.
+
+        """
+        # Store intracomm for part of CMFD routine where MPI reduce and
+        # broadcast calls are made
+        if have_mpi:
+            self._intracomm = MPI.COMM_WORLD
+
+        # Run and pass arguments to C API run_in_memory function
+        self.init()
+        try:
+            yield
+        finally:
+            self.finalize()
+
+    # TODO which CMFD parameters need to be redefined each time?
+    # TODO make nthreads, n_inactive, n_batches, n_particles parameters of EA-CMFD class
+    # TODO make sure ensemble averaging running only on master node
+    # TODO run with iter_batches? How to retrieve entropy, fet data from calling script?
+    # TODO define openmc_args, cmfd_args
+    def run(self, **kwargs):
+        """Run OpenMC with ensembled-averaged CMFD
+
+        This method is called by user to run multiple instances of OpenMC with a shared
+        CMFD acceleration scheme
+
+        Parameters
+        ----------
+        **kwargs
+            All keyword arguments are passed to
+            :func:`openmc.lib.run_in_memory`.
+
+        """
+        with self.run_in_memory(**kwargs):
+            pass
+            '''
+            for b in range(num_batch):
+                global_cmfd_tallies = np.zeros(…)
+                for s in range(num_seed):
+                    cmfd_tallies = run_next_batch(b, s, update_source=False)
+                    global_cmfd_tallies += cmfd_tallies
+                # compute source from global CMFD tallies
+                for s in range(num_seed):
+                    run_next_batch(b, s, update_source=True, source)
+                    # store any quantities —> fet tallies, entropy, fet_tally_from_fb probably not going to work so use actual tally implementation instead (analog)
+                    for _ in self.iter_batches():
+                        pass
+            '''
+
+    def init(self):
+        """ Initialize CMFDRun instance by setting up ensemble-averaged CMFD
+        parameters.
+
+        """
+        if self.is_master():
+            # Initialize ensemble-averaged CMFD parameters
+            self._initialize_ea_cmfd()
+
+            # Configure CMFD parameters
+            self._configure_cmfd()
+
+            # Compute and store array indices used to build cross section
+            # arrays
+            self._precompute_array_indices()
+
+            # Compute and store row and column indices used to build CMFD
+            # matrices
+            self._precompute_matrix_indices()
+
+            # Initialize all variables used for linear solver in C++
+            self._initialize_linsolver()
+
+    def finalize(self):
+        """ Finalize simulation by calling
+        :func:`openmc.lib.simulation_finalize` and print out Ensemble-averaged
+        CMFD timing information.
+
+        """
+        if self.is_master():
+            # Print out CMFD timing statistics
+            self._write_cmfd_timing_stats()
+            # TODO deallocate linsolver initialized in init()
+
+    def _initialize_ea_cmfd(self):
+        """ TODO comments """
+        if self.verbosity >= 7:
+            print(' Configuring parameters for ensemble-averaged CMFD '
+                  'simulation')
+            sys.stdout.flush()
+
+        if self._config_file is not None:
+            self._read_config_file()
+
+        # Default to values set by settings.xml if following variables not set
+        # by user
+        with openmc.lib.run_in_memory():
+            if self._n_inactive is None:
+                self._n_inactive = openmc.lib.settings.inactive
+            if self._n_batches is None:
+                self._n_batches = openmc.lib.settings.batches
+            if self._n_particles is None:
+                self._n_particles = openmc.lib.settings.particles
+
+    def _read_config_file(self):
+        config = configparser.ConfigParser()
+        config.read(self._config_file)
+        headers = ['EA-CMFD', 'CMFD-Mesh']
+        cmfd_mesh = CMFDMesh()
+        objects = self, cmfd_mesh
+        for (i, header) in enumerate(headers):
+            obj = objects[i]
+            if header in config.sections():
+                for key in config[header]:
+                    try:
+                        value = json.loads(config[header][key])
+                        setattr(obj, key, value)
+                    except:
+                        raise OpenMCError('Config file must have values that '
+                                          'can be parsed by json')
+        if 'CMFD-Mesh' in config.sections():
+            self._mesh = cmfd_mesh
+
+
+    def is_master(self):
+        """ TODO comments"""
+        return self._intracomm.Get_rank() == 0
+
+    def next_batch(self):
+        """ TODO comments
+
+        Returns
+        -------
+        int
+            Status after running a batch (0=normal, 1=reached maximum number of
+            batches, 2=tally triggers reached)
+
+        """
+        # Initialize CMFD batch
+        self._cmfd_init_batch()
+
+        # Run next batch
+        status = openmc.lib.next_batch()
+
+        # Perform CMFD calculations
+        self._execute_cmfd()
+
+        # Write CMFD data to statepoint
+        if openmc.lib.is_statepoint_batch():
+            self.statepoint_write()
+        return status
+
+    def _configure_cmfd(self):
+        """Initialize CMFD parameters and set CMFD input variables"""
+        # Check if restarting simulation from statepoint file
+        if not self._restart_run:
+            # Define all variables necessary for running CMFD
+            self._initialize_cmfd()
+
+        else:
+            # TODO Reset CMFD parameters from statepoint file
+            #path_statepoint = openmc.lib.settings.path_statepoint
+            #self._reset_cmfd(path_statepoint)
+            pass
+
+    def _initialize_cmfd(self):
+        """Sets values of CMFD instance variables based on user input,
+           separating between variables that only exist on all processes
+           and those that only exist on the master process
+
+        """
+        # Print message to user and flush output to stdout
+        if self.verbosity >= 7:
+            print(' Configuring CMFD parameters for simulation')
+            sys.stdout.flush()
+
+        # Check if CMFD mesh is defined
+        if self._mesh is None:
+            raise ValueError('No CMFD mesh has been specified for '
+                             'simulation')
+
+        # Set spatial dimensions of CMFD object
+        for i, n in enumerate(self._mesh.dimension):
+            self._indices[i] = n
+
+        # Set number of energy groups
+        if self._mesh.energy is not None:
+            ng = len(self._mesh.energy)
+            self._indices[3] = ng - 1
+        else:
+            self._indices[3] = 1
+
+        # Get acceleration map, otherwise set all regions to be accelerated
+        if self._mesh.map is not None:
+            check_length('CMFD coremap', self._mesh.map,
+                         np.product(self._indices[0:3]))
+            self._coremap = np.array(self._mesh.map)
+        else:
+            self._coremap = np.ones((np.product(self._indices[0:3])),
+                                    dtype=int)
+
+        # Check CMFD tallies accummulated before feedback turned on
+        if self._feedback and self._solver_begin < self._tally_begin:
+            raise ValueError('Tally begin must be less than or equal to '
+                             'CMFD begin')
+
+        # Initialize parameters for CMFD tally windows
+        self._set_tally_window()
+
+        # Set global albedo
+        if self._mesh.albedo is not None:
+            self._albedo = np.array(self._mesh.albedo)
+        else:
+            self._albedo = np.array([1., 1., 1., 1., 1., 1.])
+
+        # Set up CMFD coremap
+        self._set_coremap()
+
+        # Extract spatial and energy indices
+        nx, ny, nz, ng = self._indices
+
+        # Allocate dimensions for each mesh cell
+        self._hxyz = np.zeros((nx, ny, nz, 3))
+        self._hxyz[:] = self._mesh.width
+
+        # Allocate parameters that need to be stored for tally window
+        self._openmc_src_rate = np.zeros((nx, ny, nz, ng, 0))
+        self._flux_rate = np.zeros((nx, ny, nz, ng, 0))
+        self._total_rate = np.zeros((nx, ny, nz, ng, 0))
+        self._p1scatt_rate = np.zeros((nx, ny, nz, ng, 0))
+        self._scatt_rate = np.zeros((nx, ny, nz, ng, ng, 0))
+        self._nfiss_rate = np.zeros((nx, ny, nz, ng, ng, 0))
+        self._current_rate = np.zeros((nx, ny, nz, 12, ng, 0))
+
+        # Initialize timers
+        self._time_cmfd = 0.0
+        self._time_cmfdbuild = 0.0
+        self._time_cmfdsolve = 0.0
+
+    def _set_tally_window(self):
+        """Sets parameters to handle different tally window options"""
+        # Set parameters for expanding window
+        if self._window_type == 'expanding' or self._window_type == 'none':
+            self._window_size = 1
+
+    def _set_coremap(self):
+        """Sets the core mapping information. All regions marked with zero
+        are set to CMFD_NOACCEL, while all regions marked with 1 are set to a
+        unique index that maps each fuel region to a row number when building
+        CMFD matrices
+
+        """
+        # Set number of accelerated regions in problem. This will be related to
+        # the dimension of CMFD matrices
+        self._mat_dim = np.sum(self._coremap)
+
+        # Define coremap as cumulative sum over accelerated regions,
+        # otherwise set value to _CMFD_NOACCEL
+        self._coremap = np.where(self._coremap == 0, _CMFD_NOACCEL,
+                                 np.cumsum(self._coremap)-1)
+
+        # Reshape coremap to three dimensional array
+        # Indices of coremap in user input switched in x and z axes
+        nx, ny, nz = self._indices[:3]
+        self._coremap = self._coremap.reshape(nz, ny, nx)
+        self._coremap = np.swapaxes(self._coremap, 0, 2)
+
+    def _precompute_array_indices(self):
+        """Initializes cross section arrays and computes the indices
+        used to populate dtilde and dhat
+
+        """
+        # Extract spatial indices
+        nx, ny, nz, ng = self._indices
+
+        # Allocate flux, cross sections and diffusion coefficient
+        self._flux = np.zeros((nx, ny, nz, ng))
+        self._totalxs = np.zeros((nx, ny, nz, ng))
+        self._p1scattxs = np.zeros((nx, ny, nz, ng))
+        self._scattxs = np.zeros((nx, ny, nz, ng, ng))  # Incoming, outgoing
+        self._nfissxs = np.zeros((nx, ny, nz, ng, ng))  # Incoming, outgoing
+        self._diffcof = np.zeros((nx, ny, nz, ng))
+
+        # Allocate dtilde and dhat
+        self._dtilde = np.zeros((nx, ny, nz, ng, 6))
+        self._dhat = np.zeros((nx, ny, nz, ng, 6))
+
+        # Set reference diffusion parameters
+        if self._ref_d.size > 0:
+            self._set_reference_params = True
+            # Check length of reference diffusion parameters equal to number of
+            # energy groups
+            if self._ref_d.size != self._indices[3]:
+                raise OpenMCError('Number of reference diffusion parameters '
+                                  'must equal number of CMFD energy groups')
+
+        # Logical for determining whether region of interest is accelerated
+        # region
+        is_accel = self._coremap != _CMFD_NOACCEL
+        # Logical for determining whether a zero flux "albedo" b.c. should be
+        # applied
+        is_zero_flux_alb = abs(self._albedo - _ZERO_FLUX) < _TINY_BIT
+        x_inds, y_inds, z_inds = np.indices((nx, ny, nz))
+
+        # Define slice equivalent to is_accel[0,:,:]
+        slice_x = x_inds[:1,:,:]
+        slice_y = y_inds[:1,:,:]
+        slice_z = z_inds[:1,:,:]
+        bndry_accel = is_accel[(slice_x, slice_y, slice_z)]
+        self._first_x_accel = (slice_x[bndry_accel], slice_y[bndry_accel],
+                               slice_z[bndry_accel])
+
+        # Define slice equivalent to is_accel[-1,:,:]
+        slice_x = x_inds[-1:,:,:]
+        slice_y = y_inds[-1:,:,:]
+        slice_z = z_inds[-1:,:,:]
+        bndry_accel = is_accel[(slice_x, slice_y, slice_z)]
+        self._last_x_accel = (slice_x[bndry_accel], slice_y[bndry_accel],
+                              slice_z[bndry_accel])
+
+        # Define slice equivalent to is_accel[:,0,:]
+        slice_x = x_inds[:,:1,:]
+        slice_y = y_inds[:,:1,:]
+        slice_z = z_inds[:,:1,:]
+        bndry_accel = is_accel[(slice_x, slice_y, slice_z)]
+        self._first_y_accel = (slice_x[bndry_accel], slice_y[bndry_accel],
+                               slice_z[bndry_accel])
+
+        # Define slice equivalent to is_accel[:,-1,:]
+        slice_x = x_inds[:,-1:,:]
+        slice_y = y_inds[:,-1:,:]
+        slice_z = z_inds[:,-1:,:]
+        bndry_accel = is_accel[(slice_x, slice_y, slice_z)]
+        self._last_y_accel = (slice_x[bndry_accel], slice_y[bndry_accel],
+                              slice_z[bndry_accel])
+
+        # Define slice equivalent to is_accel[:,:,0]
+        slice_x = x_inds[:,:,:1]
+        slice_y = y_inds[:,:,:1]
+        slice_z = z_inds[:,:,:1]
+        bndry_accel = is_accel[(slice_x, slice_y, slice_z)]
+        self._first_z_accel = (slice_x[bndry_accel], slice_y[bndry_accel],
+                               slice_z[bndry_accel])
+
+        # Define slice equivalent to is_accel[:,:,-1]
+        slice_x = x_inds[:,:,-1:]
+        slice_y = y_inds[:,:,-1:]
+        slice_z = z_inds[:,:,-1:]
+        bndry_accel = is_accel[(slice_x, slice_y, slice_z)]
+        self._last_z_accel = (slice_x[bndry_accel], slice_y[bndry_accel],
+                              slice_z[bndry_accel])
+
+        # Define slice equivalent to is_accel[1:,:,:]
+        slice_x = x_inds[1:,:,:]
+        slice_y = y_inds[1:,:,:]
+        slice_z = z_inds[1:,:,:]
+        bndry_accel = is_accel[(slice_x, slice_y, slice_z)]
+        self._notfirst_x_accel = (slice_x[bndry_accel], slice_y[bndry_accel],
+                                  slice_z[bndry_accel])
+
+        # Define slice equivalent to is_accel[:-1,:,:]
+        slice_x = x_inds[:-1,:,:]
+        slice_y = y_inds[:-1,:,:]
+        slice_z = z_inds[:-1,:,:]
+        bndry_accel = is_accel[(slice_x, slice_y, slice_z)]
+        self._notlast_x_accel = (slice_x[bndry_accel], slice_y[bndry_accel],
+                                 slice_z[bndry_accel])
+
+        # Define slice equivalent to is_accel[:,1:,:]
+        slice_x = x_inds[:,1:,:]
+        slice_y = y_inds[:,1:,:]
+        slice_z = z_inds[:,1:,:]
+        bndry_accel = is_accel[(slice_x, slice_y, slice_z)]
+        self._notfirst_y_accel = (slice_x[bndry_accel], slice_y[bndry_accel],
+                                  slice_z[bndry_accel])
+
+        # Define slice equivalent to is_accel[:,:-1,:]
+        slice_x = x_inds[:,:-1,:]
+        slice_y = y_inds[:,:-1,:]
+        slice_z = z_inds[:,:-1,:]
+        bndry_accel = is_accel[(slice_x, slice_y, slice_z)]
+        self._notlast_y_accel = (slice_x[bndry_accel], slice_y[bndry_accel],
+                                 slice_z[bndry_accel])
+
+        # Define slice equivalent to is_accel[:,:,1:]
+        slice_x = x_inds[:,:,1:]
+        slice_y = y_inds[:,:,1:]
+        slice_z = z_inds[:,:,1:]
+        bndry_accel = is_accel[(slice_x, slice_y, slice_z)]
+        self._notfirst_z_accel = (slice_x[bndry_accel], slice_y[bndry_accel],
+                                  slice_z[bndry_accel])
+
+        # Define slice equivalent to is_accel[:,:,:-1]
+        slice_x = x_inds[:,:,:-1]
+        slice_y = y_inds[:,:,:-1]
+        slice_z = z_inds[:,:,:-1]
+        bndry_accel = is_accel[(slice_x, slice_y, slice_z)]
+        self._notlast_z_accel = (slice_x[bndry_accel], slice_y[bndry_accel],
+                                 slice_z[bndry_accel])
+
+        # Store logical for whether neighboring cell is reflector region
+        # in all directions
+        adj_reflector_left = np.roll(self._coremap, 1, axis=0) == _CMFD_NOACCEL
+        self._is_adj_ref_left = adj_reflector_left[
+                self._notfirst_x_accel + (np.newaxis,)]
+
+        adj_reflector_right = np.roll(self._coremap, -1, axis=0) == \
+            _CMFD_NOACCEL
+        self._is_adj_ref_right = adj_reflector_right[
+                self._notlast_x_accel + (np.newaxis,)]
+
+        adj_reflector_back = np.roll(self._coremap, 1, axis=1) == \
+            _CMFD_NOACCEL
+        self._is_adj_ref_back = adj_reflector_back[
+                self._notfirst_y_accel + (np.newaxis,)]
+
+        adj_reflector_front = np.roll(self._coremap, -1, axis=1) == \
+            _CMFD_NOACCEL
+        self._is_adj_ref_front = adj_reflector_front[
+                self._notlast_y_accel + (np.newaxis,)]
+
+        adj_reflector_bottom = np.roll(self._coremap, 1, axis=2) == \
+            _CMFD_NOACCEL
+        self._is_adj_ref_bottom = adj_reflector_bottom[
+                self._notfirst_z_accel + (np.newaxis,)]
+
+        adj_reflector_top = np.roll(self._coremap, -1, axis=2) == \
+            _CMFD_NOACCEL
+        self._is_adj_ref_top = adj_reflector_top[
+                self._notlast_z_accel + (np.newaxis,)]
+
+    def _precompute_matrix_indices(self):
+        """Computes the indices and row/column data used to populate CMFD CSR
+        matrices. These indices are used in _build_loss_matrix and
+        _build_prod_matrix.
+
+        """
+        # Extract energy group indices
+        ng = self._indices[3]
+
+        # Shift coremap in all directions to determine whether leakage term
+        # should be defined for particular cell in matrix
+        coremap_shift_left = np.pad(self._coremap, ((1,0),(0,0),(0,0)),
+                                    mode='constant',
+                                    constant_values=_CMFD_NOACCEL)[:-1,:,:]
+
+        coremap_shift_right = np.pad(self._coremap, ((0,1),(0,0),(0,0)),
+                                     mode='constant',
+                                     constant_values=_CMFD_NOACCEL)[1:,:,:]
+
+        coremap_shift_back = np.pad(self._coremap, ((0,0),(1,0),(0,0)),
+                                    mode='constant',
+                                    constant_values=_CMFD_NOACCEL)[:,:-1,:]
+
+        coremap_shift_front = np.pad(self._coremap, ((0,0),(0,1),(0,0)),
+                                     mode='constant',
+                                     constant_values=_CMFD_NOACCEL)[:,1:,:]
+
+        coremap_shift_bottom = np.pad(self._coremap, ((0,0),(0,0),(1,0)),
+                                      mode='constant',
+                                      constant_values=_CMFD_NOACCEL)[:,:,:-1]
+
+        coremap_shift_top = np.pad(self._coremap, ((0,0),(0,0),(0,1)),
+                                   mode='constant',
+                                   constant_values=_CMFD_NOACCEL)[:,:,1:]
+
+        # Create empty row and column vectors to store for loss matrix
+        row = np.array([])
+        col = np.array([])
+
+        # Store all indices used to populate production and loss matrix
+        is_accel = self._coremap != _CMFD_NOACCEL
+        self._accel_idxs = np.where(is_accel)
+        self._accel_neig_left_idxs = (np.where(is_accel &
+                                      (coremap_shift_left != _CMFD_NOACCEL)))
+        self._accel_neig_right_idxs = (np.where(is_accel &
+                                       (coremap_shift_right != _CMFD_NOACCEL)))
+        self._accel_neig_back_idxs = (np.where(is_accel &
+                                      (coremap_shift_back != _CMFD_NOACCEL)))
+        self._accel_neig_front_idxs = (np.where(is_accel &
+                                       (coremap_shift_front != _CMFD_NOACCEL)))
+        self._accel_neig_bot_idxs = (np.where(is_accel &
+                                     (coremap_shift_bottom != _CMFD_NOACCEL)))
+        self._accel_neig_top_idxs = (np.where(is_accel &
+                                     (coremap_shift_top != _CMFD_NOACCEL)))
+
+        for g in range(ng):
+            # Extract row and column data of regions where a cell and its
+            # neighbor to the left are both fuel regions
+            idx_x = ng * (self._coremap[self._accel_neig_left_idxs]) + g
+            idx_y = ng * (coremap_shift_left[self._accel_neig_left_idxs]) + g
+            row = np.append(row, idx_x)
+            col = np.append(col, idx_y)
+
+            # Extract row and column data of regions where a cell and its
+            # neighbor to the right are both fuel regions
+            idx_x = ng * (self._coremap[self._accel_neig_right_idxs]) + g
+            idx_y = ng * (coremap_shift_right[self._accel_neig_right_idxs]) + g
+            row = np.append(row, idx_x)
+            col = np.append(col, idx_y)
+
+            # Extract row and column data of regions where a cell and its
+            # neighbor to the back are both fuel regions
+            idx_x = ng * (self._coremap[self._accel_neig_back_idxs]) + g
+            idx_y = ng * (coremap_shift_back[self._accel_neig_back_idxs]) + g
+            row = np.append(row, idx_x)
+            col = np.append(col, idx_y)
+
+            # Extract row and column data of regions where a cell and its
+            # neighbor to the front are both fuel regions
+            idx_x = ng * (self._coremap[self._accel_neig_front_idxs]) + g
+            idx_y = ng * (coremap_shift_front[self._accel_neig_front_idxs]) + g
+            row = np.append(row, idx_x)
+            col = np.append(col, idx_y)
+
+            # Extract row and column data of regions where a cell and its
+            # neighbor to the bottom are both fuel regions
+            idx_x = ng * (self._coremap[self._accel_neig_bot_idxs]) + g
+            idx_y = ng * (coremap_shift_bottom[self._accel_neig_bot_idxs]) \
+                + g
+            row = np.append(row, idx_x)
+            col = np.append(col, idx_y)
+
+            # Extract row and column data of regions where a cell and its
+            # neighbor to the top are both fuel regions
+            idx_x = ng * (self._coremap[self._accel_neig_top_idxs]) + g
+            idx_y = ng * (coremap_shift_top[self._accel_neig_top_idxs]) + g
+            row = np.append(row, idx_x)
+            col = np.append(col, idx_y)
+
+            # Extract all regions where a cell is a fuel region
+            idx_x = ng * (self._coremap[self._accel_idxs]) + g
+            idx_y = idx_x
+            row = np.append(row, idx_x)
+            col = np.append(col, idx_y)
+
+            for h in range(ng):
+                if h != g:
+                    # Extract all regions where a cell is a fuel region
+                    idx_x = ng * (self._coremap[self._accel_idxs]) + g
+                    idx_y = ng * (self._coremap[self._accel_idxs]) + h
+                    row = np.append(row, idx_x)
+                    col = np.append(col, idx_y)
+
+        # Store row and col as rows and columns of production matrix
+        self._loss_row = row
+        self._loss_col = col
+
+        # Create empty row and column vectors to store for production matrix
+        row = np.array([], dtype=int)
+        col = np.array([], dtype=int)
+
+        for g in range(ng):
+            for h in range(ng):
+                # Extract all regions where a cell is a fuel region
+                idx_x = ng * (self._coremap[self._accel_idxs]) + g
+                idx_y = ng * (self._coremap[self._accel_idxs]) + h
+                # Store rows, cols, and data to add to CSR matrix
+                row = np.append(row, idx_x)
+                col = np.append(col, idx_y)
+
+        # Store row and col as rows and columns of production matrix
+        self._prod_row = row
+        self._prod_col = col
+
+    def _initialize_linsolver(self):
+        # Determine number of rows in CMFD matrix
+        ng = self._indices[3]
+        n = self._mat_dim*ng
+
+        # Create temp loss matrix to pass row/col indices to C++ linear solver
+        loss_row = self._loss_row
+        loss_col = self._loss_col
+        temp_data = np.ones(len(loss_row))
+        temp_loss = sparse.csr_matrix((temp_data, (loss_row, loss_col)),
+                                      shape=(n, n))
+
+        # Pass coremap as 1-d array of 32-bit integers
+        coremap = np.swapaxes(self._coremap, 0, 2).flatten().astype(np.int32)
+
+        args = temp_loss.indptr, len(temp_loss.indptr), \
+            temp_loss.indices, len(temp_loss.indices), n, \
+            self._spectral, self._indices, coremap, self._use_all_threads
+        return openmc.lib._dll.openmc_initialize_linsolver(*args)
+
+    def _write_cmfd_timing_stats(self):
+        """Write CMFD timing stats to buffer after finalizing simulation"""
+        outstr = ("=====================>     "
+                  "CMFD TIMING STATISTICS     <====================\n\n"
+                  "   Time in CMFD                    =  {:.5e} seconds\n"
+                  "     Building matrices             =  {:.5e} seconds\n"
+                  "     Solving matrices              =  {:.5e} seconds\n")
+        print(outstr.format(self._time_cmfd, self._time_cmfdbuild,
+                            self._time_cmfdsolve))
+        sys.stdout.flush()
 
 
 class CMFDRun(object):
