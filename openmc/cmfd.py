@@ -19,6 +19,7 @@ from ctypes import c_int
 import warnings
 import configparser
 import json
+import copy
 
 import numpy as np
 from scipy import sparse
@@ -197,8 +198,9 @@ class EnsAvgCMFDRun(object):
     Attributes
     ----------
     TODO all stuff up to calc_fission_source happens here
-    TODO figure out how to set n_threads for running CMFD
+    TODO figure out how to set threads for running CMFD
     TODO figure out how to split communicator between OpenMC ensembles
+    TODO track time in OpenMC simulation versus time in CMFD
     """
 
     def __init__(self):
@@ -225,22 +227,22 @@ class EnsAvgCMFDRun(object):
         self._gauss_seidel_tolerance = [1.e-10, 1.e-5]
         self._window_type = 'none'
         self._window_size = 10
-        self._intracomm = None
+        self._global_comm = None
+        self._split_comm = None
         self._use_all_threads = False
 
         # Variables that users can modify specific to ensemble-averaging
-        self._n_inactive = None
-        self._n_batches = None
-        self._n_particles = None
-        self._n_openmc_threads = 1
-        self._n_cmfd_threads = 1
-        self._n_seeds = 1
+        self._inactive = None
+        self._batches = None
+        self._particles = None
+        self._openmc_threads = 1
+        self._cmfd_threads = 1
+        self._seeds = 1
         self._config_file = None
         self._verbosity = 7
         self._restart_file = None
-        self._restart_run = False # TODO
-        self._openmc_args = {} # TODO
-        self._cmfd_args = {} # TODO
+        self._openmc_args = []
+        self._cmfd_args = []
 
         # External variables used during runtime but users cannot control
         self._set_reference_params = False
@@ -413,28 +415,28 @@ class EnsAvgCMFDRun(object):
         return self._k_cmfd
 
     @property
-    def n_inactive(self):
-        return self._n_inactive
+    def inactive(self):
+        return self._inactive
 
     @property
-    def n_batches(self):
-        return self._n_batches
+    def batches(self):
+        return self._batches
 
     @property
-    def n_particles(self):
-        return self._n_particles
+    def particles(self):
+        return self._particles
 
     @property
-    def n_openmc_threads(self):
-        return self._n_openmc_threads
+    def openmc_threads(self):
+        return self._openmc_threads
 
     @property
-    def n_cmfd_threads(self):
-        return self._n_cmfd_threads
+    def cmfd_threads(self):
+        return self._cmfd_threads
 
     @property
-    def n_seeds(self):
-        return self._n_seeds
+    def seeds(self):
+        return self._seeds
 
     @property
     def config_file(self):
@@ -592,41 +594,41 @@ class EnsAvgCMFDRun(object):
         check_length('Gauss-Seidel tolerance', gauss_seidel_tolerance, 2)
         self._gauss_seidel_tolerance = gauss_seidel_tolerance
 
-    @n_inactive.setter
-    def n_inactive(self, n_inactive):
-        check_type('OpenMC num inactive', n_inactive, Integral)
-        check_greater_than('OpenMC num active', n_inactive, 0)
-        self._n_inactive = n_inactive
+    @inactive.setter
+    def inactive(self, inactive):
+        check_type('OpenMC num inactive', inactive, Integral)
+        check_greater_than('OpenMC num active', inactive, 0)
+        self._inactive = inactive
 
-    @n_batches.setter
-    def n_batches(self, n_batches):
-        check_type('OpenMC num batches', n_batches, Integral)
-        check_greater_than('OpenMC num batches', n_batches, 0)
-        self._n_batches = n_batches
+    @batches.setter
+    def batches(self, batches):
+        check_type('OpenMC num batches', batches, Integral)
+        check_greater_than('OpenMC num batches', batches, 0)
+        self._batches = batches
 
-    @n_particles.setter
-    def n_particles(self, n_particles):
-        check_type('OpenMC num particles', n_particles, Integral)
-        check_greater_than('OpenMC num particles', n_particles, 0)
-        self._n_particles = n_particles
+    @particles.setter
+    def particles(self, particles):
+        check_type('OpenMC num particles', particles, Integral)
+        check_greater_than('OpenMC num particles', particles, 0)
+        self._particles = particles
 
-    @n_openmc_threads.setter
-    def n_openmc_threads(self, n_openmc_threads):
-        check_type('OpenMC num threads', n_openmc_threads, Integral)
-        check_greater_than('OpenMC num threads', n_openmc_threads, 0)
-        self._n_openmc_threads = n_openmc_threads
+    @openmc_threads.setter
+    def openmc_threads(self, openmc_threads):
+        check_type('OpenMC num threads', openmc_threads, Integral)
+        check_greater_than('OpenMC num threads', openmc_threads, 0)
+        self._openmc_threads = openmc_threads
 
-    @n_cmfd_threads.setter
-    def n_cmfd_threads(self, n_cmfd_threads):
-        check_type('CMFD num threads', n_cmfd_threads, Integral)
-        check_greater_than('CMFD num threads', n_cmfd_threads, 0)
-        self._n_cmfd_threads = n_cmfd_threads
+    @cmfd_threads.setter
+    def cmfd_threads(self, cmfd_threads):
+        check_type('CMFD num threads', cmfd_threads, Integral)
+        check_greater_than('CMFD num threads', cmfd_threads, 0)
+        self._cmfd_threads = cmfd_threads
 
-    @n_seeds.setter
-    def n_seeds(self, n_seeds):
-        check_type('Ensemble num seeds', n_seeds, Integral)
-        check_greater_than('Ensemble num seeds', n_seeds, 0)
-        self._n_seeds = n_seeds
+    @seeds.setter
+    def seeds(self, seeds):
+        check_type('Ensemble num seeds', seeds, Integral)
+        check_greater_than('Ensemble num seeds', seeds, 0)
+        self._seeds = seeds
 
     @config_file.setter
     def config_file(self, config_file):
@@ -644,7 +646,7 @@ class EnsAvgCMFDRun(object):
         self._restart_file = restart_file
 
     @contextmanager
-    def run_in_memory(self, **kwargs):
+    def run_in_memory(self):
         """ Context manager for running ensemble-averaged CMFD.
 
         This function can be used with a 'with' statement to ensure the
@@ -666,7 +668,9 @@ class EnsAvgCMFDRun(object):
         # Store intracomm for part of CMFD routine where MPI reduce and
         # broadcast calls are made
         if have_mpi:
-            self._intracomm = MPI.COMM_WORLD
+            self._global_comm = MPI.COMM_WORLD
+        else:
+            raise OpenMCError('Ensemble averaging requires the use of mpi4py')
 
         # Run and pass arguments to C API run_in_memory function
         self.init()
@@ -676,10 +680,12 @@ class EnsAvgCMFDRun(object):
             self.finalize()
 
     # TODO which CMFD parameters need to be redefined each time?
-    # TODO make nthreads, n_inactive, n_batches, n_particles parameters of EA-CMFD class
     # TODO make sure ensemble averaging running only on master node
     # TODO run with iter_batches? How to retrieve entropy, fet data from calling script?
-    # TODO define openmc_args, cmfd_args
+    # TODO define iter_seeds?
+    # TODO change verbosity values in OpenMC to output only what you are interested in
+    # TODO store verbosity in OpenMC to statepoint so value persists
+    # TODO store all cmfd_run values to statepoint so that values persist
     def run(self, **kwargs):
         """Run OpenMC with ensembled-averaged CMFD
 
@@ -694,30 +700,57 @@ class EnsAvgCMFDRun(object):
 
         """
         with self.run_in_memory(**kwargs):
-            pass
-            '''
-            for b in range(num_batch):
-                global_cmfd_tallies = np.zeros(…)
-                for s in range(num_seed):
-                    cmfd_tallies = run_next_batch(b, s, update_source=False)
-                    global_cmfd_tallies += cmfd_tallies
+            for _ in self.iter_batches():
+                pass
+
+    def iter_batches(self):
+        """ Iterator over batches for ensemble-averaged CMFD.
+
+        This function returns a generator-iterator that allows Python code to
+        be run between batches of an ensemble-averaged CMFD run. A batch in
+        this case is defined as a completion of a single batch over all seeds.
+        It should be used in conjunction with
+        :func`openmc.cmfd.EnsAvgCMFDRun.run_in_memory` to ensure proper
+        initialization/finalization of EnsAvgCMFDRun instance.
+
+        """
+        self._mpi_procs_per_seed = 1    # MAKE THIS INPUT PARAMETER
+        color = int((self._global_comm.Get_rank() - 1) / self._mpi_procs_per_seed) + 1
+        self._split_comm = MPI.Comm.Split(self._global_comm, color=color)
+
+        for b in range(1, self._batches + 1):
+            if self._split_
+                cmfd_tallies = self.next_batch(b, s)
+                # TODO define global_cmfd_tallies beforehand
+                # Reset global CMFD tallies when first seed is run
+                if s == 0 and cmfd_tallies is not None:
+                    global_cmfd_tallies = []
+                    for tally in cmfd_tallies:
+                        tally_shape = tally.shape
+                        new_tally_shape = ((self._seeds,) + tally_shape)
+                        global_cmfd_tally = np.zeros((new_tally_shape))
+                        global_cmfd_tallies.append(global_cmfd_tally)
+
+                '''
                 # compute source from global CMFD tallies
+                call something similar to execute_cmfd
                 for s in range(num_seed):
                     run_next_batch(b, s, update_source=True, source)
-                    # store any quantities —> fet tallies, entropy, fet_tally_from_fb probably not going to work so use actual tally implementation instead (analog)
-                    for _ in self.iter_batches():
-                        pass
-            '''
+                statepoint_write for ensemble_averaging TODO what needs to be stored?
+                '''
+            # store any quantities —> fet tallies, entropy, fet_tally_from_fb probably not going to work so use actual tally implementation instead (analog)
+            yield
 
     def init(self):
         """ Initialize CMFDRun instance by setting up ensemble-averaged CMFD
         parameters.
 
         """
-        if self.is_master():
-            # Initialize ensemble-averaged CMFD parameters
-            self._initialize_ea_cmfd()
+        # Initialize ensemble-averaged CMFD parameters
+        self._initialize_ea_cmfd()
 
+        # Initialize parameters specific to CMFD node
+        if self.is_cmfd_node():
             # Configure CMFD parameters
             self._configure_cmfd()
 
@@ -738,7 +771,7 @@ class EnsAvgCMFDRun(object):
         CMFD timing information.
 
         """
-        if self.is_master():
+        if self.is_cmfd_node():
             # Print out CMFD timing statistics
             self._write_cmfd_timing_stats()
             # TODO deallocate linsolver initialized in init()
@@ -756,12 +789,18 @@ class EnsAvgCMFDRun(object):
         # Default to values set by settings.xml if following variables not set
         # by user
         with openmc.lib.run_in_memory():
-            if self._n_inactive is None:
-                self._n_inactive = openmc.lib.settings.inactive
-            if self._n_batches is None:
-                self._n_batches = openmc.lib.settings.batches
-            if self._n_particles is None:
-                self._n_particles = openmc.lib.settings.particles
+            if self._inactive is None:
+                self._inactive = openmc.lib.settings.inactive
+            if self._batches is None:
+                self._batches = openmc.lib.settings.batches
+            if self._particles is None:
+                self._particles = openmc.lib.settings.particles
+
+        self._openmc_args = ['inactive', 'batches', 'particles']
+        self._cmfd_args = ['tally_begin', 'solver_begin', 'ref_d', 'display',
+                           'downscatter', 'feedback', 'cmfd_ktol', 'norm',
+                           'power_monitor', 'w_shift', 'stol', 'spectral',
+                           'write_matrices', 'gauss_seidel_tolerance']
 
     def _read_config_file(self):
         config = configparser.ConfigParser()
@@ -783,38 +822,66 @@ class EnsAvgCMFDRun(object):
             self._mesh = cmfd_mesh
 
 
-    def is_master(self):
+    def is_cmfd_node(self):
         """ TODO comments"""
-        return self._intracomm.Get_rank() == 0
+        return self._global_comm.Get_rank() == 0
 
-    def next_batch(self):
+    def is_openmc_node(self):
+        """ TODO comments"""
+        return self._global_comm.Get_rank() != 0
+
+    def next_batch(self, batch, seed, update_source=False):
         """ TODO comments
 
-        Returns
+        Returns TODO and add comments on input params
         -------
         int
             Status after running a batch (0=normal, 1=reached maximum number of
             batches, 2=tally triggers reached)
 
         """
-        # Initialize CMFD batch
-        self._cmfd_init_batch()
+        print("BATCH {} SEED {}".format(batch, seed))
 
-        # Run next batch
-        status = openmc.lib.next_batch()
+        cmfd_run = CMFDRun()
+        for cmfd_arg in self._cmfd_args:
+            value = getattr(self, cmfd_arg)
+            setattr(cmfd_run, cmfd_arg, value)
+        cmfd_run.window_type = 'rolling'
+        cmfd_run.window_size = 1
+        cmfd_run.mesh = copy.deepcopy(self._mesh)
 
-        # Perform CMFD calculations
-        self._execute_cmfd()
+        if batch == 1:
+            args = ['-s', str(self._openmc_threads)]
+        else:
+            batch_str_len = len(str(self._batches))
+            batch_str = str(batch - 1).zfill(batch_str_len)
+            seed_str_len = len(str(self._seeds))
+            seed_str = str(seed).zfill(seed_str_len)
+            filename = 'statepoint.{}.seed.{}.h5'.format(batch_str, seed_str)
+            args = ['-r', filename, '-s', str(self._openmc_threads)]
 
-        # Write CMFD data to statepoint
-        if openmc.lib.is_statepoint_batch():
-            self.statepoint_write()
-        return status
+        with cmfd_run.run_in_memory(args=args):
+            if batch == 1:
+                for openmc_arg in self._openmc_args:
+                    value = getattr(self, openmc_arg)
+                    setattr(openmc.lib.settings, openmc_arg, value)
+                openmc.lib.settings.seed = seed
+            openmc.lib.settings.verbosity = 2
+            cmfd_run.next_batch()
+
+            batch_str_len = len(str(self._batches))
+            batch_str = str(batch).zfill(batch_str_len)
+            seed_str_len = len(str(self._seeds))
+            seed_str = str(seed).zfill(seed_str_len)
+            filename = 'statepoint.{}.seed.{}.h5'.format(batch_str, seed_str)
+            cmfd_run.statepoint_write(filename)
+
+        return None
 
     def _configure_cmfd(self):
         """Initialize CMFD parameters and set CMFD input variables"""
         # Check if restarting simulation from statepoint file
-        if not self._restart_run:
+        if self._restart_file is None:
             # Define all variables necessary for running CMFD
             self._initialize_cmfd()
 
