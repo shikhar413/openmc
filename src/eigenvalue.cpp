@@ -543,7 +543,7 @@ void shannon_entropy()
 {
   // Get source weight in each mesh bin
   bool sites_outside;
-  p = simulation::entropy_mesh->count_sites(
+  simulation::p = simulation::entropy_mesh->count_sites(
     simulation::fission_bank, &sites_outside);
 
   // display warning message if there were sites outside entropy box
@@ -554,10 +554,10 @@ void shannon_entropy()
   // sum values to obtain shannon entropy
   if (mpi::master) {
     // Normalize to total weight of bank sites
-    p /= xt::sum(p);
+    simulation::p /= xt::sum(simulation::p);
 
     double H = 0.0;
-    for (auto p_i : p) {
+    for (auto p_i : simulation::p) {
       if (p_i > 0.0) {
         H -= p_i * std::log(p_i)/std::log(2.0);
       }
