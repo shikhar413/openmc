@@ -44,6 +44,7 @@ std::array<double, 2> k_sum;
 std::vector<double> entropy;
 xt::xtensor<double, 1> source_frac;
 std::vector<double> p_vector;
+xt::xtensor<double, 1> p;
 
 } // namespace simulation
 
@@ -542,7 +543,7 @@ void shannon_entropy()
 {
   // Get source weight in each mesh bin
   bool sites_outside;
-  xt::xtensor<double, 1> p = simulation::entropy_mesh->count_sites(
+  p = simulation::entropy_mesh->count_sites(
     simulation::fission_bank, &sites_outside);
 
   // display warning message if there were sites outside entropy box
@@ -663,26 +664,10 @@ void free_memory_entropy() { simulation::p_vector.clear(); }
 extern "C" int
 openmc_get_entropy_p(double** entropy_p, int32_t* n)
 {
-  // Get source weight in each mesh bin
-  bool sites_outside;
-  xt::xtensor<double, 1> p = simulation::entropy_mesh->count_sites(
-    simulation::fission_bank, &sites_outside);
-
-  // display warning message if there were sites outside entropy box
-  if (sites_outside) {
-    if (mpi::master) warning("Fission source site(s) outside of entropy box.");
-  }
-
-  // sum values to obtain shannon entropy
-  if (mpi::master) {
-    // Normalize to total weight of bank sites
-    p /= xt::sum(p);
-  }
-
   simulation::p_vector.clear();
-  for (auto i = 0; i < p.size(); i++) {
+  for (auto i = 0; i < simulation::p.size(); i++) {
     if (mpi::master) {
-      simulation::p_vector.push_back(p[i]);
+      simulation::p_vector.push_back(simulation::p[i]);
     }
     else {
       simulation::p_vector.push_back(1.0);
