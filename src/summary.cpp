@@ -57,7 +57,7 @@ void write_nuclides(hid_t file)
       nuc_names.push_back(nuc->name_);
       awrs.push_back(nuc->awr_);
     } else {
-      const auto& nuc {data::nuclides_MG[i]};
+      const auto& nuc {data::mg.nuclides_[i]};
       if (nuc.awr != MACROSCOPIC_AWR) {
         nuc_names.push_back(nuc.name);
         awrs.push_back(nuc.awr);
@@ -92,6 +92,7 @@ void write_geometry(hid_t file)
 #ifdef DAGMC
   if (settings::dagmc) {
     write_attribute(geom_group, "dagmc", 1);
+    close_group(geom_group);
     return;
   }
 #endif

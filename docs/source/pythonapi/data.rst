@@ -2,29 +2,54 @@
 :mod:`openmc.data` -- Nuclear Data Interface
 --------------------------------------------
 
+.. module:: openmc.data
+
 Core Classes
 ------------
+
+The following classes are used for incident neutron data, decay data, fission
+and product yields.
 
 .. autosummary::
     :toctree: generated
     :nosignatures:
     :template: myclass.rst
 
-    openmc.data.IncidentNeutron
-    openmc.data.Reaction
-    openmc.data.Product
-    openmc.data.Tabulated1D
-    openmc.data.FissionEnergyRelease
-    openmc.data.ThermalScattering
-    openmc.data.CoherentElastic
-    openmc.data.FissionEnergyRelease
-    openmc.data.DataLibrary
-    openmc.data.IncidentPhoton
-    openmc.data.PhotonReaction
-    openmc.data.AtomicRelaxation
-    openmc.data.Decay
-    openmc.data.FissionProductYields
-    openmc.data.WindowedMultipole
+    IncidentNeutron
+    Reaction
+    Product
+    FissionEnergyRelease
+    DataLibrary
+    Decay
+    FissionProductYields
+    WindowedMultipole
+    ProbabilityTables
+
+The following classes are used for storing atomic data (incident photon cross
+sections, atomic relaxation):
+
+.. autosummary::
+    :toctree: generated
+    :nosignatures:
+    :template: myclass.rst
+
+    IncidentPhoton
+    PhotonReaction
+    AtomicRelaxation
+
+
+The following classes are used for storing thermal neutron scattering data:
+
+.. autosummary::
+    :toctree: generated
+    :nosignatures:
+    :template: myclass.rst
+
+    ThermalScattering
+    ThermalScatteringReaction
+    CoherentElastic
+    IncoherentElastic
+
 
 Core Functions
 --------------
@@ -34,12 +59,28 @@ Core Functions
     :nosignatures:
     :template: myfunction.rst
 
-    openmc.data.atomic_mass
-    openmc.data.gnd_name
-    openmc.data.linearize
-    openmc.data.thin
-    openmc.data.water_density
-    openmc.data.zam
+    atomic_mass
+    gnd_name
+    linearize
+    thin
+    water_density
+    zam
+
+One-dimensional Functions
+-------------------------
+
+.. autosummary::
+    :toctree: generated
+    :nosignatures:
+    :template: myclass.rst
+
+    Function1D
+    Tabulated1D
+    Polynomial
+    Combination
+    Sum
+    Regions1D
+    ResonancesWithBackground
 
 Angle-Energy Distributions
 --------------------------
@@ -49,23 +90,27 @@ Angle-Energy Distributions
     :nosignatures:
     :template: myclass.rst
 
-    openmc.data.AngleEnergy
-    openmc.data.KalbachMann
-    openmc.data.CorrelatedAngleEnergy
-    openmc.data.UncorrelatedAngleEnergy
-    openmc.data.NBodyPhaseSpace
-    openmc.data.LaboratoryAngleEnergy
-    openmc.data.AngleDistribution
-    openmc.data.EnergyDistribution
-    openmc.data.ArbitraryTabulated
-    openmc.data.GeneralEvaporation
-    openmc.data.MaxwellEnergy
-    openmc.data.Evaporation
-    openmc.data.WattEnergy
-    openmc.data.MadlandNix
-    openmc.data.DiscretePhoton
-    openmc.data.LevelInelastic
-    openmc.data.ContinuousTabular
+    AngleEnergy
+    KalbachMann
+    CorrelatedAngleEnergy
+    UncorrelatedAngleEnergy
+    NBodyPhaseSpace
+    LaboratoryAngleEnergy
+    AngleDistribution
+    EnergyDistribution
+    ArbitraryTabulated
+    GeneralEvaporation
+    MaxwellEnergy
+    Evaporation
+    WattEnergy
+    MadlandNix
+    DiscretePhoton
+    LevelInelastic
+    ContinuousTabular
+    CoherentElasticAE
+    IncoherentElasticAE
+    IncoherentElasticAEDiscrete
+    IncoherentInelasticAEDiscrete
 
 Resonance Data
 --------------
@@ -75,20 +120,20 @@ Resonance Data
     :nosignatures:
     :template: myclass.rst
 
-    openmc.data.Resonances
-    openmc.data.ResonanceRange
-    openmc.data.SingleLevelBreitWigner
-    openmc.data.MultiLevelBreitWigner
-    openmc.data.ReichMoore
-    openmc.data.RMatrixLimited
-    openmc.data.ResonanceCovariances
-    openmc.data.ResonanceCovarianceRange
-    openmc.data.SingleLevelBreitWignerCovariance
-    openmc.data.MultiLevelBreitWignerCovariance
-    openmc.data.ReichMooreCovariance
-    openmc.data.ParticlePair
-    openmc.data.SpinGroup
-    openmc.data.Unresolved
+    Resonances
+    ResonanceRange
+    SingleLevelBreitWigner
+    MultiLevelBreitWigner
+    ReichMoore
+    RMatrixLimited
+    ResonanceCovariances
+    ResonanceCovarianceRange
+    SingleLevelBreitWignerCovariance
+    MultiLevelBreitWignerCovariance
+    ReichMooreCovariance
+    ParticlePair
+    SpinGroup
+    Unresolved
 
 ACE Format
 ----------
@@ -101,8 +146,8 @@ Classes
     :nosignatures:
     :template: myclass.rst
 
-    openmc.data.ace.Library
-    openmc.data.ace.Table
+    ace.Library
+    ace.Table
 
 Functions
 +++++++++
@@ -112,7 +157,7 @@ Functions
     :nosignatures:
     :template: myfunction.rst
 
-    openmc.data.ace.ascii_to_binary
+    ace.ascii_to_binary
 
 ENDF Format
 -----------
@@ -125,7 +170,7 @@ Classes
     :nosignatures:
     :template: myclass.rst
 
-    openmc.data.endf.Evaluation
+    endf.Evaluation
 
 Functions
 +++++++++
@@ -135,13 +180,13 @@ Functions
     :nosignatures:
     :template: myfunction.rst
 
-    openmc.data.endf.float_endf
-    openmc.data.endf.get_cont_record
-    openmc.data.endf.get_evaluations
-    openmc.data.endf.get_head_record
-    openmc.data.endf.get_tab1_record
-    openmc.data.endf.get_tab2_record
-    openmc.data.endf.get_text_record
+    endf.float_endf
+    endf.get_cont_record
+    endf.get_evaluations
+    endf.get_head_record
+    endf.get_tab1_record
+    endf.get_tab2_record
+    endf.get_text_record
 
 NJOY Interface
 --------------
@@ -151,7 +196,7 @@ NJOY Interface
     :nosignatures:
     :template: myfunction.rst
 
-    openmc.data.njoy.run
-    openmc.data.njoy.make_pendf
-    openmc.data.njoy.make_ace
-    openmc.data.njoy.make_ace_thermal
+    njoy.run
+    njoy.make_pendf
+    njoy.make_ace
+    njoy.make_ace_thermal

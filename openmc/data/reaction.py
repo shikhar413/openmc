@@ -55,7 +55,7 @@ REACTION_NAME = {1: '(n,total)', 2: '(n,elastic)', 4: '(n,level)',
                  204: '(n,Xd)', 205: '(n,Xt)', 206: '(n,X3He)', 207: '(n,Xa)',
                  301: 'heating', 444: 'damage-energy',
                  649: '(n,pc)', 699: '(n,dc)', 749: '(n,tc)', 799: '(n,3Hec)',
-                 849: '(n,ac)', 891: '(n,2nc)'}
+                 849: '(n,ac)', 891: '(n,2nc)', 901: 'heating-local'}
 REACTION_NAME.update({i: '(n,n{})'.format(i - 50) for i in range(50, 91)})
 REACTION_NAME.update({i: '(n,p{})'.format(i - 600) for i in range(600, 649)})
 REACTION_NAME.update({i: '(n,d{})'.format(i - 650) for i in range(650, 699)})
@@ -894,10 +894,7 @@ class Reaction(EqualityMixin):
             Tgroup = group.create_group(T)
             if self.xs[T] is not None:
                 dset = Tgroup.create_dataset('xs', data=self.xs[T].y)
-                if hasattr(self.xs[T], '_threshold_idx'):
-                    threshold_idx = self.xs[T]._threshold_idx + 1
-                else:
-                    threshold_idx = 1
+                threshold_idx = getattr(self.xs[T], '_threshold_idx', 0)
                 dset.attrs['threshold_idx'] = threshold_idx
         for i, p in enumerate(self.products):
             pgroup = group.create_group('product_{}'.format(i))
@@ -939,7 +936,7 @@ class Reaction(EqualityMixin):
                             'at T={} because no corresponding energy grid '
                             'exists.'.format(mt, T))
                     xs = Tgroup['xs'][()]
-                    threshold_idx = Tgroup['xs'].attrs['threshold_idx'] - 1
+                    threshold_idx = Tgroup['xs'].attrs['threshold_idx']
                     tabulated_xs = Tabulated1D(energy[T][threshold_idx:], xs)
                     tabulated_xs._threshold_idx = threshold_idx
                     rx.xs[T] = tabulated_xs

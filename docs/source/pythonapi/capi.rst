@@ -1,8 +1,8 @@
---------------------------------------------------
-:mod:`openmc.capi` -- Python bindings to the C API
---------------------------------------------------
+------------------------------------------------------
+:mod:`openmc.lib` -- Python bindings to the C/C++ API
+------------------------------------------------------
 
-.. automodule:: openmc.capi
+.. automodule:: openmc.lib
 
 Functions
 ---------
@@ -44,8 +44,8 @@ Classes
    EnergyFilter
    MaterialFilter
    Material
-   Mesh
    MeshFilter
    MeshSurfaceFilter
    Nuclide
+   RegularMesh
    Tally

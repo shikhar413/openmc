@@ -6,10 +6,13 @@
 #include <utility>
 
 #include "openmc/error.h"
+#include "openmc/dagmc.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/settings.h"
 #include "openmc/string_utils.h"
 #include "openmc/xml_interface.h"
+#include "openmc/random_lcg.h"
+#include "openmc/math_functions.h"
 
 namespace openmc {
 
@@ -21,7 +24,7 @@ extern "C" const int BC_TRANSMIT {0};
 extern "C" const int BC_VACUUM {1};
 extern "C" const int BC_REFLECT {2};
 extern "C" const int BC_PERIODIC {3};
-
+extern "C" const int BC_WHITE {4};
 //==============================================================================
 // Global variables
 //==============================================================================
@@ -146,6 +149,8 @@ Surface::Surface(pugi::xml_node surf_node)
     } else if (surf_bc == "reflective" || surf_bc == "reflect"
                || surf_bc == "reflecting") {
       bc_ = BC_REFLECT;
+    } else if (surf_bc == "white") {
+      bc_ = BC_WHITE;
     } else if (surf_bc == "periodic") {
       bc_ = BC_PERIODIC;
     } else {
@@ -191,6 +196,27 @@ Surface::reflect(Position r, Direction u) const
   return u -= (2.0 * projection / magnitude) * n;
 }
 
+Direction
+Surface::diffuse_reflect(Position r, Direction u, uint64_t* seed) const
+{
+  // Diffuse reflect direction according to the normal.
+  // cosine distribution
+
+  Direction n = this->normal(r);
+  n /= n.norm();
+  const double projection = n.dot(u);
+
+  // sample from inverse function, u=sqrt(rand) since p(u)=2u, so F(u)=u^2
+  const double mu = (projection>=0.0) ?
+                  -std::sqrt(prn(seed)) : std::sqrt(prn(seed));
+
+  // sample azimuthal distribution uniformly
+  u = rotate_angle(n, mu, nullptr, seed);
+
+  // normalize the direction
+  return u/u.norm();
+}
+
 CSGSurface::CSGSurface() : Surface{} {};
 CSGSurface::CSGSurface(pugi::xml_node surf_node) : Surface{surf_node} {};
 
@@ -211,6 +237,9 @@ CSGSurface::to_hdf5(hid_t group_id) const
       break;
     case BC_REFLECT :
       write_string(surf_group, "boundary_type", "reflective", false);
+      break;
+    case BC_WHITE :
+      write_string(surf_group, "boundary_type", "white", false);
       break;
     case BC_PERIODIC :
       write_string(surf_group, "boundary_type", "periodic", false);
@@ -255,26 +284,23 @@ DAGSurface::distance(Position r, Direction u, bool coincident) const
 Direction DAGSurface::normal(Position r) const
 {
   moab::ErrorCode rval;
-  Direction u;
   moab::EntityHandle surf = dagmc_ptr_->entity_by_index(2, dag_index_);
   double pnt[3] = {r.x, r.y, r.z};
-  double dir[3] = {u.x, u.y, u.z};
+  double dir[3];
   rval = dagmc_ptr_->get_angle(surf, pnt, dir);
   MB_CHK_ERR_CONT(rval);
-  return u;
+  return dir;
 }
 
-BoundingBox DAGSurface::bounding_box() const
+Direction DAGSurface::reflect(Position r, Direction u) const
 {
-  moab::ErrorCode rval;
-  moab::EntityHandle surf = dagmc_ptr_->entity_by_index(2, dag_index_);
-  double min[3], max[3];
-  rval = dagmc_ptr_->getobb(surf, min, max);
-  MB_CHK_ERR_CONT(rval);
-  return {min[0], max[0], min[1], max[1], min[2], max[2]};
+  simulation::history.reset_to_last_intersection();
+  simulation::last_dir = Surface::reflect(r, u);
+  return simulation::last_dir;
 }
 
 void DAGSurface::to_hdf5(hid_t group_id) const {}
+
 #endif
 //==============================================================================
 // PeriodicSurface implementation
@@ -297,7 +323,7 @@ template<int i> double
 axis_aligned_plane_distance(Position r, Direction u, bool coincident, double offset)
 {
   const double f = offset - r[i];
-  if (coincident or std::abs(f) < FP_COINCIDENT or u[i] == 0.0) return INFTY;
+  if (coincident || std::abs(f) < FP_COINCIDENT || u[i] == 0.0) return INFTY;
   const double d = f / u[i];
   if (d < 0.0) return INFTY;
   return d;
@@ -359,9 +385,13 @@ bool SurfaceXPlane::periodic_translate(const PeriodicSurface* other,
 }
 
 BoundingBox
-SurfaceXPlane::bounding_box() const
+SurfaceXPlane::bounding_box(bool pos_side) const
 {
-  return {x0_, x0_, -INFTY, INFTY, -INFTY, INFTY};
+  if (pos_side) {
+    return {x0_, INFTY, -INFTY, INFTY, -INFTY, INFTY};
+  } else {
+    return {-INFTY, x0_, -INFTY, INFTY, -INFTY, INFTY};
+  }
 }
 
 //==============================================================================
@@ -421,9 +451,13 @@ bool SurfaceYPlane::periodic_translate(const PeriodicSurface* other,
 }
 
 BoundingBox
-SurfaceYPlane::bounding_box() const
+SurfaceYPlane::bounding_box(bool pos_side) const
 {
-  return {-INFTY, INFTY, y0_, y0_, -INFTY, INFTY};
+  if (pos_side) {
+    return {-INFTY, INFTY, y0_, INFTY, -INFTY, INFTY};
+  } else {
+    return {-INFTY, INFTY, -INFTY, y0_, -INFTY, INFTY};
+  }
 }
 
 //==============================================================================
@@ -467,9 +501,13 @@ bool SurfaceZPlane::periodic_translate(const PeriodicSurface* other,
 }
 
 BoundingBox
-SurfaceZPlane::bounding_box() const
+SurfaceZPlane::bounding_box(bool pos_side) const
 {
-  return {-INFTY, INFTY, -INFTY, INFTY, z0_, z0_};
+  if (pos_side) {
+    return {-INFTY, INFTY, -INFTY, INFTY, z0_, INFTY};
+  } else {
+    return {-INFTY, INFTY, -INFTY, INFTY, -INFTY, z0_};
+  }
 }
 
 //==============================================================================
@@ -493,7 +531,7 @@ SurfacePlane::distance(Position r, Direction u, bool coincident) const
 {
   const double f = A_*r.x + B_*r.y + C_*r.z - D_;
   const double projection = A_*u.x + B_*u.y + C_*u.z;
-  if (coincident or std::abs(f) < FP_COINCIDENT or projection == 0.0) {
+  if (coincident || std::abs(f) < FP_COINCIDENT || projection == 0.0) {
     return INFTY;
   } else {
     const double d = -f / projection;
@@ -529,12 +567,6 @@ bool SurfacePlane::periodic_translate(const PeriodicSurface* other, Position& r,
   r.z -= d * C_;
 
   return false;
-}
-
-BoundingBox
-SurfacePlane::bounding_box() const
-{
-  return {-INFTY, INFTY, -INFTY, INFTY, -INFTY, INFTY};
 }
 
 //==============================================================================
@@ -573,7 +605,7 @@ axis_aligned_cylinder_distance(Position r, Direction u,
     // No intersection with cylinder.
     return INFTY;
 
-  } else if (coincident or std::abs(c) < FP_COINCIDENT) {
+  } else if (coincident || std::abs(c) < FP_COINCIDENT) {
     // Particle is on the cylinder, thus one distance is positive/negative
     // and the other is zero. The sign of k determines if we are facing in or
     // out.
@@ -638,7 +670,6 @@ Direction SurfaceXCylinder::normal(Position r) const
   return axis_aligned_cylinder_normal<0, 1, 2>(r, y0_, z0_);
 }
 
-
 void SurfaceXCylinder::to_hdf5_inner(hid_t group_id) const
 {
   write_string(group_id, "type", "x-cylinder", false);
@@ -646,6 +677,13 @@ void SurfaceXCylinder::to_hdf5_inner(hid_t group_id) const
   write_dataset(group_id, "coefficients", coeffs);
 }
 
+BoundingBox SurfaceXCylinder::bounding_box(bool pos_side) const {
+  if (!pos_side) {
+    return {-INFTY, INFTY, y0_ - radius_, y0_ + radius_, z0_ - radius_, z0_ + radius_};
+  } else {
+    return {};
+  }
+}
 //==============================================================================
 // SurfaceYCylinder implementation
 //==============================================================================
@@ -677,6 +715,14 @@ void SurfaceYCylinder::to_hdf5_inner(hid_t group_id) const
   write_string(group_id, "type", "y-cylinder", false);
   std::array<double, 3> coeffs {{x0_, z0_, radius_}};
   write_dataset(group_id, "coefficients", coeffs);
+}
+
+BoundingBox SurfaceYCylinder::bounding_box(bool pos_side) const {
+  if (!pos_side) {
+    return {x0_ - radius_, x0_ + radius_, -INFTY, INFTY, z0_ - radius_, z0_ + radius_};
+  } else {
+    return {};
+  }
 }
 
 //==============================================================================
@@ -712,6 +758,15 @@ void SurfaceZCylinder::to_hdf5_inner(hid_t group_id) const
   write_dataset(group_id, "coefficients", coeffs);
 }
 
+BoundingBox SurfaceZCylinder::bounding_box(bool pos_side) const {
+  if (!pos_side) {
+    return {x0_ - radius_, x0_ + radius_, y0_ - radius_, y0_ + radius_, -INFTY, INFTY};
+  } else {
+    return {};
+  }
+}
+
+
 //==============================================================================
 // SurfaceSphere implementation
 //==============================================================================
@@ -743,7 +798,7 @@ double SurfaceSphere::distance(Position r, Direction u, bool coincident) const
     // No intersection with sphere.
     return INFTY;
 
-  } else if (coincident or std::abs(c) < FP_COINCIDENT) {
+  } else if (coincident || std::abs(c) < FP_COINCIDENT) {
     // Particle is on the sphere, thus one distance is positive/negative and
     // the other is zero. The sign of k determines if we are facing in or out.
     if (k >= 0.0) {
@@ -778,6 +833,16 @@ void SurfaceSphere::to_hdf5_inner(hid_t group_id) const
   write_string(group_id, "type", "sphere", false);
   std::array<double, 4> coeffs {{x0_, y0_, z0_, radius_}};
   write_dataset(group_id, "coefficients", coeffs);
+}
+
+BoundingBox SurfaceSphere::bounding_box(bool pos_side) const {
+  if (!pos_side) {
+    return {x0_ - radius_, x0_ + radius_,
+            y0_ - radius_, y0_ + radius_,
+            z0_ - radius_, z0_ + radius_};
+  } else {
+    return {};
+  }
 }
 
 //==============================================================================
@@ -820,7 +885,7 @@ axis_aligned_cone_distance(Position r, Direction u,
     // No intersection with cone.
     return INFTY;
 
-  } else if (coincident or std::abs(c) < FP_COINCIDENT) {
+  } else if (coincident || std::abs(c) < FP_COINCIDENT) {
     // Particle is on the cone, thus one distance is positive/negative
     // and the other is zero. The sign of k determines if we are facing in or
     // out.
@@ -1008,7 +1073,7 @@ SurfaceQuadric::distance(Position r, Direction ang, bool coincident) const
     // No intersection with surface.
     return INFTY;
 
-  } else if (coincident or std::abs(c) < FP_COINCIDENT) {
+  } else if (coincident || std::abs(c) < FP_COINCIDENT) {
     // Particle is on the surface, thus one distance is positive/negative and
     // the other is zero. The sign of k determines which distance is zero and
     // which is not.
@@ -1154,28 +1219,28 @@ void read_surfaces(pugi::xml_node node)
       }
 
       // See if this surface makes part of the global bounding box.
-      BoundingBox bb = surf->bounding_box();
-      if (bb.xmin > -INFTY and bb.xmin < xmin) {
+      auto bb = surf->bounding_box(true) & surf->bounding_box(false);
+      if (bb.xmin > -INFTY && bb.xmin < xmin) {
         xmin = bb.xmin;
         i_xmin = i_surf;
       }
-      if (bb.xmax < INFTY and bb.xmax > xmax) {
+      if (bb.xmax < INFTY && bb.xmax > xmax) {
         xmax = bb.xmax;
         i_xmax = i_surf;
       }
-      if (bb.ymin > -INFTY and bb.ymin < ymin) {
+      if (bb.ymin > -INFTY && bb.ymin < ymin) {
         ymin = bb.ymin;
         i_ymin = i_surf;
       }
-      if (bb.ymax < INFTY and bb.ymax > ymax) {
+      if (bb.ymax < INFTY && bb.ymax > ymax) {
         ymax = bb.ymax;
         i_ymax = i_surf;
       }
-      if (bb.zmin > -INFTY and bb.zmin < zmin) {
+      if (bb.zmin > -INFTY && bb.zmin < zmin) {
         zmin = bb.zmin;
         i_zmin = i_surf;
       }
-      if (bb.zmax < INFTY and bb.zmax > zmax) {
+      if (bb.zmax < INFTY && bb.zmax > zmax) {
         zmax = bb.zmax;
         i_zmax = i_surf;
       }

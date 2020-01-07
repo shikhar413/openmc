@@ -68,7 +68,7 @@ int openmc_init(int argc, char* argv[], const void* intracomm)
 
   // Initialize random number generator -- if the user specifies a seed, it
   // will be re-initialized later
-  openmc_set_seed(DEFAULT_SEED);
+  openmc::openmc_set_seed(DEFAULT_SEED);
 
   // Read XML input files
   read_input_xml();
@@ -260,8 +260,9 @@ void read_input_xml()
       read_ce_cross_sections(nuc_temps, thermal_temps);
     } else {
       // Create material macroscopic data for MGXS
-      read_mgxs();
-      create_macro_xs();
+      set_mg_interface_nuclides_and_temps();
+      data::mg.init();
+      mark_fissionable_mgxs_materials();
     }
     simulation::time_read_xs.stop();
   }

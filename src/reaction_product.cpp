@@ -3,6 +3,7 @@
 #include <memory> // for unique_ptr
 #include <string> // for string
 
+#include "openmc/endf.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/random_lcg.h"
 #include "openmc/secondary_correlated.h"
@@ -42,14 +43,7 @@ ReactionProduct::ReactionProduct(hid_t group)
     read_attribute(group, "decay_rate", decay_rate_);
 
   // Read secondary particle yield
-  hid_t yield = open_dataset(group, "yield");
-  read_attribute(yield, "type", temp);
-  if (temp == "Tabulated1D") {
-    yield_ = std::unique_ptr<Function1D>{new Tabulated1D{yield}};
-  } else if (temp == "Polynomial") {
-    yield_ = std::unique_ptr<Function1D>{new Polynomial{yield}};
-  }
-  close_dataset(yield);
+  yield_ = read_function(group, "yield");
 
   int n;
   read_attribute(group, "n_distribution", n);
@@ -82,25 +76,26 @@ ReactionProduct::ReactionProduct(hid_t group)
   }
 }
 
-void ReactionProduct::sample(double E_in, double& E_out, double& mu) const
+void ReactionProduct::sample(double E_in, double& E_out, double& mu,
+  uint64_t* seed) const
 {
   auto n = applicability_.size();
   if (n > 1) {
     double prob = 0.0;
-    double c = prn();
+    double c = prn(seed);
     for (int i = 0; i < n; ++i) {
       // Determine probability that i-th energy distribution is sampled
       prob += applicability_[i](E_in);
 
       // If i-th distribution is sampled, sample energy from the distribution
       if (c <= prob) {
-        distribution_[i]->sample(E_in, E_out, mu);
+        distribution_[i]->sample(E_in, E_out, mu, seed);
         break;
       }
     }
   } else {
     // If only one distribution is present, go ahead and sample it
-    distribution_[0]->sample(E_in, E_out, mu);
+    distribution_[0]->sample(E_in, E_out, mu, seed);
   }
 }
 

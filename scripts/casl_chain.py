@@ -3,8 +3,10 @@
 # for the VERA Depletion Benchmark Suite", CASL-U-2015-1014-000, Rev. 0,
 # ORNL/TM-2016/53, 2016.
 #
-# Note 32 of the 255 nuclides appeare twice as they are both activation
+# Note 32 of the 255 nuclides appear twice as they are both activation
 # nuclides (category 1) and fission product nuclides (category 3).
+
+# Te129 has been added due to its link to I129 production.
 
 CASL_CHAIN = {
     # Nuclide: (Stable, CAT, IFPY, Special yield treatment)
@@ -187,6 +189,7 @@ CASL_CHAIN = {
     'Sb127': (False, 3, 2, None),
     'Te127': (False, 3, -1, None),
     'Te127_m1': (False, 3, -1, None),
+    'Te129': (False, 3, 1, None),
     'Te129_m1': (False, 3, 2, None),
     'Te132': (False, 3, 2, None),
     'I127': (True, 3, 1, None),

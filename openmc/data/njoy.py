@@ -1,17 +1,16 @@
-import argparse
 from collections import namedtuple
 from io import StringIO
 import os
 import shutil
 from subprocess import Popen, PIPE, STDOUT, CalledProcessError
-import sys
 import tempfile
+from pathlib import Path
 
 from . import endf
 
 
 # For a given MAT number, give a name for the ACE table and a list of ZAID
-# identifiers
+# identifiers. This is based on Appendix C in the ENDF manual.
 ThermalTuple = namedtuple('ThermalTuple', ['name', 'zaids', 'nmix'])
 _THERMAL_DATA = {
     1: ThermalTuple('hh2o', [1001], 1),
@@ -24,30 +23,76 @@ _THERMAL_DATA = {
     11: ThermalTuple('dd2o', [1002], 1),
     12: ThermalTuple('parad', [1002], 1),
     13: ThermalTuple('orthod', [1002], 1),
+    14: ThermalTuple('dice', [1002], 1),
     26: ThermalTuple('be', [4009], 1),
     27: ThermalTuple('bebeo', [4009], 1),
-    31: ThermalTuple('graph', [6000, 6012, 6013], 1),
+    28: ThermalTuple('bebe2c', [4009], 1),
+    30: ThermalTuple('graph', [6000, 6012, 6013], 1),
+    31: ThermalTuple('grph10', [6000, 6012, 6013], 1),
+    32: ThermalTuple('grph30', [6000, 6012, 6013], 1),
     33: ThermalTuple('lch4', [1001], 1),
     34: ThermalTuple('sch4', [1001], 1),
+    35: ThermalTuple('sch4p2', [1001], 1),
     37: ThermalTuple('hch2', [1001], 1),
+    38: ThermalTuple('mesi00', [1001], 1),
     39: ThermalTuple('lucite', [1001], 1),
     40: ThermalTuple('benz', [1001, 6000, 6012], 2),
-    41: ThermalTuple('od2o', [8016, 8017, 8018], 1),
+    42: ThermalTuple('tol00', [1001], 1),
     43: ThermalTuple('sisic', [14028, 14029, 14030], 1),
     44: ThermalTuple('csic', [6000, 6012, 6013], 1),
+    45: ThermalTuple('ouo2', [8016, 8017, 8018], 1),
     46: ThermalTuple('obeo', [8016, 8017, 8018], 1),
     47: ThermalTuple('sio2-a', [8016, 8017, 8018, 14028, 14029, 14030], 3),
-    48: ThermalTuple('uuo2', [92238], 1),
+    48: ThermalTuple('osap00', [92238], 1),
     49: ThermalTuple('sio2-b', [8016, 8017, 8018, 14028, 14029, 14030], 3),
     50: ThermalTuple('oice', [8016, 8017, 8018], 1),
+    51: ThermalTuple('od2o', [8016, 8017, 8018], 1),
     52: ThermalTuple('mg24', [12024], 1),
     53: ThermalTuple('al27', [13027], 1),
     55: ThermalTuple('yyh2', [39089], 1),
     56: ThermalTuple('fe56', [26056], 1),
     58: ThermalTuple('zrzrh', [40000, 40090, 40091, 40092, 40094, 40096], 1),
-    59: ThermalTuple('cacah2', [20040, 20042, 20043, 20044, 20046, 20048], 1),
-    75: ThermalTuple('ouo2', [8016, 8017, 8018], 1),
+    59: ThermalTuple('si00', [14028], 1),
+    60: ThermalTuple('asap00', [13027], 1),
+    71: ThermalTuple('n-un', [7014, 7015], 1),
+    72: ThermalTuple('u-un', [92238], 1),
+    75: ThermalTuple('uuo2', [8016, 8017, 8018], 1),
 }
+
+
+def _get_thermal_data(ev, mat):
+    """Return appropriate ThermalTuple, accounting for bugs."""
+
+    # JEFF assigns MAT=59 to Ca in CaH2 (which is supposed to be silicon).
+    if ev.info['library'][0] == 'JEFF':
+        if ev.material == 59:
+            if 'CaH2' in ''.join(ev.info['description']):
+                zaids = [20040, 20042, 20043, 20044, 20046, 20048]
+                return ThermalTuple('cacah2', zaids, 1)
+
+    # Before ENDF/B-VIII.0, crystalline graphite was MAT=31
+    if ev.info['library'] != ('ENDF/B', 8, 0):
+        if ev.material == 31:
+            return _THERMAL_DATA[30]
+
+    # ENDF/B incorrectly assigns MAT numbers for UO2
+    #
+    # Material | ENDF Manual | VII.0 | VII.1 | VIII.0
+    # ---------|-------------|-------|-------|-------
+    # O in UO2 |     45      |  75   |  75   |   75
+    # U in UO2 |     75      |  76   |  48   |   48
+    if ev.info['library'][0] == 'ENDF/B':
+        if ev.material == 75:
+            return _THERMAL_DATA[45]
+        version = ev.info['library'][1:]
+        if version in ((7, 1), (8, 0)) and ev.material == 48:
+            return _THERMAL_DATA[75]
+        if version == (7, 0) and ev.material == 76:
+            return _THERMAL_DATA[75]
+
+    # If not a problematic material, use the dictionary as is
+    return _THERMAL_DATA[mat]
+
 
 _TEMPLATE_RECONR = """
 reconr / %%%%%%%%%%%%%%%%%%% Reconstruct XS for neutrons %%%%%%%%%%%%%%%%%%%%%%%
@@ -72,7 +117,14 @@ broadr / %%%%%%%%%%%%%%%%%%%%%%% Doppler broaden XS %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 _TEMPLATE_HEATR = """
 heatr / %%%%%%%%%%%%%%%%%%%%%%%%% Add heating kerma %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 {nendf} {nheatr_in} {nheatr} /
-{mat} 4 /
+{mat} 4 0 0 0 /
+302 318 402 444 /
+"""
+
+_TEMPLATE_HEATR_LOCAL = """
+heatr / %%%%%%%%%%%%%%%%% Add heating kerma (local photons) %%%%%%%%%%%%%%%%%%%%
+{nendf} {nheatr_in} {nheatr_local} /
+{mat} 4 0 0 1 /
 302 318 402 444 /
 """
 
@@ -120,7 +172,7 @@ acer / %%%%%%%%%%%%%%%%%%%%%%%% Write out in ACE format %%%%%%%%%%%%%%%%%%%%%%%%
 '{library}: {zsymam_thermal} processed by NJOY'/
 {mat} {temperature} '{data.name}' /
 {zaids} /
-222 64 {mt_elastic} {elastic_type} {data.nmix} {energy_max} 2/
+222 64 {mt_elastic} {elastic_type} {data.nmix} {energy_max} {iwt}/
 """
 
 
@@ -215,10 +267,19 @@ def make_pendf(filename, pendf='pendf', error=0.001, stdout=False):
              heatr=False, purr=False, acer=False, stdout=stdout)
 
 
-def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir', pendf=None,
-             error=0.001, broadr=True, heatr=True, gaspr=True, purr=True,
-             acer=True, evaluation=None, **kwargs):
+def make_ace(filename, temperatures=None, acer=True, xsdir=None,
+             output_dir=None, pendf=False, error=0.001, broadr=True,
+             heatr=True, gaspr=True, purr=True, evaluation=None, **kwargs):
     """Generate incident neutron ACE file from an ENDF file
+
+    File names can be passed to
+    ``[acer, xsdir, pendf, broadr, heatr, gaspr, purr]``
+    to specify the exact output for the given module.
+    Otherwise, the files will be writen to the current directory
+    or directory specified by ``output_dir``. Default file
+    names mirror the variable names, e.g. ``heatr`` output
+    will be written to a file named ``heatr`` unless otherwise
+    specified.
 
     Parameters
     ----------
@@ -227,24 +288,34 @@ def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir', pendf=None,
     temperatures : iterable of float, optional
         Temperatures in Kelvin to produce ACE files at. If omitted, data is
         produced at room temperature (293.6 K).
-    ace : str, optional
-        Path of ACE file to write
+    acer : bool or str, optional
+        Flag indicating if acer should be run. If a string is give, write the
+        resulting ``ace`` file to this location. Path of ACE file to write.
+        Defaults to ``"ace"``
     xsdir : str, optional
-        Path of xsdir file to write
+        Path of xsdir file to write. Defaults to ``"xsdir"`` in the same
+        directory as ``acer``
+    output_dir : str, optional
+        Directory to write output for requested modules. If not provided
+        and at least one of ``[pendf, broadr, heatr, gaspr, purr, acer]``
+        is ``True``, then write output files to current directory. If given,
+        must be a path to a directory.
     pendf : str, optional
         Path of pendf file to write. If omitted, the pendf file is not saved.
     error : float, optional
         Fractional error tolerance for NJOY processing
-    broadr : bool, optional
-        Indicating whether to Doppler broaden XS when running NJOY
-    heatr : bool, optional
-        Indicating whether to add heating kerma when running NJOY
-    gaspr : bool, optional
-        Indicating whether to add gas production data when running NJOY
-    purr : bool, optional
-        Indicating whether to add probability table when running NJOY
-    acer : bool, optional
-        Indicating whether to generate ACE file when running NJOY
+    broadr : bool or str, optional
+        Indicating whether to Doppler broaden XS when running NJOY. If string,
+        write the output tape to this file.
+    heatr : bool or str, optional
+        Indicating whether to add heating kerma when running NJOY. If string,
+        write the output tape to this file.
+    gaspr : bool or str, optional
+        Indicating whether to add gas production data when running NJOY.
+        If string, write the output tape to this file.
+    purr : bool or str, optional
+        Indicating whether to add probability table when running NJOY.
+        If string, write the output tape to this file.
     evaluation : openmc.data.endf.Evaluation, optional
         If the ENDF file contains multiple material evaluations, this argument
         indicates which evaluation should be used.
@@ -255,8 +326,17 @@ def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir', pendf=None,
     ------
     subprocess.CalledProcessError
         If the NJOY process returns with a non-zero status
+    IOError
+        If ``output_dir`` does not point to a directory
 
     """
+    if output_dir is None:
+        output_dir = Path()
+    else:
+        output_dir = Path(output_dir)
+        if not output_dir.is_dir():
+            raise IOError("{} is not a directory".format(output_dir))
+
     ev = evaluation if evaluation is not None else endf.Evaluation(filename)
     mat = ev.material
     zsymam = ev.target['zsymam']
@@ -275,8 +355,8 @@ def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir', pendf=None,
     nendf, npendf = 20, 21
     tapein = {nendf: filename}
     tapeout = {}
-    if pendf is not None:
-        tapeout[npendf] = pendf
+    if pendf:
+        tapeout[npendf] = (output_dir / "pendf") if pendf is True else pendf
 
     # reconr
     commands += _TEMPLATE_RECONR
@@ -285,13 +365,19 @@ def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir', pendf=None,
     # broadr
     if broadr:
         nbroadr = nlast + 1
+        tapeout[nbroadr] = (output_dir / "broadr") if broadr is True else broadr
         commands += _TEMPLATE_BROADR
         nlast = nbroadr
 
     # heatr
     if heatr:
         nheatr_in = nlast
-        nheatr = nheatr_in + 1
+        nheatr_local = nheatr_in + 1
+        tapeout[nheatr_local] = (output_dir / "heatr_local") if heatr is True \
+            else heatr + '_local'
+        commands += _TEMPLATE_HEATR_LOCAL
+        nheatr = nheatr_local + 1
+        tapeout[nheatr] = (output_dir / "heatr") if heatr is True else heatr
         commands += _TEMPLATE_HEATR
         nlast = nheatr
 
@@ -299,6 +385,7 @@ def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir', pendf=None,
     if gaspr:
         ngaspr_in = nlast
         ngaspr = ngaspr_in + 1
+        tapeout[ngaspr] = (output_dir / "gaspr") if gaspr is True else gaspr
         commands += _TEMPLATE_GASPR
         nlast = ngaspr
 
@@ -306,6 +393,7 @@ def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir', pendf=None,
     if purr:
         npurr_in = nlast
         npurr = npurr_in + 1
+        tapeout[npurr] = (output_dir / "purr") if purr is True else purr
         commands += _TEMPLATE_PURR
         nlast = npurr
 
@@ -323,19 +411,21 @@ def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir', pendf=None,
             commands += _TEMPLATE_ACER.format(**locals())
 
             # Indicate tapes to save for each ACER run
-            tapeout[nace] = fname.format(ace, temperature)
-            tapeout[ndir] = fname.format(xsdir, temperature)
+            tapeout[nace] = fname.format("ace", temperature)
+            tapeout[ndir] = fname.format("xsdir", temperature)
     commands += 'stop\n'
     run(commands, tapein, tapeout, **kwargs)
 
     if acer:
-        with open(ace, 'w') as ace_file, open(xsdir, 'w') as xsdir_file:
+        ace = (output_dir / "ace") if acer is True else Path(acer)
+        xsdir = (ace.parent / "xsdir") if xsdir is None else xsdir
+        with ace.open('w') as ace_file, xsdir.open('w') as xsdir_file:
             for temperature in temperatures:
                 # Get contents of ACE file
-                text = open(fname.format(ace, temperature), 'r').read()
+                text = open(fname.format("ace", temperature), 'r').read()
 
-                # If the target is metastable, make sure that ZAID in the ACE file reflects
-                # this by adding 400
+                # If the target is metastable, make sure that ZAID in the ACE
+                # file reflects this by adding 400
                 if ev.target['isomeric_state'] > 0:
                     mass_first_digit = int(text[3])
                     if mass_first_digit <= 2:
@@ -345,18 +435,18 @@ def make_ace(filename, temperatures=None, ace='ace', xsdir='xsdir', pendf=None,
                 ace_file.write(text)
 
                 # Concatenate into destination xsdir file
-                text = open(fname.format(xsdir, temperature), 'r').read()
+                text = open(fname.format("xsdir", temperature), 'r').read()
                 xsdir_file.write(text)
 
         # Remove ACE/xsdir files for each temperature
         for temperature in temperatures:
-            os.remove(fname.format(ace, temperature))
-            os.remove(fname.format(xsdir, temperature))
+            os.remove(fname.format("ace", temperature))
+            os.remove(fname.format("xsdir", temperature))
 
 
 def make_ace_thermal(filename, filename_thermal, temperatures=None,
-                     ace='ace', xsdir='xsdir', error=0.001, evaluation=None,
-                     evaluation_thermal=None, **kwargs):
+                     ace='ace', xsdir='xsdir', error=0.001, iwt=2,
+                     evaluation=None, evaluation_thermal=None, **kwargs):
     """Generate thermal scattering ACE file from ENDF files
 
     Parameters
@@ -374,6 +464,8 @@ def make_ace_thermal(filename, filename_thermal, temperatures=None,
         Path of xsdir file to write
     error : float, optional
         Fractional error tolerance for NJOY processing
+    iwt : int
+        `iwt` parameter used in NJOR/ACER card 9
     evaluation : openmc.data.endf.Evaluation, optional
         If the ENDF neutron sublibrary file contains multiple material
         evaluations, this argument indicates which evaluation to use.
@@ -398,7 +490,8 @@ def make_ace_thermal(filename, filename_thermal, temperatures=None,
     mat_thermal = ev_thermal.material
     zsymam_thermal = ev_thermal.target['zsymam']
 
-    data = _THERMAL_DATA[mat_thermal]
+    # Determine name, isotopes based on MAT number
+    data = _get_thermal_data(ev_thermal, mat_thermal)
     zaids = ' '.join(str(zaid) for zaid in data.zaids[:3])
 
     # Determine name of library

@@ -93,7 +93,7 @@ public:
   std::vector<UrrData> urr_data_;
 
   std::vector<std::unique_ptr<Reaction>> reactions_; //!< Reactions
-  std::array<size_t, 892> reaction_index_; //!< Index of each reaction
+  std::array<size_t, 902> reaction_index_; //!< Index of each reaction
   std::vector<int> index_inelastic_scatter_;
 
 private:
@@ -125,6 +125,12 @@ namespace data {
 // that of the ParticleType enum
 extern std::array<double, 2> energy_min;
 extern std::array<double, 2> energy_max;
+
+//! Minimum temperature in [K] that nuclide data is available at
+extern double temperature_min;
+
+//! Maximum temperature in [K] that nuclide data is available at
+extern double temperature_max;
 
 extern std::vector<std::unique_ptr<Nuclide>> nuclides;
 extern std::unordered_map<std::string, int> nuclide_map;

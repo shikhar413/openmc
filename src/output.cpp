@@ -75,7 +75,7 @@ void title()
     "         Copyright | 2011-2019 MIT and OpenMC contributors\n" <<
     "           License | http://openmc.readthedocs.io/en/latest/license.html\n" <<
     "           Version | " << VERSION_MAJOR << '.' << VERSION_MINOR << '.'
-    << VERSION_RELEASE << '\n';
+    << VERSION_RELEASE << (VERSION_DEV ? "-dev" : "") << '\n';
 #ifdef GIT_SHA1
   std::cout << "          Git SHA1 | " << GIT_SHA1 << '\n';
 #endif
@@ -211,6 +211,7 @@ extern "C" void print_particle(Particle* p)
 void print_plot()
 {
   header("PLOTTING SUMMARY", 5);
+  if (settings::verbosity < 5) return;
 
   for (auto pl : model::plots) {
     // Plot id
@@ -453,6 +454,7 @@ void print_runtime()
 
   // display header block
   header("Timing Statistics", 6);
+  if (settings::verbosity < 6) return;
 
   // Save state of cout
   auto f {std::cout.flags()};
@@ -537,6 +539,7 @@ void print_results()
 
   // display header block for results
   header("Results", 4);
+  if (settings::verbosity < 4) return;
 
   // Calculate t-value for confidence intervals
   int n = simulation::n_realizations;
@@ -617,7 +620,6 @@ const std::unordered_map<int, const char*> score_names = {
   {SCORE_FISS_Q_PROMPT,      "Prompt fission power"},
   {SCORE_FISS_Q_RECOV,       "Recoverable fission power"},
   {SCORE_CURRENT,            "Current"},
-  {SCORE_HEATING,            "Heating"},
 };
 
 //! Create an ASCII output file showing all tally results.
@@ -636,6 +638,16 @@ write_tallies()
   for (auto i_tally = 0; i_tally < model::tallies.size(); ++i_tally) {
     const auto& tally {*model::tallies[i_tally]};
 
+    // Write header block.
+    std::string tally_header("TALLY " + std::to_string(tally.id_));
+    if (!tally.name_.empty()) tally_header += ": " + tally.name_;
+    tallies_out << header(tally_header) << "\n\n";
+
+    if (!tally.writable_) {
+      tallies_out << " Internal\n\n";
+      continue;
+    }
+
     // Calculate t-value for confidence intervals
     double t_value = 1;
     if (settings::confidence_intervals) {
@@ -643,26 +655,21 @@ write_tallies()
       t_value = t_percentile(1 - alpha*0.5, tally.n_realizations_ - 1);
     }
 
-    // Write header block.
-    std::string tally_header("TALLY " + std::to_string(tally.id_));
-    if (!tally.name_.empty()) tally_header += ": " + tally.name_;
-    tallies_out << header(tally_header) << "\n\n";
-
     // Write derivative information.
     if (tally.deriv_ != C_NONE) {
       const auto& deriv {model::tally_derivs[tally.deriv_]};
       switch (deriv.variable) {
       case DIFF_DENSITY:
-        tallies_out << " Density derivative  Material "
+        tallies_out << " Density derivative Material "
           << std::to_string(deriv.diff_material) << "\n";
         break;
       case DIFF_NUCLIDE_DENSITY:
-        tallies_out << " Nuclide density derivative  Material "
+        tallies_out << " Nuclide density derivative Material "
           << std::to_string(deriv.diff_material) << "  Nuclide "
           << data::nuclides[deriv.diff_nuclide]->name_ << "\n";
         break;
       case DIFF_TEMPERATURE:
-        tallies_out << " Temperature derivative  Material "
+        tallies_out << " Temperature derivative Material "
           << std::to_string(deriv.diff_material) << "\n";
         break;
       default:
@@ -703,7 +710,7 @@ write_tallies()
               << data::nuclides[i_nuclide]->name_ << "\n";
           } else {
             tallies_out << std::string(indent+1, ' ')
-              << data::nuclides_MG[i_nuclide].name << "\n";
+              << data::mg.nuclides_[i_nuclide].name << "\n";
           }
         }
 

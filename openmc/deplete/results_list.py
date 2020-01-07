@@ -5,28 +5,51 @@ from .results import Results, _VERSION_RESULTS
 from openmc.checkvalue import check_filetype_version
 
 
+__all__ = ["ResultsList"]
+
+
 class ResultsList(list):
     """A list of openmc.deplete.Results objects
 
-    Parameters
-    ----------
-    filename : str
-        The filename to read from.
-
+    It is recommended to use :meth:`from_hdf5` over
+    direct creation.
     """
-    def __init__(self, filename):
-        super().__init__()
+
+    @classmethod
+    def from_hdf5(cls, filename):
+        """Load in depletion results from a previous file
+
+        Parameters
+        ----------
+        filename : str
+            Path to depletion result file
+
+        Returns
+        -------
+        new : ResultsList
+            New instance of depletion results
+        """
         with h5py.File(str(filename), "r") as fh:
             check_filetype_version(fh, 'depletion results', _VERSION_RESULTS[0])
+            new = cls()
 
             # Get number of results stored
             n = fh["number"][...].shape[0]
 
             for i in range(n):
-                self.append(Results.from_hdf5(fh, i))
+                new.append(Results.from_hdf5(fh, i))
+        return new
 
     def get_atoms(self, mat, nuc):
-        """Get nuclide concentration over time from a single material
+        """Get number of nuclides over time from a single material
+
+        .. note::
+
+            Initial values for some isotopes that do not appear in
+            initial concentrations may be non-zero, depending on the
+            value of :class:`openmc.deplete.Operator` ``dilute_initial``.
+            The :class:`openmc.deplete.Operator` adds isotopes according
+            to this setting, which can be set to zero.
 
         Parameters
         ----------
@@ -55,6 +78,14 @@ class ResultsList(list):
 
     def get_reaction_rate(self, mat, nuc, rx):
         """Get reaction rate in a single material/nuclide over time
+
+        .. note::
+
+            Initial values for some isotopes that do not appear in
+            initial concentrations may be non-zero, depending on the
+            value of :class:`openmc.deplete.Operator` ``dilute_initial``
+            The :class:`openmc.deplete.Operator` adds isotopes according
+            to this setting, which can be set to zero.
 
         Parameters
         ----------
@@ -91,11 +122,13 @@ class ResultsList(list):
         time : numpy.ndarray
             Array of times in [s]
         eigenvalue : numpy.ndarray
-            k-eigenvalue at each time
+            k-eigenvalue at each time. Column 0
+            contains the eigenvalue, while column
+            1 contains the associated uncertainty
 
         """
         time = np.empty_like(self, dtype=float)
-        eigenvalue = np.empty_like(self, dtype=float)
+        eigenvalue = np.empty((len(self), 2), dtype=float)
 
         # Get time/eigenvalue at each point
         for i, result in enumerate(self):
@@ -103,3 +136,32 @@ class ResultsList(list):
             eigenvalue[i] = result.k[0]
 
         return time, eigenvalue
+
+    def get_depletion_time(self):
+        """Return an array of the average time to deplete a material
+
+        .. note::
+
+            Will have one fewer row than number of other methods,
+            like :meth:`get_eigenvalues`, because no depletion
+            is performed at the final transport stage
+
+        Returns
+        -------
+        times : :class:`numpy.ndarray`
+            Vector of average time to deplete a single material
+            across all processes and materials.
+
+        """
+        times = np.empty(len(self) - 1)
+        # Need special logic because the predictor
+        # writes EOS values for step i as BOS values
+        # for step i+1
+        # The first proc_time may be zero
+        if self[0].proc_time > 0.0:
+            items = self[:-1]
+        else:
+            items = self[1:]
+        for ix, res in enumerate(items):
+            times[ix] = res.proc_time
+        return times

@@ -204,9 +204,9 @@ def test_get_by_name():
 
 
 def test_hex_prism():
-    hex_prism = openmc.model.get_hexagonal_prism(edge_length=5.0,
-                                                 origin=(0.0, 0.0),
-                                                 orientation='y')
+    hex_prism = openmc.model.hexagonal_prism(edge_length=5.0,
+                                             origin=(0.0, 0.0),
+                                             orientation='y')
     # clear checks
     assert (0.0, 0.0, 0.0) in hex_prism
     assert (10.0, 10.0, 10.0) not in hex_prism
@@ -214,10 +214,10 @@ def test_hex_prism():
     assert (0.0, 5.01, 0.0) not in hex_prism
     assert (0.0, 4.99, 0.0) in hex_prism
 
-    rounded_hex_prism = openmc.model.get_hexagonal_prism(edge_length=5.0,
-                                                         origin=(0.0, 0.0),
-                                                         orientation='y',
-                                                         corner_radius=1.0)
+    rounded_hex_prism = openmc.model.hexagonal_prism(edge_length=5.0,
+                                                     origin=(0.0, 0.0),
+                                                     orientation='y',
+                                                     corner_radius=1.0)
 
     # clear checks
     assert (0.0, 0.0, 0.0) in rounded_hex_prism
@@ -280,3 +280,24 @@ def test_from_xml(run_in_tmpdir, mixed_lattice_model):
     ll, ur = geom.bounding_box
     assert ll == pytest.approx((-6.0, -6.0, -np.inf))
     assert ur == pytest.approx((6.0, 6.0, np.inf))
+
+
+def test_rotation_matrix():
+    """Test ability to set a rotation matrix directly"""
+    y = openmc.YPlane()
+    cyl1 = openmc.ZCylinder(r=1.0)
+    cyl2 = openmc.ZCylinder(r=2.0, boundary_type='vacuum')
+
+    # Create a universe and then reflect in the y-direction
+    c1 = openmc.Cell(region=-cyl1 & +y)
+    c2 = openmc.Cell(region=+cyl1 & +y)
+    c3 = openmc.Cell(region=-y)
+    univ = openmc.Universe(cells=[c1, c2, c3])
+    c = openmc.Cell(fill=univ, region=-cyl2)
+    c.rotation = [[1, 0, 0], [0, -1, 0], [0, 0, 1]]
+    assert np.all(c.rotation_matrix == c.rotation)
+    geom = openmc.Geometry([c])
+
+    assert geom.find((0.0, 0.5, 0.0))[-1] == c3
+    assert geom.find((0.0, -0.5, 0.0))[-1] == c1
+    assert geom.find((0.0, -1.5, 0.0))[-1] == c2

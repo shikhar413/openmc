@@ -131,7 +131,7 @@ void read_cross_sections_xml()
           "materials.xml or in the OPENMC_CROSS_SECTIONS"
           " environment variable. OpenMC needs such a file to identify "
           "where to find data libraries. Please consult the"
-          " user's guide at https://openmc.readthedocs.io for "
+          " user's guide at https://docs.openmc.org/ for "
           "information on how to set up data libraries.");
       }
       settings::path_cross_sections = envvar;
@@ -155,7 +155,8 @@ void read_cross_sections_xml()
   if (settings::run_CE) {
     read_ce_cross_sections_xml();
   } else {
-    read_mg_cross_sections_header();
+    data::mg.read_header(settings::path_cross_sections);
+    put_mgxs_header_data_to_globals();
   }
 
   // Establish mapping between (type, material) and index in libraries
@@ -357,6 +358,12 @@ read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
     }
   }
 
+  // Show minimum/maximum temperature
+  write_message("Minimum neutron data temperature: " +
+    std::to_string(data::temperature_min) + " K", 4);
+  write_message("Maximum neutron data temperature: " +
+    std::to_string(data::temperature_max) + " K", 4);
+
   // If the user wants multipole, make sure we found a multipole library.
   if (settings::temperature_multipole) {
     bool mp_found = false;
@@ -402,6 +409,10 @@ void read_ce_cross_sections_xml()
     // If no directory is listed in cross_sections.xml, by default select the
     // directory in which the cross_sections.xml file resides
     auto pos = filename.rfind("/");
+    if (pos == std::string::npos) {
+      // no '/' found, probably a Windows directory
+      pos = filename.rfind("\\");
+    }
     directory = filename.substr(0, pos);
   }
 

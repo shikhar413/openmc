@@ -119,8 +119,9 @@ void synchronize_bank()
   // skip ahead in the sequence using the starting index in the 'global'
   // fission bank for each processor.
 
-  set_particle_seed(simulation::total_gen + overall_generation());
-  advance_prn_seed(start);
+  int64_t id = simulation::total_gen + overall_generation();
+  uint64_t seed = init_seed(id, STREAM_TRACKING);
+  advance_prn_seed(start, &seed);
 
   // Determine how many fission sites we need to sample from the source bank
   // and the probability for selecting a site.
@@ -155,7 +156,7 @@ void synchronize_bank()
     }
 
     // Randomly sample sites needed
-    if (prn() < p_sample) {
+    if (prn(&seed) < p_sample) {
       temp_sites[index_temp] = site;
       ++index_temp;
     }
@@ -573,8 +574,9 @@ void ufs_count_sites()
     // distributed so that effectively the production of fission sites is not
     // biased
 
-    auto s = xt::view(simulation::source_frac, xt::all());
-    s = simulation::ufs_mesh->volume_frac_;
+    std::size_t n = simulation::ufs_mesh->n_bins();
+    double vol_frac = simulation::ufs_mesh->volume_frac_;
+    simulation::source_frac = xt::xtensor<double, 1>({n}, vol_frac);
 
   } else {
     // count number of source sites in each ufs mesh cell

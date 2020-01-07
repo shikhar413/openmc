@@ -3,6 +3,7 @@
 #include <algorithm> // for copy, equal, min, min_element
 #include <cstddef> // for size_t
 #include <cmath>  // for ceil
+#include <memory> // for allocator
 #include <string>
 
 #ifdef OPENMC_MPI
@@ -149,13 +150,16 @@ RegularMesh::RegularMesh(pugi::xml_node node)
         "the <lower_left> coordinates on a tally mesh.");
     }
 
-    // Set width and upper right coordinate
-    width_ = xt::eval((upper_right_ - lower_left_) / shape_);
+    // Set width
+    if (shape_.size() > 0) {
+      width_ = xt::eval((upper_right_ - lower_left_) / shape_);
+    }
   } else {
     fatal_error("Must specify either <upper_right> and <width> on a mesh.");
   }
 
-  if (shape_.dimension() > 0) {
+  // Make sure lower_left and dimension match
+  if (shape_.size() > 0) {
     if (shape_.size() != lower_left_.size()) {
       fatal_error("Number of entries on <lower_left> must be the same "
         "as the number of entries on <dimension>.");
@@ -179,13 +183,13 @@ int RegularMesh::get_bin(Position r) const
   }
 
   // Determine indices
-  int ijk[n_dimension_];
+  std::vector<int> ijk(n_dimension_);
   bool in_mesh;
-  get_indices(r, ijk, &in_mesh);
+  get_indices(r, ijk.data(), &in_mesh);
   if (!in_mesh) return -1;
 
   // Convert indices to bin
-  return get_bin_from_indices(ijk);
+  return get_bin_from_indices(ijk.data());
 }
 
 int RegularMesh::get_bin_from_indices(const int* ijk) const
@@ -505,11 +509,11 @@ void RegularMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
 
   // Determine the mesh indices for the starting and ending coords.
   int n = n_dimension_;
-  int ijk0[n], ijk1[n];
+  std::vector<int> ijk0(n), ijk1(n);
   bool start_in_mesh;
-  get_indices(r0, ijk0, &start_in_mesh);
+  get_indices(r0, ijk0.data(), &start_in_mesh);
   bool end_in_mesh;
-  get_indices(r1, ijk1, &end_in_mesh);
+  get_indices(r1, ijk1.data(), &end_in_mesh);
 
   // Reset coordinates and check for a mesh intersection if necessary.
   if (start_in_mesh) {
@@ -519,25 +523,33 @@ void RegularMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
     // The initial coords do not lie in the mesh.  Check to see if the particle
     // eventually intersects the mesh and compute the relevant coords and
     // indices.
-    if (!intersects(r0, r1, ijk0)) return;
+    if (!intersects(r0, r1, ijk0.data())) return;
   }
   r1 = r;
+
+  // The TINY_BIT offsets above mean that the preceding logic cannot always find
+  // the correct ijk0 and ijk1 indices. For tracks shorter than 2*TINY_BIT, just
+  // assume the track lies in only one mesh bin. These tracks are very short so
+  // any error caused by this assumption will be small.
+  if (total_distance < 2*TINY_BIT) {
+    for (int i = 0; i < n; ++i) ijk0[i] = ijk1[i];
+  }
 
   // ========================================================================
   // Find which mesh cells are traversed and the length of each traversal.
 
   while (true) {
-    if (std::equal(ijk0, ijk0+n, ijk1)) {
+    if (ijk0 == ijk1) {
       // The track ends in this cell.  Use the particle end location rather
       // than the mesh surface and stop iterating.
       double distance = (r1 - r0).norm();
-      bins.push_back(get_bin_from_indices(ijk0));
+      bins.push_back(get_bin_from_indices(ijk0.data()));
       lengths.push_back(distance / total_distance);
       break;
     }
 
     // The track exits this cell.  Determine the distance to each mesh surface.
-    double d[n];
+    std::vector<double> d(n);
     for (int k = 0; k < n; ++k) {
       if (std::fabs(u[k]) < FP_PRECISION) {
         d[k] = INFTY;
@@ -551,9 +563,9 @@ void RegularMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
     }
 
     // Pick the closest mesh surface and append this traversal to the output.
-    auto j = std::min_element(d, d+n) - d;
+    auto j = std::min_element(d.begin(), d.end()) - d.begin();
     double distance = d[j];
-    bins.push_back(get_bin_from_indices(ijk0));
+    bins.push_back(get_bin_from_indices(ijk0.data()));
     lengths.push_back(distance / total_distance);
 
     // Translate to the oncoming mesh surface.
@@ -592,18 +604,17 @@ void RegularMesh::surface_bins_crossed(const Particle* p,
 
   // Determine indices for starting and ending location.
   int n = n_dimension_;
-  int ijk0[n], ijk1[n];
+  std::vector<int> ijk0(n), ijk1(n);
   bool start_in_mesh;
-  get_indices(r0, ijk0, &start_in_mesh);
+  get_indices(r0, ijk0.data(), &start_in_mesh);
   bool end_in_mesh;
-  get_indices(r1, ijk1, &end_in_mesh);
+  get_indices(r1, ijk1.data(), &end_in_mesh);
 
   // Check if the track intersects any part of the mesh.
   if (!start_in_mesh) {
     Position r0_copy = r0;
-    int ijk0_copy[n];
-    for (int i = 0; i < n; ++i) ijk0_copy[i] = ijk0[i];
-    if (!intersects(r0_copy, r1, ijk0_copy)) return;
+    std::vector<int> ijk0_copy(ijk0);
+    if (!intersects(r0_copy, r1, ijk0_copy.data())) return;
   }
 
   // ========================================================================
@@ -661,7 +672,7 @@ void RegularMesh::surface_bins_crossed(const Particle* p,
           // Outward current on i max surface
           if (in_mesh) {
             int i_surf = 4*i + 3;
-            int i_mesh = get_bin_from_indices(ijk0);
+            int i_mesh = get_bin_from_indices(ijk0.data());
             int i_bin = 4*n*i_mesh + i_surf - 1;
 
             bins.push_back(i_bin);
@@ -682,7 +693,7 @@ void RegularMesh::surface_bins_crossed(const Particle* p,
           // i min surface
           if (in_mesh) {
             int i_surf = 4*i + 2;
-            int i_mesh = get_bin_from_indices(ijk0);
+            int i_mesh = get_bin_from_indices(ijk0.data());
             int i_bin = 4*n*i_mesh + i_surf - 1;
 
             bins.push_back(i_bin);
@@ -694,7 +705,7 @@ void RegularMesh::surface_bins_crossed(const Particle* p,
           // Outward current on i min surface
           if (in_mesh) {
             int i_surf = 4*i + 1;
-            int i_mesh = get_bin_from_indices(ijk0);
+            int i_mesh = get_bin_from_indices(ijk0.data());
             int i_bin = 4*n*i_mesh + i_surf - 1;
 
             bins.push_back(i_bin);
@@ -715,7 +726,7 @@ void RegularMesh::surface_bins_crossed(const Particle* p,
           // i max surface
           if (in_mesh) {
             int i_surf = 4*i + 4;
-            int i_mesh = get_bin_from_indices(ijk0);
+            int i_mesh = get_bin_from_indices(ijk0.data());
             int i_bin = 4*n*i_mesh + i_surf - 1;
 
             bins.push_back(i_bin);
@@ -804,9 +815,11 @@ RegularMesh::count_sites(const std::vector<Particle::Bank>& bank,
     cnt(mesh_bin) += site.wgt;
   }
 
-  // Create copy of count data
+  // Create copy of count data. Since ownership will be acquired by xtensor,
+  // std::allocator must be used to avoid Valgrind mismatched free() / delete
+  // warnings.
   int total = cnt.size();
-  double* cnt_reduced = new double[total];
+  double* cnt_reduced = std::allocator<double>{}.allocate(total);
 
 #ifdef OPENMC_MPI
   // collect values from all processors
@@ -898,6 +911,14 @@ void RectilinearMesh::bins_crossed(const Particle* p, std::vector<int>& bins,
     if (!intersects(r0, r1, ijk0)) return;
   }
   r1 = r;
+
+  // The TINY_BIT offsets above mean that the preceding logic cannot always find
+  // the correct ijk0 and ijk1 indices. For tracks shorter than 2*TINY_BIT, just
+  // assume the track lies in only one mesh bin. These tracks are very short so
+  // any error caused by this assumption will be small.
+  if (total_distance < 2*TINY_BIT) {
+    for (int i = 0; i < 3; ++i) ijk0[i] = ijk1[i];
+  }
 
   // ========================================================================
   // Find which mesh cells are traversed and the length of each traversal.

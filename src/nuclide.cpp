@@ -18,7 +18,7 @@
 #include "xtensor/xbuilder.hpp"
 #include "xtensor/xview.hpp"
 
-#include <algorithm> // for sort
+#include <algorithm> // for sort, min_element
 #include <string> // for to_string, stoi
 
 namespace openmc {
@@ -30,6 +30,8 @@ namespace openmc {
 namespace data {
 std::array<double, 2> energy_min {0.0, 0.0};
 std::array<double, 2> energy_max {INFTY, INFTY};
+double temperature_min {0.0};
+double temperature_max {INFTY};
 std::vector<std::unique_ptr<Nuclide>> nuclides;
 std::unordered_map<std::string, int> nuclide_map;
 } // namespace data
@@ -153,6 +155,12 @@ Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature, int i_nucl
 
   // Sort temperatures to read
   std::sort(temps_to_read.begin(), temps_to_read.end());
+
+  double T_min_read = *std::min_element(temps_to_read.cbegin(), temps_to_read.cend());
+  double T_max_read = *std::max_element(temps_to_read.cbegin(), temps_to_read.cend());
+
+  data::temperature_min = std::max(data::temperature_min, T_min_read);
+  data::temperature_max = std::min(data::temperature_max, T_max_read);
 
   hid_t energy_group = open_group(group, "energy");
   for (const auto& T : temps_to_read) {
@@ -573,7 +581,7 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
 
       // Randomly sample between temperature i and i+1
       f = (kT - kTs_[i_temp]) / (kTs_[i_temp + 1] - kTs_[i_temp]);
-      if (f > prn()) ++i_temp;
+      if (f > prn(p.current_seed())) ++i_temp;
       break;
     }
 
@@ -712,7 +720,7 @@ void Nuclide::calculate_sab_xs(int i_sab, double sab_frac, Particle& p)
   int i_temp;
   double elastic;
   double inelastic;
-  data::thermal_scatt[i_sab]->calculate_xs(p.E_, p.sqrtkT_, &i_temp, &elastic, &inelastic);
+  data::thermal_scatt[i_sab]->calculate_xs(p.E_, p.sqrtkT_, &i_temp, &elastic, &inelastic, p.current_seed());
 
   // Store the S(a,b) cross sections.
   micro.thermal = sab_frac * (elastic + inelastic);
@@ -748,11 +756,11 @@ void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
   // This guarantees the randomness and, at the same time, makes sure we
   // reuse random numbers for the same nuclide at different temperatures,
   // therefore preserving correlation of temperature in probability tables.
-  prn_set_stream(STREAM_URR_PTABLE);
+  p.stream_ = STREAM_URR_PTABLE;
   //TODO: to maintain the same random number stream as the Fortran code this
   //replaces, the seed is set with i_nuclide_ + 1 instead of i_nuclide_
-  double r = future_prn(static_cast<int64_t>(i_nuclide_ + 1));
-  prn_set_stream(STREAM_TRACKING);
+  double r = future_prn(static_cast<int64_t>(i_nuclide_ + 1), *p.current_seed());
+  p.stream_ = STREAM_TRACKING;
 
   int i_low = 0;
   while (urr.prob_(i_energy, URR_CUM_PROB, i_low) <= r) {++i_low;};

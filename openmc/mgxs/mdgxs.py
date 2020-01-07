@@ -906,6 +906,7 @@ class ChiDelayed(MDGXS):
 
     .. math::
 
+       \begin{aligned}
        \langle \nu^d \sigma_{f,g' \rightarrow g} \phi \rangle &= \int_{r \in V}
        dr \int_{4\pi} d\Omega' \int_0^\infty dE' \int_{E_g}^{E_{g-1}} dE \;
        \chi(E) \nu^d \sigma_f (r, E') \psi(r, E', \Omega')\\
@@ -914,6 +915,7 @@ class ChiDelayed(MDGXS):
        E') \psi(r, E', \Omega') \\
        \chi_g^d &= \frac{\langle \nu^d \sigma_{f,g' \rightarrow g} \phi \rangle}
        {\langle \nu^d \sigma_f \phi \rangle}
+       \end{aligned}
 
     Parameters
     ----------
@@ -982,7 +984,7 @@ class ChiDelayed(MDGXS):
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
         The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. When the  This is equal to the number of cell instances
+        domain types. This is equal to the number of cell instances
         for 'distribcell' domain types (it is equal to unity prior to loading
         tally data from a statepoint file).
     num_nuclides : int
@@ -1494,7 +1496,7 @@ class DelayedNuFissionXS(MDGXS):
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
         The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. When the  This is equal to the number of cell instances
+        domain types. This is equal to the number of cell instances
         for 'distribcell' domain types (it is equal to unity prior to loading
         tally data from a statepoint file).
     num_nuclides : int
@@ -1547,6 +1549,7 @@ class Beta(MDGXS):
 
     .. math::
 
+       \begin{aligned}
        \langle \nu^d \sigma_f \phi \rangle &= \int_{r \in V} dr \int_{4\pi}
        d\Omega' \int_0^\infty dE' \int_0^\infty dE \; \chi(E) \nu^d
        \sigma_f (r, E') \psi(r, E', \Omega') \\
@@ -1555,6 +1558,7 @@ class Beta(MDGXS):
        \sigma_f (r, E') \psi(r, E', \Omega') \\
        \beta_{d,g} &= \frac{\langle \nu^d \sigma_f \phi \rangle}
        {\langle \nu \sigma_f \phi \rangle}
+       \end{aligned}
 
     NOTE: The Beta MGXS is the delayed neutron fraction computed directly from
     the nuclear data. Often the delayed neutron fraction is
@@ -1628,7 +1632,7 @@ class Beta(MDGXS):
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
         The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. When the  This is equal to the number of cell instances
+        domain types. This is equal to the number of cell instances
         for 'distribcell' domain types (it is equal to unity prior to loading
         tally data from a statepoint file).
     num_nuclides : int
@@ -1735,6 +1739,7 @@ class DecayRate(MDGXS):
 
     .. math::
 
+       \begin{aligned}
        \langle \lambda_d \nu^d \sigma_f \phi \rangle &= \int_{r \in V} dr
        \int_{4\pi} d\Omega' \int_0^\infty dE' \int_0^\infty dE \; \lambda_d \nu^d
        \sigma_f (r, E') \psi(r, E', \Omega') \\
@@ -1743,6 +1748,7 @@ class DecayRate(MDGXS):
        \sigma_f (r, E') \psi(r, E', \Omega') \\
        \lambda_d &= \frac{\langle \lambda_d \nu^d \sigma_f \phi \rangle}
        {\langle \nu^d \sigma_f \phi \rangle}
+       \end{aligned}
 
     Parameters
     ----------
@@ -1811,7 +1817,7 @@ class DecayRate(MDGXS):
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
         The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. When the  This is equal to the number of cell instances
+        domain types. This is equal to the number of cell instances
         for 'distribcell' domain types (it is equal to unity prior to loading
         tally data from a statepoint file).
     num_nuclides : int
@@ -2501,6 +2507,7 @@ class DelayedNuFissionMatrixXS(MatrixMDGXS):
 
     .. math::
 
+       \begin{aligned}
        \langle \nu\sigma_{f,g'\rightarrow g} \phi \rangle &= \int_{r \in V} dr
        \int_{4\pi} d\Omega' \int_{E_{g'}}^{E_{g'-1}} dE' \int_{E_g}^{E_{g-1}} dE
        \; \chi(E) \nu\sigma_f^d (r, E') \psi(r, E', \Omega')\\
@@ -2508,6 +2515,7 @@ class DelayedNuFissionMatrixXS(MatrixMDGXS):
        \int_{E_g}^{E_{g-1}} dE \; \psi (r, E, \Omega) \\
        \nu\sigma_{f,g'\rightarrow g} &= \frac{\langle \nu\sigma_{f,g'\rightarrow
        g}^d \phi \rangle}{\langle \phi \rangle}
+       \end{aligned}
 
 
     Parameters
@@ -2577,7 +2585,7 @@ class DelayedNuFissionMatrixXS(MatrixMDGXS):
         is None unless the multi-group cross section has been computed.
     num_subdomains : int
         The number of subdomains is unity for 'material', 'cell' and 'universe'
-        domain types. When the  This is equal to the number of cell instances
+        domain types. This is equal to the number of cell instances
         for 'distribcell' domain types (it is equal to unity prior to loading
         tally data from a statepoint file).
     num_nuclides : int

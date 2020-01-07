@@ -10,8 +10,24 @@ import sys
 import numpy as np
 import openmc
 from openmc.examples import pwr_core
+from colorama import Fore, init
 
 from tests.regression_tests import config
+
+init()
+
+
+def colorize(diff):
+    """Produce colored diff for test results"""
+    for line in diff:
+        if line.startswith('+'):
+            yield Fore.RED + line + Fore.RESET
+        elif line.startswith('-'):
+            yield Fore.GREEN + line + Fore.RESET
+        elif line.startswith('^'):
+            yield Fore.BLUE + line + Fore.RESET
+        else:
+            yield line
 
 
 class TestHarness(object):
@@ -72,10 +88,12 @@ class TestHarness(object):
         # Read the statepoint file.
         statepoint = glob.glob(self._sp_name)[0]
         with openmc.StatePoint(statepoint) as sp:
-            # Write out k-combined.
-            outstr = 'k-combined:\n'
-            form = '{0:12.6E} {1:12.6E}\n'
-            outstr += form.format(sp.k_combined.n, sp.k_combined.s)
+            outstr = ''
+            if sp.run_mode == 'eigenvalue':
+                # Write out k-combined.
+                outstr += 'k-combined:\n'
+                form = '{0:12.6E} {1:12.6E}\n'
+                outstr += form.format(sp.k_combined.n, sp.k_combined.s)
 
             # Write out tally data.
             for i, tally_ind in enumerate(sp.tallies):
@@ -106,11 +124,17 @@ class TestHarness(object):
         shutil.copyfile('results_test.dat', 'results_true.dat')
 
     def _compare_results(self):
-        """Make sure the current results agree with the _true standard."""
+        """Make sure the current results agree with the reference."""
         compare = filecmp.cmp('results_test.dat', 'results_true.dat')
         if not compare:
+            expected = open('results_true.dat').readlines()
+            actual = open('results_test.dat').readlines()
+            diff = unified_diff(expected, actual, 'results_true.dat',
+                                'results_test.dat')
+            print('Result differences:')
+            print(''.join(colorize(diff)))
             os.rename('results_test.dat', 'results_error.dat')
-        assert compare, 'Results do not agree.'
+        assert compare, 'Results do not agree'
 
     def _cleanup(self):
         """Delete statepoints, tally, and test files."""
@@ -323,11 +347,13 @@ class PyAPITestHarness(TestHarness):
         """Make sure the current inputs agree with the _true standard."""
         compare = filecmp.cmp('inputs_test.dat', 'inputs_true.dat')
         if not compare:
+            expected = open('inputs_true.dat', 'r').readlines()
+            actual = open('inputs_test.dat', 'r').readlines()
+            diff = unified_diff(expected, actual, 'inputs_true.dat',
+                                'inputs_test.dat')
+            print('Input differences:')
+            print(''.join(colorize(diff)))
             os.rename('inputs_test.dat', 'inputs_error.dat')
-            for line in unified_diff(open('inputs_true.dat', 'r').readlines(),
-                                     open('inputs_error.dat', 'r').readlines(),
-                                     'inputs_true.dat', 'inputs_error.dat'):
-                print(line, end='')
         assert compare, 'Input files are broken.'
 
     def _cleanup(self):

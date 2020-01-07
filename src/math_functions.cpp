@@ -110,12 +110,13 @@ void calc_pn_c(int n, double x, double pnx[])
 
 double evaluate_legendre(int n, const double data[], double x)
 {
-  double pnx[n + 1];
+  double* pnx = new double[n + 1];
   double val = 0.0;
   calc_pn_c(n, x, pnx);
   for (int l = 0; l <= n; l++) {
     val += (l + 0.5) * data[l] * pnx[l];
   }
+  delete[] pnx;
   return val;
 }
 
@@ -536,8 +537,8 @@ void calc_zn(int n, double rho, double phi, double zn[]) {
   double sin_phi = std::sin(phi);
   double cos_phi = std::cos(phi);
 
-  double sin_phi_vec[n + 1]; // Sin[n * phi]
-  double cos_phi_vec[n + 1]; // Cos[n * phi]
+  std::vector<double> sin_phi_vec(n + 1); // Sin[n * phi]
+  std::vector<double> cos_phi_vec(n + 1); // Cos[n * phi]
   sin_phi_vec[0] = 1.0;
   cos_phi_vec[0] = 1.0;
   sin_phi_vec[1] = 2.0 * cos_phi;
@@ -554,8 +555,8 @@ void calc_zn(int n, double rho, double phi, double zn[]) {
 
   // ===========================================================================
   // Calculate R_pq(rho)
-  double zn_mat[n + 1][n + 1]; // Matrix forms of the coefficients which are
-                               // easier to work with
+  // Matrix forms of the coefficients which are easier to work with
+  std::vector<std::vector<double>> zn_mat(n + 1, std::vector<double>(n + 1));
 
   // Fill the main diagonal first (Eq 3.9 in Chong)
   for (int p = 0; p <= n; p++) {
@@ -629,22 +630,22 @@ void calc_zn_rad(int n, double rho, double zn_rad[]) {
 }
 
 
-void rotate_angle_c(double uvw[3], double mu, const double* phi) {
-  Direction u = rotate_angle({uvw}, mu, phi);
+void rotate_angle_c(double uvw[3], double mu, const double* phi, uint64_t* seed) {
+  Direction u = rotate_angle({uvw}, mu, phi, seed);
   uvw[0] = u.x;
   uvw[1] = u.y;
   uvw[2] = u.z;
 }
 
 
-Direction rotate_angle(Direction u, double mu, const double* phi)
+Direction rotate_angle(Direction u, double mu, const double* phi, uint64_t* seed)
 {
   // Sample azimuthal angle in [0,2pi) if none provided
   double phi_;
   if (phi != nullptr) {
     phi_ = (*phi);
   } else {
-    phi_ = 2.0*PI*prn();
+    phi_ = 2.0*PI*prn(seed);
   }
 
   // Precompute factors to save flops
@@ -664,15 +665,21 @@ Direction rotate_angle(Direction u, double mu, const double* phi)
     return {mu*u.x + a*(u.x*u.y*cosphi + u.z*sinphi) / b,
             mu*u.y - a*b*cosphi,
             mu*u.z + a*(u.y*u.z*cosphi - u.x*sinphi) / b};
+    // TODO: use the following code to make PolarAzimuthal distributions match
+    // spherical coordinate conventions. Remove the related fixup code in
+    // PolarAzimuthal::sample.
+    //return {mu*u.x + a*(-u.x*u.y*sinphi + u.z*cosphi) / b,
+    //        mu*u.y + a*b*sinphi,
+    //        mu*u.z - a*(u.y*u.z*sinphi + u.x*cosphi) / b};
   }
 }
 
 
-double maxwell_spectrum(double T) {
+double maxwell_spectrum(double T, uint64_t* seed) {
   // Set the random numbers
-  double r1 = prn();
-  double r2 = prn();
-  double r3 = prn();
+  double r1 = prn(seed);
+  double r2 = prn(seed);
+  double r3 = prn(seed);
 
   // determine cosine of pi/2*r
   double c = std::cos(PI / 2. * r3);
@@ -684,33 +691,33 @@ double maxwell_spectrum(double T) {
 }
 
 
-double normal_variate(double mean, double standard_deviation) {
+double normal_variate(double mean, double standard_deviation, uint64_t* seed) {
   // perhaps there should be a limit to the number of resamples
   while ( true ) {
-    double v1 = 2 * prn() - 1.;
-    double v2 = 2 * prn() - 1.;
+    double v1 = 2 * prn(seed) - 1.;
+    double v2 = 2 * prn(seed) - 1.;
 
     double r = std::pow(v1, 2) + std::pow(v2, 2);
     double r2 = std::pow(r, 2);
     if (r2 < 1) {
       double z = std::sqrt(-2.0 * std::log(r2)/r2);
-      z *= (prn() <= 0.5) ? v1 : v2;
+      z *= (prn(seed) <= 0.5) ? v1 : v2;
       return mean + standard_deviation*z;
     }
   }
 }
 
-double muir_spectrum(double e0, double m_rat, double kt) {
+double muir_spectrum(double e0, double m_rat, double kt, uint64_t* seed) {
   // note sigma here is a factor of 2 shy of equation
   // 8 in https://permalink.lanl.gov/object/tr?what=info:lanl-repo/lareport/LA-05411-MS
   double sigma = std::sqrt(2.*e0*kt/m_rat);
-  return normal_variate(e0, sigma);
+  return normal_variate(e0, sigma, seed);
 }
 
 
-double watt_spectrum(double a, double b) {
-  double w = maxwell_spectrum(a);
-  double E_out = w + 0.25 * a * a * b + (2. * prn() - 1.) * std::sqrt(a * a * b * w);
+double watt_spectrum(double a, double b, uint64_t* seed) {
+  double w = maxwell_spectrum(a, seed);
+  double E_out = w + 0.25 * a * a * b + (2. * prn(seed) - 1.) * std::sqrt(a * a * b * w);
 
   return E_out;
 }
@@ -763,7 +770,7 @@ void broaden_wmp_polynomials(double E, double dopp, int n, double factors[])
 
 void spline(int n, const double x[], const double y[], double z[])
 {
-  double c_new[n-1];
+  std::vector<double> c_new(n-1);
 
   // Set natural boundary conditions
   c_new[0] = 0.0;

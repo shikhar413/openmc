@@ -44,8 +44,10 @@ void free_memory()
   free_memory_mesh();
   free_memory_tally();
   free_memory_bank();
-  free_memory_cmfd();
   free_memory_entropy();
+  if (mpi::master) {
+    free_memory_cmfd();
+  }
 #ifdef DAGMC
   free_memory_dagmc();
 #endif
@@ -118,15 +120,17 @@ int openmc_finalize()
 
   data::energy_max = {INFTY, INFTY};
   data::energy_min = {0.0, 0.0};
+  data::temperature_min = 0.0;
+  data::temperature_max = INFTY;
   model::root_universe = -1;
-  openmc_set_seed(DEFAULT_SEED);
+  openmc::openmc_set_seed(DEFAULT_SEED);
 
   // Deallocate arrays
   free_memory();
 
   // Free all MPI types
 #ifdef OPENMC_MPI
-  MPI_Type_free(&mpi::bank);
+  if (mpi::bank != MPI_DATATYPE_NULL) MPI_Type_free(&mpi::bank);
 #endif
 
   return 0;
@@ -134,6 +138,10 @@ int openmc_finalize()
 
 int openmc_reset()
 {
+
+  model::universe_cell_counts.clear();
+  model::universe_level_counts.clear();
+
   for (auto& t : model::tallies) {
     t->reset();
   }
@@ -161,6 +169,6 @@ int openmc_hard_reset()
   simulation::total_gen = 0;
 
   // Reset the random number generator state
-  openmc_set_seed(DEFAULT_SEED);
+  openmc::openmc_set_seed(DEFAULT_SEED);
   return 0;
 }

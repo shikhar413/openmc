@@ -20,12 +20,13 @@ using double_4dvec = std::vector<std::vector<std::vector<std::vector<double>>>>;
 
 // OpenMC major, minor, and release numbers
 constexpr int VERSION_MAJOR {0};
-constexpr int VERSION_MINOR {10};
+constexpr int VERSION_MINOR {12};
 constexpr int VERSION_RELEASE {0};
+constexpr bool VERSION_DEV {true};
 constexpr std::array<int, 3> VERSION {VERSION_MAJOR, VERSION_MINOR, VERSION_RELEASE};
 
 // HDF5 data format
-constexpr int HDF5_VERSION[] {2, 0};
+constexpr int HDF5_VERSION[] {3, 0};
 
 // Version numbers for binary files
 constexpr std::array<int, 2> VERSION_STATEPOINT {17, 0};
@@ -35,7 +36,6 @@ constexpr std::array<int, 2> VERSION_SUMMARY {6, 0};
 constexpr std::array<int, 2> VERSION_VOLUME {1, 0};
 constexpr std::array<int, 2> VERSION_VOXEL {2, 0};
 constexpr std::array<int, 2> VERSION_MGXS_LIBRARY {1, 0};
-constexpr char VERSION_MULTIPOLE[] {"v0.2"};
 
 // ============================================================================
 // ADJUSTABLE PARAMETERS
@@ -232,7 +232,7 @@ constexpr int N_XD    {204};
 constexpr int N_XT    {205};
 constexpr int N_X3HE  {206};
 constexpr int N_XA    {207};
-constexpr int NEUTRON_HEATING {301};
+constexpr int HEATING {301};
 constexpr int DAMAGE_ENERGY {444};
 constexpr int COHERENT {502};
 constexpr int INCOHERENT {504};
@@ -252,6 +252,7 @@ constexpr int N_A0    {800};
 constexpr int N_AC    {849};
 constexpr int N_2N0   {875};
 constexpr int N_2NC   {891};
+constexpr int HEATING_LOCAL {901};
 
 constexpr std::array<int, 6> DEPLETION_RX {N_GAMMA, N_P, N_A, N_2N, N_3N, N_4N};
 
@@ -369,7 +370,6 @@ constexpr int SCORE_INVERSE_VELOCITY   {-13}; // flux-weighted inverse velocity
 constexpr int SCORE_FISS_Q_PROMPT      {-14}; // prompt fission Q-value
 constexpr int SCORE_FISS_Q_RECOV       {-15}; // recoverable fission Q-value
 constexpr int SCORE_DECAY_RATE         {-16}; // delayed neutron precursor decay rate
-constexpr int SCORE_HEATING            {-17}; // nuclear heating (neutron or photon)
 
 // Tally map bin finding
 constexpr int NO_BIN_FOUND {-1};

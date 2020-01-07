@@ -34,6 +34,14 @@ namespace openmc {
 //==============================================================================
 
 void
+LocalCoord::rotate(const std::vector<double>& rotation)
+{
+  this->r = this->r.rotate(rotation);
+  this->u = this->u.rotate(rotation);
+  this->rotated = true;
+}
+
+void
 LocalCoord::reset()
 {
   cell = C_NONE;
@@ -41,6 +49,7 @@ LocalCoord::reset()
   lattice = C_NONE;
   lattice_x = 0;
   lattice_y = 0;
+  lattice_z = 0;
   rotated = false;
 }
 
@@ -67,7 +76,7 @@ Particle::Particle()
 void
 Particle::clear()
 {
-  // reset any coordinate levels
+  // Reset any coordinate levels
   for (auto& level : coord_) level.reset();
   n_coord_ = 1;
 }
@@ -90,7 +99,7 @@ Particle::create_secondary(Direction u, double E, Type type)
 void
 Particle::from_source(const Bank* src)
 {
-  // reset some attributes
+  // Reset some attributes
   this->clear();
   alive_ = true;
   surface_ = 0;
@@ -99,7 +108,7 @@ Particle::from_source(const Bank* src)
   n_collision_ = 0;
   fission_ = false;
 
-  // copy attributes from source bank site
+  // Copy attributes from source bank site
   type_ = src->particle;
   wgt_ = src->wgt;
   wgt_last_ = src->wgt;
@@ -114,7 +123,7 @@ Particle::from_source(const Bank* src)
   } else {
     g_ = static_cast<int>(src->E);
     g_last_ = static_cast<int>(src->E);
-    E_ = data::energy_bin_avg[g_ - 1];
+    E_ = data::mg.energy_bin_avg_[g_];
   }
   E_last_ = E_;
 }
@@ -148,9 +157,9 @@ Particle::transport()
   while (true) {
     // Set the random number stream
     if (type_ == Particle::Type::neutron) {
-      prn_set_stream(STREAM_TRACKING);
+      stream_ = STREAM_TRACKING;
     } else {
-      prn_set_stream(STREAM_PHOTON);
+      stream_ = STREAM_PHOTON;
     }
 
     // Store pre-collision particle properties
@@ -174,7 +183,7 @@ Particle::transport()
         return;
       }
 
-      // set birth cell attribute
+      // Set birth cell attribute
       if (cell_born_ == C_NONE) cell_born_ = coord_[n_coord_ - 1].cell;
     }
 
@@ -193,12 +202,12 @@ Particle::transport()
           model::materials[material_]->calculate_xs(*this);
         }
       } else {
-        // Get the MG data
-        calculate_xs_c(material_, g_, sqrtkT_, this->u_local(),
-          macro_xs_.total, macro_xs_.absorption, macro_xs_.nu_fission);
+        // Get the MG data; unlike the CE case above, we have to re-calculate
+        // cross sections for every collision since the cross sections may
+        // be angle-dependent
+        data::mg.macro_xs_[material_].calculate_xs(*this);
 
-        // Finally, update the particle group while we have already checked
-        // for if multi-group
+        // Update the particle's group while we know we are multi-group
         g_last_ = g_;
       }
     } else {
@@ -219,7 +228,7 @@ Particle::transport()
     } else if (macro_xs_.total == 0.0) {
       d_collision = INFINITY;
     } else {
-      d_collision = -std::log(prn()) / macro_xs_.total;
+      d_collision = -std::log(prn(this->current_seed())) / macro_xs_.total;
     }
 
     // Select smaller of the two distances
@@ -337,9 +346,7 @@ Particle::transport()
           // If next level is rotated, apply rotation matrix
           const auto& m {model::cells[coord_[j].cell]->rotation_};
           const auto& u {coord_[j].u};
-          coord_[j + 1].u.x = m[3]*u.x + m[4]*u.y + m[5]*u.z;
-          coord_[j + 1].u.y = m[6]*u.x + m[7]*u.y + m[8]*u.z;
-          coord_[j + 1].u.z = m[9]*u.x + m[10]*u.y + m[11]*u.z;
+          coord_[j + 1].u = u.rotate(m);
         } else {
           // Otherwise, copy this level's direction
           coord_[j+1].u = coord_[j].u;
@@ -371,6 +378,10 @@ Particle::transport()
       if (write_track_) add_particle_track();
     }
   }
+
+  #ifdef DAGMC
+  if (settings::dagmc) simulation::history.reset();
+  #endif
 
   // Finish particle track output.
   if (write_track_) {
@@ -417,7 +428,8 @@ Particle::cross_surface()
     }
     return;
 
-  } else if (surf->bc_ == BC_REFLECT && (settings::run_mode != RUN_MODE_PLOTTING)) {
+  } else if ((surf->bc_ == BC_REFLECT || surf->bc_ == BC_WHITE)
+                                    && (settings::run_mode != RUN_MODE_PLOTTING)) {
     // =======================================================================
     // PARTICLE REFLECTS FROM SURFACE
 
@@ -447,8 +459,9 @@ Particle::cross_surface()
       this->r() = r;
     }
 
-    // Reflect particle off surface
-    Direction u = surf->reflect(this->r(), this->u());
+    Direction u = (surf->bc_ == BC_REFLECT) ?
+      surf->reflect(this->r(), this->u()) :
+      surf->diffuse_reflect(this->r(), this->u(), this->current_seed());
 
     // Make sure new particle direction is normalized
     this->u() = u / u.norm();
@@ -460,12 +473,14 @@ Particle::cross_surface()
     // If a reflective surface is coincident with a lattice or universe
     // boundary, it is necessary to redetermine the particle's coordinates in
     // the lower universes.
-
-    n_coord_ = 1;
-    if (!find_cell(this, true)) {
-      this->mark_as_lost("Couldn't find particle after reflecting from surface "
-        + std::to_string(surf->id_) + ".");
-      return;
+    // (unless we're using a dagmc model, which has exactly one universe)
+    if (!settings::dagmc) {
+      n_coord_ = 1;
+      if (!find_cell(this, true)) {
+        this->mark_as_lost("Couldn't find particle after reflecting from surface "
+                           + std::to_string(surf->id_) + ".");
+        return;
+      }
     }
 
     // Set previous coordinate going slightly past surface crossing

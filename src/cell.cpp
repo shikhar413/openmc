@@ -1,17 +1,24 @@
+
 #include "openmc/cell.h"
 
+#include <algorithm>
+#include <cctype>
 #include <cmath>
+#include <iterator>
 #include <sstream>
 #include <set>
 #include <string>
+#include <gsl/gsl>
 
 #include "openmc/capi.h"
 #include "openmc/constants.h"
+#include "openmc/dagmc.h"
 #include "openmc/error.h"
 #include "openmc/geometry.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/lattice.h"
 #include "openmc/material.h"
+#include "openmc/nuclide.h"
 #include "openmc/settings.h"
 #include "openmc/surface.h"
 #include "openmc/xml_interface.h"
@@ -115,7 +122,6 @@ generate_rpn(int32_t cell_id, std::vector<int32_t> infix)
     if (token < OP_UNION) {
       // If token is not an operator, add it to output
       rpn.push_back(token);
-
     } else if (token < OP_RIGHT_PAREN) {
       // Regular operators union, intersection, complement
       while (stack.size() > 0) {
@@ -155,7 +161,6 @@ generate_rpn(int32_t cell_id, std::vector<int32_t> infix)
                   << cell_id;
           fatal_error(err_msg);
         }
-
         rpn.push_back(stack.back());
         stack.pop_back();
       }
@@ -205,8 +210,64 @@ Universe::to_hdf5(hid_t universes_group) const
   close_group(group);
 }
 
+BoundingBox Universe::bounding_box() const {
+  BoundingBox bbox = {INFTY, -INFTY, INFTY, -INFTY, INFTY, -INFTY};
+  if (cells_.size() == 0) {
+    return {};
+  } else {
+    for (const auto& cell : cells_) {
+      auto& c = model::cells[cell];
+      bbox |= c->bounding_box();
+    }
+  }
+  return bbox;
+}
+
 //==============================================================================
 // Cell implementation
+//==============================================================================
+
+double
+Cell::temperature(int32_t instance) const
+{
+  if (sqrtkT_.size() < 1) {
+    throw std::runtime_error{"Cell temperature has not yet been set."};
+  }
+
+  if (instance >= 0) {
+    double sqrtkT = sqrtkT_.size() == 1 ?
+      sqrtkT_.at(0) :
+      sqrtkT_.at(instance);
+    return sqrtkT * sqrtkT / K_BOLTZMANN;
+  } else {
+    return sqrtkT_[0] * sqrtkT_[0] / K_BOLTZMANN;
+  }
+}
+
+void
+Cell::set_temperature(double T, int32_t instance)
+{
+  if (settings::temperature_method == TEMPERATURE_INTERPOLATION) {
+    if (T < data::temperature_min) {
+      throw std::runtime_error{"Temperature is below minimum temperature at "
+        "which data is available."};
+    } else if (T > data::temperature_max) {
+      throw std::runtime_error{"Temperature is above maximum temperature at "
+        "which data is available."};
+    }
+  }
+
+  if (instance >= 0) {
+    sqrtkT_.at(instance) = std::sqrt(K_BOLTZMANN * T);
+  } else {
+    for (auto& T_ : sqrtkT_) {
+      T_ = std::sqrt(K_BOLTZMANN * T);
+    }
+  }
+}
+
+//==============================================================================
+// CSGCell implementation
 //==============================================================================
 
 CSGCell::CSGCell() {} // empty constructor
@@ -246,6 +307,10 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
 
   if (fill_present) {
     fill_ = std::stoi(get_node_value(cell_node, "fill"));
+    if (fill_ == universe_) {
+      fatal_error("Cell " + std::to_string(id_) +
+        " is filled with the same universe that it is contained in.");
+    }
   } else {
     fill_ = C_NONE;
   }
@@ -379,35 +444,39 @@ CSGCell::CSGCell(pugi::xml_node cell_node)
     }
 
     auto rot {get_node_array<double>(cell_node, "rotation")};
-    if (rot.size() != 3) {
+    if (rot.size() != 3 && rot.size() != 9) {
       std::stringstream err_msg;
       err_msg << "Non-3D rotation vector applied to cell " << id_;
       fatal_error(err_msg);
     }
 
-    // Store the rotation angles.
-    rotation_.reserve(12);
-    rotation_.push_back(rot[0]);
-    rotation_.push_back(rot[1]);
-    rotation_.push_back(rot[2]);
-
     // Compute and store the rotation matrix.
-    auto phi = -rot[0] * PI / 180.0;
-    auto theta = -rot[1] * PI / 180.0;
-    auto psi = -rot[2] * PI / 180.0;
-    rotation_.push_back(std::cos(theta) * std::cos(psi));
-    rotation_.push_back(-std::cos(phi) * std::sin(psi)
-                        + std::sin(phi) * std::sin(theta) * std::cos(psi));
-    rotation_.push_back(std::sin(phi) * std::sin(psi)
-                        + std::cos(phi) * std::sin(theta) * std::cos(psi));
-    rotation_.push_back(std::cos(theta) * std::sin(psi));
-    rotation_.push_back(std::cos(phi) * std::cos(psi)
-                        + std::sin(phi) * std::sin(theta) * std::sin(psi));
-    rotation_.push_back(-std::sin(phi) * std::cos(psi)
-                        + std::cos(phi) * std::sin(theta) * std::sin(psi));
-    rotation_.push_back(-std::sin(theta));
-    rotation_.push_back(std::sin(phi) * std::cos(theta));
-    rotation_.push_back(std::cos(phi) * std::cos(theta));
+    rotation_.reserve(rot.size() == 9 ? 9 : 12);
+    if (rot.size() == 3) {
+      double phi = -rot[0] * PI / 180.0;
+      double theta = -rot[1] * PI / 180.0;
+      double psi = -rot[2] * PI / 180.0;
+      rotation_.push_back(std::cos(theta) * std::cos(psi));
+      rotation_.push_back(-std::cos(phi) * std::sin(psi)
+                          + std::sin(phi) * std::sin(theta) * std::cos(psi));
+      rotation_.push_back(std::sin(phi) * std::sin(psi)
+                          + std::cos(phi) * std::sin(theta) * std::cos(psi));
+      rotation_.push_back(std::cos(theta) * std::sin(psi));
+      rotation_.push_back(std::cos(phi) * std::cos(psi)
+                          + std::sin(phi) * std::sin(theta) * std::sin(psi));
+      rotation_.push_back(-std::sin(phi) * std::cos(psi)
+                          + std::cos(phi) * std::sin(theta) * std::sin(psi));
+      rotation_.push_back(-std::sin(theta));
+      rotation_.push_back(std::sin(phi) * std::cos(theta));
+      rotation_.push_back(std::cos(phi) * std::cos(theta));
+
+      // When user specifies angles, write them at end of vector
+      rotation_.push_back(rot[0]);
+      rotation_.push_back(rot[1]);
+      rotation_.push_back(rot[2]);
+    } else {
+      std::copy(rot.begin(), rot.end(), std::back_inserter(rotation_));
+    }
   }
 }
 
@@ -519,8 +588,12 @@ CSGCell::to_hdf5(hid_t cell_group) const
       write_dataset(group, "translation", translation_);
     }
     if (!rotation_.empty()) {
-      std::array<double, 3> rot {rotation_[0], rotation_[1], rotation_[2]};
-      write_dataset(group, "rotation", rot);
+      if (rotation_.size() == 12) {
+        std::array<double, 3> rot {rotation_[9], rotation_[10], rotation_[11]};
+        write_dataset(group, "rotation", rot);
+      } else {
+        write_dataset(group, "rotation", rotation_);
+      }
     }
 
   } else if (type_ == FILL_LATTICE) {
@@ -529,6 +602,103 @@ CSGCell::to_hdf5(hid_t cell_group) const
   }
 
   close_group(group);
+}
+
+BoundingBox CSGCell::bounding_box_simple() const {
+  BoundingBox bbox;
+  for (int32_t token : rpn_) {
+    bbox &= model::surfaces[abs(token)-1]->bounding_box(token > 0);
+  }
+  return bbox;
+}
+
+void CSGCell::apply_demorgan(std::vector<int32_t>::iterator start,
+                             std::vector<int32_t>::iterator stop)
+{
+  while (start < stop) {
+    if (*start < OP_UNION) { *start *= -1; }
+    else if (*start == OP_UNION) { *start = OP_INTERSECTION; }
+    else if (*start == OP_INTERSECTION) { *start = OP_UNION; }
+    start++;
+  }
+}
+
+std::vector<int32_t>::iterator
+CSGCell::find_left_parenthesis(std::vector<int32_t>::iterator start,
+                               const std::vector<int32_t>& rpn) {
+  // start search at zero
+  int parenthesis_level = 0;
+  auto it = start;
+  while (it != rpn.begin()) {
+    // look at two tokens at a time
+    int32_t one = *it;
+    int32_t two = *(it - 1);
+
+    // decrement parenthesis level if there are two adjacent surfaces
+    if (one < OP_UNION && two < OP_UNION) {
+      parenthesis_level--;
+    // increment if there are two adjacent operators
+    } else if (one >= OP_UNION && two >= OP_UNION) {
+      parenthesis_level++;
+    }
+
+    // if the level gets to zero, return the position
+    if (parenthesis_level == 0) {
+      // move the iterator back one before leaving the loop
+      // so that all tokens in the parenthesis block are included
+      it--;
+      break;
+    }
+
+    // continue loop, one token at a time
+    it--;
+  }
+  return it;
+}
+
+void CSGCell::remove_complement_ops(std::vector<int32_t>& rpn) {
+  auto it = std::find(rpn.begin(), rpn.end(), OP_COMPLEMENT);
+  while (it != rpn.end()) {
+    // find the opening parenthesis (if any)
+    auto left = find_left_parenthesis(it, rpn);
+    std::vector<int32_t> tmp(left, it+1);
+
+    // apply DeMorgan's law to any surfaces/operators between these
+    // positions in the RPN
+    apply_demorgan(left, it);
+    // remove complement operator
+    rpn.erase(it);
+    // update iterator position
+    it = std::find(rpn.begin(), rpn.end(), OP_COMPLEMENT);
+  }
+}
+
+BoundingBox CSGCell::bounding_box_complex(std::vector<int32_t> rpn) {
+  // remove complements by adjusting surface signs and operators
+  remove_complement_ops(rpn);
+
+  std::vector<BoundingBox> stack(rpn.size());
+  int i_stack = -1;
+
+  for (auto& token : rpn) {
+    if (token == OP_UNION) {
+      stack[i_stack - 1] = stack[i_stack - 1] | stack[i_stack];
+      i_stack--;
+    } else if (token == OP_INTERSECTION) {
+      stack[i_stack - 1] = stack[i_stack - 1] & stack[i_stack];
+      i_stack--;
+    } else {
+      i_stack++;
+      stack[i_stack] = model::surfaces[abs(token) - 1]->bounding_box(token > 0);
+    }
+  }
+
+  Ensures(i_stack == 0);
+  return stack.front();
+}
+
+BoundingBox CSGCell::bounding_box() const {
+  return simple_ ? bounding_box_simple() : bounding_box_complex(rpn_);
 }
 
 //==============================================================================
@@ -560,7 +730,7 @@ CSGCell::contains_complex(Position r, Direction u, int32_t on_surface) const
 {
   // Make a stack of booleans.  We don't know how big it needs to be, but we do
   // know that rpn.size() is an upper-bound.
-  bool stack[rpn_.size()];
+  std::vector<bool> stack(rpn_.size());
   int i_stack = -1;
 
   for (int32_t token : rpn_) {
@@ -613,19 +783,28 @@ DAGCell::DAGCell() : Cell{} {};
 std::pair<double, int32_t>
 DAGCell::distance(Position r, Direction u, int32_t on_surface) const
 {
+  // if we've changed direction or we're not on a surface,
+  // reset the history and update last direction
+  if (u != simulation::last_dir || on_surface == 0) {
+    simulation::history.reset();
+    simulation::last_dir = u;
+  }
+
   moab::ErrorCode rval;
   moab::EntityHandle vol = dagmc_ptr_->entity_by_index(3, dag_index_);
   moab::EntityHandle hit_surf;
   double dist;
   double pnt[3] = {r.x, r.y, r.z};
   double dir[3] = {u.x, u.y, u.z};
-  rval = dagmc_ptr_->ray_fire(vol, pnt, dir, hit_surf, dist);
+  rval = dagmc_ptr_->ray_fire(vol, pnt, dir, hit_surf, dist, &simulation::history);
   MB_CHK_ERR_CONT(rval);
   int surf_idx;
   if (hit_surf != 0) {
     surf_idx = dagmc_ptr_->index_by_handle(hit_surf);
-  } else {  // indicate that particle is lost
+  } else {
+    // indicate that particle is lost
     surf_idx = -1;
+    dist = INFINITY;
   }
 
   return {dist, surf_idx};
@@ -645,6 +824,16 @@ bool DAGCell::contains(Position r, Direction u, int32_t on_surface) const
 }
 
 void DAGCell::to_hdf5(hid_t group_id) const { return; }
+
+BoundingBox DAGCell::bounding_box() const
+{
+  moab::ErrorCode rval;
+  moab::EntityHandle vol = dagmc_ptr_->entity_by_index(3, dag_index_);
+  double min[3], max[3];
+  rval = dagmc_ptr_->getobb(vol, min, max);
+  MB_CHK_ERR_CONT(rval);
+  return {min[0], max[0], min[1], max[1], min[2], max[2]};
+}
 
 #endif
 
@@ -689,6 +878,13 @@ UniversePartitioner::UniversePartitioner(const Universe& univ)
   // Populate the partition lists.
   partitions_.resize(surfs_.size() + 1);
   for (auto i_cell : univ.cells_) {
+    // It is difficult to determine the bounds of a complex cell, so add complex
+    // cells to all partitions.
+    if (!model::cells[i_cell]->simple_) {
+      for (auto& p : partitions_) p.push_back(i_cell);
+      continue;
+    }
+
     // Find the tokens for bounding z-planes.
     int32_t lower_token = 0, upper_token = 0;
     double min_z, max_z;
@@ -894,31 +1090,21 @@ openmc_cell_set_fill(int32_t index, int type, int32_t n,
   return 0;
 }
 
-//TODO: make sure data is loaded for this temperature
 extern "C" int
 openmc_cell_set_temperature(int32_t index, double T, const int32_t* instance)
 {
-  if (index >= 0 && index < model::cells.size()) {
-    Cell& c {*model::cells[index]};
-
-    if (instance) {
-      if (*instance >= 0 && *instance < c.sqrtkT_.size()) {
-        c.sqrtkT_[*instance] = std::sqrt(K_BOLTZMANN * T);
-      } else {
-        strcpy(openmc_err_msg, "Distribcell instance is out of bounds.");
-        return OPENMC_E_OUT_OF_BOUNDS;
-      }
-    } else {
-      for (auto& T_ : c.sqrtkT_) {
-        T_ = std::sqrt(K_BOLTZMANN * T);
-      }
-    }
-
-  } else {
+  if (index < 0 || index >= model::cells.size()) {
     strcpy(openmc_err_msg, "Index in cells array is out of bounds.");
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
+  int32_t instance_index = instance ? *instance : -1;
+  try {
+    model::cells[index]->set_temperature(T, instance_index);
+  } catch (const std::exception& e) {
+    set_errmsg(e.what());
+    return OPENMC_E_UNASSIGNED;
+  }
   return 0;
 }
 
@@ -930,27 +1116,64 @@ openmc_cell_get_temperature(int32_t index, const int32_t* instance, double* T)
     return OPENMC_E_OUT_OF_BOUNDS;
   }
 
-  Cell& c {*model::cells[index]};
-
-  if (c.sqrtkT_.size() < 1) {
-    strcpy(openmc_err_msg, "Cell temperature has not yet been set.");
+  int32_t instance_index = instance ? *instance : -1;
+  try {
+    *T = model::cells[index]->temperature(instance_index);
+  } catch (const std::exception& e) {
+    set_errmsg(e.what());
     return OPENMC_E_UNASSIGNED;
   }
+  return 0;
+}
 
-  if (instance) {
-    if (*instance >= 0 && *instance < c.n_instances_) {
-      double sqrtkT = c.sqrtkT_.size() == 1 ? c.sqrtkT_[0] : c.sqrtkT_[*instance];
-      *T = sqrtkT * sqrtkT / K_BOLTZMANN;
-    } else {
-      strcpy(openmc_err_msg, "Distribcell instance is out of bounds.");
-      return OPENMC_E_OUT_OF_BOUNDS;
-    }
-  } else {
-    *T = c.sqrtkT_[0] * c.sqrtkT_[0] / K_BOLTZMANN;
-  }
+//! Get the bounding box of a cell
+extern "C" int
+openmc_cell_bounding_box(const int32_t index, double* llc, double* urc) {
+
+  BoundingBox bbox;
+
+  const auto& c = model::cells[index];
+  bbox = c->bounding_box();
+
+  // set lower left corner values
+  llc[0] = bbox.xmin;
+  llc[1] = bbox.ymin;
+  llc[2] = bbox.zmin;
+
+  // set upper right corner values
+  urc[0] = bbox.xmax;
+  urc[1] = bbox.ymax;
+  urc[2] = bbox.zmax;
 
   return 0;
 }
+
+//! Get the name of a cell
+extern "C" int
+openmc_cell_get_name(int32_t index, const char** name) {
+  if (index < 0 || index >= model::cells.size()) {
+    set_errmsg("Index in cells array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  *name = model::cells[index]->name().data();
+
+  return 0;
+}
+
+//! Set the name of a cell
+extern "C" int
+openmc_cell_set_name(int32_t index, const char* name) {
+  if (index < 0 || index >= model::cells.size()) {
+    set_errmsg("Index in cells array is out of bounds.");
+    return OPENMC_E_OUT_OF_BOUNDS;
+  }
+
+  model::cells[index]->set_name(name);
+
+  return 0;
+}
+
 
 //! Return the index in the cells array of a cell with a given ID
 extern "C" int

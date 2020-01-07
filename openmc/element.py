@@ -3,7 +3,6 @@ import re
 import os
 from xml.etree import ElementTree as ET
 
-import openmc
 import openmc.checkvalue as cv
 from openmc.data import NATURAL_ABUNDANCE, atomic_mass
 
@@ -98,7 +97,7 @@ class Element(str):
             library_nuclides = set()
             tree = ET.parse(cross_sections)
             root = tree.getroot()
-            for child in root:
+            for child in root.findall('library'):
                 nuclide = child.attrib['materials']
                 if re.match(r'{}\d+'.format(self), nuclide) and \
                    '_m' not in nuclide:

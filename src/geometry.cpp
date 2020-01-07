@@ -9,6 +9,7 @@
 #include "openmc/lattice.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
+#include "openmc/string_utils.h"
 #include "openmc/surface.h"
 
 
@@ -32,7 +33,7 @@ std::vector<int64_t> overlap_check_count;
 // Non-member functions
 //==============================================================================
 
-bool check_cell_overlap(Particle* p)
+bool check_cell_overlap(Particle* p, bool error)
 {
   int n_coord = p->n_coord_;
 
@@ -45,11 +46,14 @@ bool check_cell_overlap(Particle* p)
       Cell& c = *model::cells[index_cell];
       if (c.contains(p->coord_[j].r, p->coord_[j].u, p->surface_)) {
         if (index_cell != p->coord_[j].cell) {
-          std::stringstream err_msg;
-          err_msg << "Overlapping cells detected: " << c.id_ << ", "
-                  << model::cells[p->coord_[j].cell]->id_ << " on universe "
-                  << univ.id_;
-          fatal_error(err_msg);
+          if (error) {
+            std::stringstream err_msg;
+            err_msg << "Overlapping cells detected: " << c.id_ << ", "
+                    << model::cells[p->coord_[j].cell]->id_ << " on universe "
+                    << univ.id_;
+            fatal_error(err_msg);
+          }
+          return true;
         }
         ++model::overlap_check_count[index_cell];
       }
@@ -170,32 +174,19 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
       //! Found a lower universe, update this coord level then search the next.
 
       // Set the lower coordinate level universe.
-      p->coord_[p->n_coord_].universe = c.fill_;
+      auto& coord {p->coord_[p->n_coord_]};
+      coord.universe = c.fill_;
 
       // Set the position and direction.
-      p->coord_[p->n_coord_].r = p->coord_[p->n_coord_-1].r;
-      p->coord_[p->n_coord_].u = p->coord_[p->n_coord_-1].u;
+      coord.r = p->r_local();
+      coord.u = p->u_local();
 
       // Apply translation.
-      p->coord_[p->n_coord_].r -= c.translation_;
+      coord.r -= c.translation_;
 
       // Apply rotation.
       if (!c.rotation_.empty()) {
-        Position r = p->coord_[p->n_coord_].r;
-        p->coord_[p->n_coord_].r.x = r.x*c.rotation_[3] + r.y*c.rotation_[4]
-                                     + r.z*c.rotation_[5];
-        p->coord_[p->n_coord_].r.y = r.x*c.rotation_[6] + r.y*c.rotation_[7]
-                                     + r.z*c.rotation_[8];
-        p->coord_[p->n_coord_].r.z = r.x*c.rotation_[9] + r.y*c.rotation_[10]
-                                     + r.z*c.rotation_[11];
-        Direction u = p->coord_[p->n_coord_].u;
-        p->coord_[p->n_coord_].u.x = u.x*c.rotation_[3] + u.y*c.rotation_[4]
-                                     + u.z*c.rotation_[5];
-        p->coord_[p->n_coord_].u.y = u.x*c.rotation_[6] + u.y*c.rotation_[7]
-                                     + u.z*c.rotation_[8];
-        p->coord_[p->n_coord_].u.z = u.x*c.rotation_[9] + u.y*c.rotation_[10]
-                                     + u.z*c.rotation_[11];
-        p->coord_[p->n_coord_].rotated = true;
+        coord.rotate(c.rotation_);
       }
 
       // Update the coordinate level and recurse.
@@ -208,26 +199,37 @@ find_cell_inner(Particle* p, const NeighborList* neighbor_list)
 
       Lattice& lat {*model::lattices[c.fill_]};
 
-      // Determine lattice indices.
-      auto i_xyz = lat.get_indices(p->r_local(), p->u_local());
+      // Set the position and direction.
+      auto& coord {p->coord_[p->n_coord_]};
+      coord.r = p->r_local();
+      coord.u = p->u_local();
 
-      // Store lower level coordinates.
-      Position r = lat.get_local_position(p->r_local(), i_xyz);
-      p->coord_[p->n_coord_].r = r;
-      p->coord_[p->n_coord_].u = p->u_local();
+      // Apply translation.
+      coord.r -= c.translation_;
+
+      // Apply rotation.
+      if (!c.rotation_.empty()) {
+        coord.rotate(c.rotation_);
+      }
+
+      // Determine lattice indices.
+      auto i_xyz = lat.get_indices(coord.r, coord.u);
+
+      // Get local position in appropriate lattice cell
+      coord.r = lat.get_local_position(coord.r, i_xyz);
 
       // Set lattice indices.
-      p->coord_[p->n_coord_].lattice = c.fill_;
-      p->coord_[p->n_coord_].lattice_x = i_xyz[0];
-      p->coord_[p->n_coord_].lattice_y = i_xyz[1];
-      p->coord_[p->n_coord_].lattice_z = i_xyz[2];
+      coord.lattice = c.fill_;
+      coord.lattice_x = i_xyz[0];
+      coord.lattice_y = i_xyz[1];
+      coord.lattice_z = i_xyz[2];
 
       // Set the lower coordinate level universe.
       if (lat.are_valid_indices(i_xyz)) {
-        p->coord_[p->n_coord_].universe = lat[i_xyz];
+        coord.universe = lat[i_xyz];
       } else {
         if (lat.outer_ != NO_OUTER_UNIVERSE) {
-          p->coord_[p->n_coord_].universe = lat.outer_;
+          coord.universe = lat.outer_;
         } else {
           std::stringstream err_msg;
           err_msg << "Particle " << p->id_ << " is outside lattice "
@@ -294,27 +296,32 @@ find_cell(Particle* p, bool use_neighbor_lists)
 void
 cross_lattice(Particle* p, const BoundaryInfo& boundary)
 {
-  auto& lat {*model::lattices[p->coord_[p->n_coord_-1].lattice]};
+  auto& coord {p->coord_[p->n_coord_ - 1]};
+  auto& lat {*model::lattices[coord.lattice]};
 
   if (settings::verbosity >= 10 || simulation::trace) {
     std::stringstream msg;
     msg << "    Crossing lattice " << lat.id_ << ". Current position ("
-         << p->coord_[p->n_coord_-1].lattice_x << ","
-         << p->coord_[p->n_coord_-1].lattice_y << ","
-         << p->coord_[p->n_coord_-1].lattice_z << ")";
+        << coord.lattice_x << "," << coord.lattice_y << ","
+        << coord.lattice_z << "). r=" << p->r();
     write_message(msg, 1);
   }
 
   // Set the lattice indices.
-  p->coord_[p->n_coord_-1].lattice_x += boundary.lattice_translation[0];
-  p->coord_[p->n_coord_-1].lattice_y += boundary.lattice_translation[1];
-  p->coord_[p->n_coord_-1].lattice_z += boundary.lattice_translation[2];
-  std::array<int, 3> i_xyz {p->coord_[p->n_coord_-1].lattice_x,
-                            p->coord_[p->n_coord_-1].lattice_y,
-                            p->coord_[p->n_coord_-1].lattice_z};
+  coord.lattice_x += boundary.lattice_translation[0];
+  coord.lattice_y += boundary.lattice_translation[1];
+  coord.lattice_z += boundary.lattice_translation[2];
+  std::array<int, 3> i_xyz {coord.lattice_x, coord.lattice_y, coord.lattice_z};
 
   // Set the new coordinate position.
-  p->r_local() = lat.get_local_position(p->coord_[p->n_coord_-2].r, i_xyz);
+  const auto& upper_coord {p->coord_[p->n_coord_ - 2]};
+  const auto& cell {model::cells[upper_coord.cell]};
+  Position r = upper_coord.r;
+  r -= cell->translation_;
+  if (!cell->rotation_.empty()) {
+    r = r.rotate(cell->rotation_);
+  }
+  p->r_local() = lat.get_local_position(r, i_xyz);
 
   if (!lat.are_valid_indices(i_xyz)) {
     // The particle is outside the lattice.  Search for it from the base coords.
@@ -359,9 +366,10 @@ BoundaryInfo distance_to_boundary(Particle* p)
 
   // Loop over each coordinate level.
   for (int i = 0; i < p->n_coord_; i++) {
-    Position r {p->coord_[i].r};
-    Direction u {p->coord_[i].u};
-    Cell& c {*model::cells[p->coord_[i].cell]};
+    const auto& coord {p->coord_[i]};
+    Position r {coord.r};
+    Direction u {coord.u};
+    Cell& c {*model::cells[coord.cell]};
 
     // Find the oncoming surface in this cell and the distance to it.
     auto surface_distance = c.distance(r, u, p->surface_);
@@ -369,10 +377,9 @@ BoundaryInfo distance_to_boundary(Particle* p)
     level_surf_cross = surface_distance.second;
 
     // Find the distance to the next lattice tile crossing.
-    if (p->coord_[i].lattice != C_NONE) {
-      auto& lat {*model::lattices[p->coord_[i].lattice]};
-      std::array<int, 3> i_xyz {p->coord_[i].lattice_x, p->coord_[i].lattice_y,
-                                p->coord_[i].lattice_z};
+    if (coord.lattice != C_NONE) {
+      auto& lat {*model::lattices[coord.lattice]};
+      std::array<int, 3> i_xyz {coord.lattice_x, coord.lattice_y, coord.lattice_z};
       //TODO: refactor so both lattice use the same position argument (which
       //also means the lat.type attribute can be removed)
       std::pair<double, std::array<int, 3>> lattice_distance;
@@ -381,8 +388,13 @@ BoundaryInfo distance_to_boundary(Particle* p)
           lattice_distance = lat.distance(r, u, i_xyz);
           break;
         case LatticeType::hex:
-          Position r_hex {p->coord_[i-1].r.x, p->coord_[i-1].r.y,
-                          p->coord_[i].r.z};
+          auto& cell_above {model::cells[p->coord_[i-1].cell]};
+          Position r_hex {p->coord_[i-1].r};
+          r_hex -= cell_above->translation_;
+          if (coord.rotated) {
+            r_hex = r_hex.rotate(cell_above->rotation_);
+          }
+          r_hex.z = coord.r.z;
           lattice_distance = lat.distance(r_hex, u, i_xyz);
           break;
       }
@@ -461,6 +473,22 @@ openmc_find_cell(const double* xyz, int32_t* index, int32_t* instance)
 
   *index = p.coord_[p.n_coord_-1].cell;
   *instance = p.cell_instance_;
+  return 0;
+}
+
+extern "C" int openmc_global_bounding_box(double* llc, double* urc) {
+  auto bbox = model::universes.at(model::root_universe)->bounding_box();
+
+  // set lower left corner values
+  llc[0] = bbox.xmin;
+  llc[1] = bbox.ymin;
+  llc[2] = bbox.zmin;
+
+  // set upper right corner values
+  urc[0] = bbox.xmax;
+  urc[1] = bbox.ymax;
+  urc[2] = bbox.zmax;
+
   return 0;
 }
 

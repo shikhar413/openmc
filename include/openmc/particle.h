@@ -9,9 +9,11 @@
 #include <memory> // for unique_ptr
 #include <sstream>
 #include <string>
+#include <vector>
 
 #include "openmc/constants.h"
 #include "openmc/position.h"
+#include "openmc/random_lcg.h"
 
 namespace openmc {
 
@@ -38,7 +40,13 @@ constexpr double CACHE_INVALID {-1.0};
 // Class declarations
 //==============================================================================
 
-struct LocalCoord {
+class LocalCoord {
+public:
+  void rotate(const std::vector<double>& rotation);
+
+  //! clear data from a single coordinate level
+  void reset();
+
   Position r; //!< particle position
   Direction u; //!< particle direction
   int cell {-1};
@@ -48,9 +56,6 @@ struct LocalCoord {
   int lattice_y {-1};
   int lattice_z {-1};
   bool rotated {false};  //!< Is the level rotated?
-
-  //! clear data from a single coordinate level
-  void reset();
 };
 
 //==============================================================================
@@ -213,6 +218,10 @@ public:
   //! create a particle restart HDF5 file
   void write_restart() const;
 
+  //! Gets the pointer to the particle's current PRN seed
+  uint64_t* current_seed() {return seeds_ + stream_;}
+  const uint64_t* current_seed() const {return seeds_ + stream_;}
+
   //==========================================================================
   // Data members
 
@@ -281,6 +290,10 @@ public:
 
   // Track output
   bool write_track_ {false};
+
+  // Current PRNG state
+  uint64_t seeds_[N_STREAMS]; // current seeds
+  int      stream_;           // current RNG stream
 };
 
 } // namespace openmc
