@@ -199,6 +199,7 @@ list(APPEND libopenmc_SOURCES
   src/dagmc.cpp
   src/cell.cpp
   src/cmfd_solver.cpp
+  src/convergence_tally.cpp
   src/cross_sections.cpp
   src/distribution.cpp
   src/distribution_angle.cpp

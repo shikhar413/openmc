@@ -12,6 +12,7 @@
 #include "openmc/capi.h"
 #include "openmc/constants.h"
 #include "openmc/container_util.h"
+#include "openmc/convergence_tally.h"
 #include "openmc/distribution.h"
 #include "openmc/distribution_multi.h"
 #include "openmc/distribution_spatial.h"
@@ -82,7 +83,6 @@ int64_t n_particles {-1};
 int electron_treatment {ELECTRON_TTB};
 std::array<double, 4> energy_cutoff {0.0, 1000.0, 0.0, 0.0};
 int legendre_to_tabular_points {C_NONE};
-int fet_convergence_dim {0};
 int max_order {0};
 int n_log_bins {8000};
 int n_max_batches;
@@ -531,7 +531,7 @@ void read_settings_xml()
 
   if (check_for_node(root, "fet_convergence")) {
     auto node_fet = root.child("fet_convergence");
-    simulation::conv = std::make_unique<ConvergenceTally>(node_fet);
+    simulation::conv_tally = std::make_unique<ConvergenceTally>(node_fet);
   }
 
   // Uniform fission source weighting mesh

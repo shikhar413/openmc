@@ -3,6 +3,7 @@
 #include "openmc/bank.h"
 #include "openmc/capi.h"
 #include "openmc/container_util.h"
+#include "openmc/convergence_tally.h"
 #include "openmc/eigenvalue.h"
 #include "openmc/error.h"
 #include "openmc/material.h"
@@ -260,7 +261,7 @@ int64_t work_per_rank;
 const RegularMesh* entropy_mesh {nullptr};
 const RegularMesh* ufs_mesh {nullptr};
 
-std::unique_ptr<ConvergenceTally> conv {nullptr};
+std::unique_ptr<ConvergenceTally> conv_tally {nullptr};
 
 std::vector<double> k_generation;
 std::vector<int64_t> work_index;
@@ -451,10 +452,8 @@ void finalize_generation()
     if (settings::entropy_on) shannon_entropy();
 
     // Calculate convergence tally
-    if (simulation::conv) {
-      if (simulation::conv->dimension() == 1) convergence_tally_1d();
-      else if (simulation::conv->dimension() == 2) convergence_tally_2d();
-    }
+    if (simulation::conv_tally)
+      simulation::conv_tally->compute();
 
     // Collect results and statistics
     calculate_generation_keff();
@@ -576,7 +575,6 @@ void free_memory_simulation()
 {
   simulation::k_generation.clear();
   simulation::entropy.clear();
-  simulation::conv_tally.clear();
 }
 
 } // namespace openmc
