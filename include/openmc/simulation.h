@@ -7,7 +7,6 @@
 #include "openmc/convergence_tally.h"
 #include "openmc/mesh.h"
 #include "openmc/particle.h"
-#include "openmc/eigenvalue.h"
 
 #include <cstdint>
 #include <vector>

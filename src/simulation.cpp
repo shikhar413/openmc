@@ -575,6 +575,7 @@ void free_memory_simulation()
 {
   simulation::k_generation.clear();
   simulation::entropy.clear();
+  simulation::conv_results.clear();
 }
 
 } // namespace openmc

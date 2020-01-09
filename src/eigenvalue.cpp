@@ -43,6 +43,7 @@ namespace simulation {
 double keff_generation;
 std::array<double, 2> k_sum;
 std::vector<double> entropy;
+std::vector<double> conv_results;
 xt::xtensor<double, 1> source_frac;
 
 } // namespace simulation
