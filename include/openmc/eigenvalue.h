@@ -12,8 +12,6 @@
 #include <hdf5.h>
 
 #include "openmc/particle.h"
-#include "pugixml.hpp"
-#include "openmc/xml_interface.h"
 
 namespace openmc {
 
@@ -73,11 +71,6 @@ void synchronize_bank();
 //! Calculates the Shannon entropy of the fission source distribution to assess
 //! source convergence
 void shannon_entropy();
-
-//! Calculates the convergence tally from fission bank for 1d case
-void convergence_tally_1d();
-//! Calculates the convergence tally from fission bank for 2d case
-void convergence_tally_2d();
 
 //! Determines the source fraction in each UFS mesh cell and reweights the
 //! source bank so that the sum of the weights is equal to n_particles. The

@@ -13,7 +13,6 @@
 #include "pugixml.hpp"
 
 #include "openmc/constants.h"
-#include "openmc/convergence_tally.h"
 
 namespace openmc {
 

@@ -220,9 +220,4 @@ extern "C" int openmc_get_convergence_tally(double** tally_data, int32_t* n)
   }
 }
 
-int openmc_get_keff_gen(double* keff) {
-  *keff = simulation::keff;
-  return 0;
-}
-
 } // namespace openmc

@@ -538,6 +538,11 @@ int openmc_get_keff(double* k_combined)
   return 0;
 }
 
+int openmc_get_keff_gen(double* keff) {
+  *keff = simulation::keff;
+  return 0;
+}
+
 void shannon_entropy()
 {
   // Get source weight in each mesh bin
