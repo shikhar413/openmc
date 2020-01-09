@@ -34,6 +34,32 @@
 namespace openmc {
 
 //==============================================================================
+// ZernikeFilter implementation
+//==============================================================================
+
+void
+ConvergenceTally::from_xml(pugi::xml_node node)
+{
+  auto dim = std::stoi(get_node_value(node, "dimension"));
+  set_dimension(dim);
+  if (dim == 1 || dim == 3) {
+    set_axial_order(std::stoi(get_node_value(node, "axial_order")));
+    double min = std::stod(get_node_value(node, "min"));
+    double max = std::stod(get_node_value(node, "max"));
+    set_minmax(min, max);
+  }
+  if (dim == 2 || dim == 3) {
+    set_radial_order(std::stoi(get_node_value(node, "radial_order")));
+    x_ = std::stod(get_node_value(node, "x"));
+    y_ = std::stod(get_node_value(node, "y"));
+    r_ = std::stod(get_node_value(node, "r"));
+  }
+  if (dim > 3 || dim < 1) {
+    throw std::runtime_error{"Dimension for ConvergenceTally must be '1', '2', or '3'"};
+  }
+}
+
+//==============================================================================
 // Global variables
 //==============================================================================
 
