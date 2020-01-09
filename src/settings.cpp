@@ -531,14 +531,7 @@ void read_settings_xml()
 
   if (check_for_node(root, "fet_convergence")) {
     auto node_fet = root.child("fet_convergence");
-    auto dimension = get_node_value(node_fet, "dimension");
-
-    if (dimension == "1") {
-      settings::fet_convergence_dim = 1;
-    } else if (dimension == "2") {
-      settings::fet_convergence_dim = 2;
-    }
-    
+    simulation::conv = std::make_unique<ConvergenceTally>(node_fet);
   }
 
   // Uniform fission source weighting mesh

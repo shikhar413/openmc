@@ -260,6 +260,8 @@ int64_t work_per_rank;
 const RegularMesh* entropy_mesh {nullptr};
 const RegularMesh* ufs_mesh {nullptr};
 
+std::unique_ptr<ConvergenceTally> conv {nullptr};
+
 std::vector<double> k_generation;
 std::vector<int64_t> work_index;
 
@@ -449,8 +451,10 @@ void finalize_generation()
     if (settings::entropy_on) shannon_entropy();
 
     // Calculate convergence tally
-    if (settings::fet_convergence_dim == 1) convergence_tally_1d();
-    else if (settings::fet_convergence_dim == 2) convergence_tally_2d();
+    if (simulation::conv) {
+      if (simulation::conv->dimension() == 1) convergence_tally_1d();
+      else if (simulation::conv->dimension() == 2) convergence_tally_2d();
+    }
 
     // Collect results and statistics
     calculate_generation_keff();

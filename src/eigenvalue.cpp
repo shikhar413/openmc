@@ -34,29 +34,66 @@
 namespace openmc {
 
 //==============================================================================
-// ZernikeFilter implementation
+// ConvergenceTally implementation
 //==============================================================================
 
-void
-ConvergenceTally::from_xml(pugi::xml_node node)
+ConvergenceTally::ConvergenceTally(pugi::xml_node node)
 {
   auto dim = std::stoi(get_node_value(node, "dimension"));
   set_dimension(dim);
+
+  // Set axial properties
   if (dim == 1 || dim == 3) {
     set_axial_order(std::stoi(get_node_value(node, "axial_order")));
     double min = std::stod(get_node_value(node, "min"));
     double max = std::stod(get_node_value(node, "max"));
     set_minmax(min, max);
   }
+
+  // Set radial properties
   if (dim == 2 || dim == 3) {
     set_radial_order(std::stoi(get_node_value(node, "radial_order")));
     x_ = std::stod(get_node_value(node, "x"));
     y_ = std::stod(get_node_value(node, "y"));
     r_ = std::stod(get_node_value(node, "r"));
   }
-  if (dim > 3 || dim < 1) {
+}
+
+void
+ConvergenceTally::set_radial_order(int order)
+{
+  if (order < 0) {
+    throw std::invalid_argument{"Convergence tally radial order must be non-negative."};
+  }
+  radial_order_ = order;
+}
+
+void
+ConvergenceTally::set_axial_order(int order)
+{
+  if (order < 0) {
+    throw std::invalid_argument{"Convergence tally axial order must be non-negative."};
+  }
+  axial_order_ = order;
+}
+
+void
+ConvergenceTally::set_dimension(int dimension)
+{
+  if (dimension > 3 || dimension < 1) {
     throw std::runtime_error{"Dimension for ConvergenceTally must be '1', '2', or '3'"};
   }
+  dimension_ = dimension;
+}
+
+void
+ConvergenceTally::set_minmax(double min, double max)
+{
+  if (max < min) {
+    throw std::invalid_argument{"Maximum value must be greater than minimum value"};
+  }
+  min_ = min;
+  max_ = max;
 }
 
 //==============================================================================
@@ -613,11 +650,11 @@ void shannon_entropy()
 
 void convergence_tally_1d()
 {
-  // Convergence tally input data
-  int order = 10;
-  // Assume z-axis
-  double min = -200.;   // min dimension
-  double max = 200.;    // max dimension
+  // Define parameters for convergence tally calculation
+  // Assume z axis define Legendre axis
+  int order = simulation::conv->axial_order();
+  double min = simulation::conv->min();;   // min dimension
+  double max = simulation::conv->max();    // max dimension
   int nbins = order + 1;
 
   // Array storing convergence tally results
@@ -674,12 +711,12 @@ void convergence_tally_1d()
 
 void convergence_tally_2d()
 {
-  // Convergence tally input data
-  int order = 10;
+  // Define parameters for convergence tally calculation
   // Assume x,y axes define plane for unit disk
-  double x = 0.0;
-  double y = 0.0;
-  double r = 183.2;
+  int order = simulation::conv->radial_order();
+  double x = simulation::conv->x();
+  double y = simulation::conv->y();
+  double r = simulation::conv->r();
   int nbins = ((order+1) * (order+2)) / 2;
 
   // Array storing convergence tally results

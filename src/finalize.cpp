@@ -117,6 +117,8 @@ int openmc_finalize()
   simulation::entropy_mesh = nullptr;
   simulation::ufs_mesh = nullptr;
 
+  simulation::conv = nullptr;
+
   data::energy_max = {INFTY, INFTY};
   data::energy_min = {0.0, 0.0};
   data::temperature_min = 0.0;

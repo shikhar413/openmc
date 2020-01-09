@@ -22,11 +22,10 @@ class ConvergenceTally
 public:
   //----------------------------------------------------------------------------
   // Constructors, destructors
+  ConvergenceTally(pugi::xml_node node);
 
   //----------------------------------------------------------------------------
   // Methods
-
-  void from_xml(pugi::xml_node node);
 
   //----------------------------------------------------------------------------
   // Accessors
@@ -35,10 +34,10 @@ public:
   void set_dimension(int dimension_);
 
   int axial_order() const { return axial_order_; }
-  void set_axial_order(int axial_order);
+  void set_axial_order(int order);
 
   int radial_order() const { return radial_order_; }
-  void set_radial_order(int radial_order);
+  void set_radial_order(int order);
 
   double x() const { return x_; }
   void set_x(double x) { x_ = x; }
