@@ -24,6 +24,7 @@ namespace simulation {
 extern double keff_generation; //!<  Single-generation k on each processor
 extern std::array<double, 2> k_sum; //!< Used to reduce sum and sum_sq
 extern std::vector<double> entropy; //!< Shannon entropy at each generation
+extern std::vector<double> conv_tally;  //! Convergence tally data
 extern xt::xtensor<double, 1> source_frac; //!< Source fraction for UFS
 
 } // namespace simulation
@@ -63,6 +64,7 @@ void join_bank_from_threads();
 //! \param[out] k_combined Estimate of k-effective and its standard deviation
 //! \return Error status
 extern "C" int openmc_get_keff(double* k_combined);
+extern "C" int openmc_get_keff_gen(double* keff);
 
 //! Sample/redistribute source sites from accumulated fission sites
 void synchronize_bank();
@@ -70,6 +72,11 @@ void synchronize_bank();
 //! Calculates the Shannon entropy of the fission source distribution to assess
 //! source convergence
 void shannon_entropy();
+
+//! Calculates the convergence tally from fission bank for 1d case
+void convergence_tally_1d();
+//! Calculates the convergence tally from fission bank for 2d case
+void convergence_tally_2d();
 
 //! Determines the source fraction in each UFS mesh cell and reweights the
 //! source bank so that the sum of the weights is equal to n_particles. The

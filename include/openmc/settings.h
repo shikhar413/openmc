@@ -67,6 +67,7 @@ extern "C" int64_t n_particles;    //!< number of particles per generation
 
 extern int electron_treatment;       //!< how to treat secondary electrons
 extern std::array<double, 4> energy_cutoff;  //!< Energy cutoff in [eV] for each particle type
+extern int fet_convergence_dim;      //!< dimension of FET convergence tally
 extern int legendre_to_tabular_points; //!< number of points to convert Legendres
 extern int max_order;                //!< Maximum Legendre order for multigroup data
 extern int n_log_bins;               //!< number of bins for logarithmic energy grid

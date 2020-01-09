@@ -42,6 +42,7 @@ namespace simulation {
 double keff_generation;
 std::array<double, 2> k_sum;
 std::vector<double> entropy;
+std::vector<double> conv_tally;
 xt::xtensor<double, 1> source_frac;
 
 } // namespace simulation
@@ -385,6 +386,24 @@ void join_bank_from_threads()
 }
 #endif
 
+extern "C" int openmc_get_convergence_tally(double** conv_tally, int32_t* n)
+{
+  if (simulation::conv_tally.size() == 0) {
+    set_errmsg("Convergence tally has not been allocated");
+    return OPENMC_E_ALLOCATE;
+  }
+  else {
+    *conv_tally = simulation::conv_tally.data();
+    *n = simulation::conv_tally.size();
+    return 0;
+  }
+}
+
+int openmc_get_keff_gen(double* keff) {
+  *keff = simulation::keff;
+  return 0;
+}
+
 int openmc_get_keff(double* k_combined)
 {
   k_combined[0] = 0.0;
@@ -564,6 +583,135 @@ void shannon_entropy()
     // Add value to vector
     simulation::entropy.push_back(H);
   }
+}
+
+void convergence_tally_1d()
+{
+  // Convergence tally input data
+  int order = 10;
+  // Assume z-axis
+  double min = -200.;   // min dimension
+  double max = 200.;    // max dimension
+  int nbins = order + 1;
+
+  // Array storing convergence tally results
+  double res[nbins] = {0};
+  const int nthreads = omp_get_max_threads();
+
+  // Store bank_size, fission_bank on stack since std::vector not threadsafe
+  int bank_size = simulation::fission_bank.size();
+  const auto& fission_bank = simulation::fission_bank;
+
+  // Allocate and initialize res_private to 0.0
+  double *res_private = new double[nbins*nthreads];
+  for(int i=0; i < nbins*nthreads; i++) res_private[i] = 0.;
+
+  #pragma omp parallel
+  {
+    const int ithread = omp_get_thread_num();
+
+    // Compute P_n for each particle in fission bank on each thread
+    // Store to res_private
+    #pragma omp for
+    for (auto i = 0; i < bank_size; i++) {
+      const auto& bank = fission_bank[i];
+      double x_norm = 2.0 * (bank.r.z - min)/(max - min) - 1.0;
+      double res_tmp[nbins] = {0};
+      calc_pn_c(order, x_norm, res_tmp);
+      for (auto j = 0; j < nbins; j++) {
+        res_private[ithread*nbins+j] += res_tmp[j];
+      }
+    }
+
+    // Collapse res_private to res
+    #pragma omp for
+    for(int i=0; i < nbins; i++) {
+      for(int t=0; t < nthreads; t++) {
+        res[i] += res_private[nbins*t + i];
+      }
+    }
+  }
+  delete[] res_private;
+
+  std::vector<double> conv_tally_local;
+  simulation::conv_tally.clear();
+  for(int i = 0; i < nbins; i++) {
+    conv_tally_local.push_back(res[i]);
+    simulation::conv_tally.push_back(0.0);
+  }
+
+#ifdef OPENMC_MPI
+  MPI_Reduce(conv_tally_local.data(), simulation::conv_tally.data(), conv_tally_local.size(),
+            MPI_DOUBLE, MPI_SUM, 0, mpi::intracomm);
+#endif
+}
+
+void convergence_tally_2d()
+{
+  // Convergence tally input data
+  int order = 10;
+  // Assume x,y axes define plane for unit disk
+  double x = 0.0;
+  double y = 0.0;
+  double r = 183.2;
+  int nbins = ((order+1) * (order+2)) / 2;
+
+  // Array storing convergence tally results
+  double res[nbins] = {0};
+  const int nthreads = omp_get_max_threads();
+
+  // Store bank_size, fission_bank on stack since std::vector not threadsafe
+  int bank_size = simulation::fission_bank.size();
+  const auto& fission_bank = simulation::fission_bank;
+
+  // Allocate and initialize res_private to 0.0
+  double *res_private = new double[nbins*nthreads];
+  for(int i=0; i < nbins*nthreads; i++) res_private[i] = 0.;
+
+  #pragma omp parallel
+  {
+    const int ithread = omp_get_thread_num();
+
+    // Compute P_n for each particle in fission bank on each thread
+    // Store to res_private
+    #pragma omp for
+    for (auto i = 0; i < bank_size; i++) {
+      const auto& bank = fission_bank[i];
+      double b_x = bank.r.x - x;
+      double b_y = bank.r.y - y;
+      double b_r = std::sqrt(b_x*b_x + b_y*b_y) / r;
+      double theta = std::atan2(b_y, b_x);
+
+      if (b_r <= 1.0) {
+        // Compute and return the Zernike weights.
+        double res_tmp[nbins] = {0};
+        calc_zn(order, b_r, theta, res_tmp);
+        for (auto j = 0; j < nbins; j++)
+          res_private[ithread*nbins+j] += res_tmp[j];
+      }
+    }
+
+    // Collapse res_private to res
+    #pragma omp for
+    for(int i=0; i < nbins; i++) {
+      for(int t=0; t < nthreads; t++) {
+        res[i] += res_private[nbins*t + i];
+      }
+    }
+  }
+  delete[] res_private;
+
+  std::vector<double> conv_tally_local;
+  simulation::conv_tally.clear();
+  for(int i = 0; i < nbins; i++) {
+    conv_tally_local.push_back(res[i]);
+    simulation::conv_tally.push_back(0.0);
+  }
+
+#ifdef OPENMC_MPI
+  MPI_Reduce(conv_tally_local.data(), simulation::conv_tally.data(), conv_tally_local.size(),
+            MPI_DOUBLE, MPI_SUM, 0, mpi::intracomm);
+#endif
 }
 
 void ufs_count_sites()

@@ -35,13 +35,16 @@ extern "C" {
   int openmc_filter_set_id(int32_t index, int32_t id);
   int openmc_finalize();
   int openmc_find_cell(const double* xyz, int32_t* index, int32_t* instance);
+  int openmc_fission_bank(void** ptr, int64_t* n);
   int openmc_cell_bounding_box(const int32_t index, double* llc, double* urc);
   int openmc_global_bounding_box(double* llc, double* urc);
   int openmc_fission_bank(void** ptr, int64_t* n);
   int openmc_get_cell_index(int32_t id, int32_t* index);
   int openmc_get_filter_index(int32_t id, int32_t* index);
+  int openmc_get_convergence_tally(double** conv_tally, int32_t* n);
   void openmc_get_filter_next_id(int32_t* id);
   int openmc_get_keff(double k_combined[]);
+  int openmc_get_keff_gen(double* keff);
   int openmc_get_material_index(int32_t id, int32_t* index);
   int openmc_get_mesh_index(int32_t id, int32_t* index);
   int openmc_get_nuclide_index(const char name[], int* index);

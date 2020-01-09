@@ -82,6 +82,7 @@ int64_t n_particles {-1};
 int electron_treatment {ELECTRON_TTB};
 std::array<double, 4> energy_cutoff {0.0, 1000.0, 0.0, 0.0};
 int legendre_to_tabular_points {C_NONE};
+int fet_convergence_dim {0};
 int max_order {0};
 int n_log_bins {8000};
 int n_max_batches;
@@ -526,6 +527,15 @@ void read_settings_xml()
 
     // Turn on Shannon entropy calculation
     entropy_on = true;
+  }
+
+  if (check_for_node(root, "fet_convergence")) {
+    auto dimension = get_node_value(root, "fet_convergence");
+    if (dimension == "1") {
+      fet_convergence_dim = 1;
+    } else if (dimension == "2") {
+      fet_convergence_dim = 2;
+    }
   }
 
   // Uniform fission source weighting mesh

@@ -448,6 +448,10 @@ void finalize_generation()
     // Calculate shannon entropy
     if (settings::entropy_on) shannon_entropy();
 
+    // Calculate convergence tally
+    if (settings::fet_convergence_dim == 1) convergence_tally_1d();
+    else if (settings::fet_convergence_dim == 2) convergence_tally_2d();
+
     // Collect results and statistics
     calculate_generation_keff();
     calculate_average_keff();
@@ -568,6 +572,7 @@ void free_memory_simulation()
 {
   simulation::k_generation.clear();
   simulation::entropy.clear();
+  simulation::conv_tally.clear();
 }
 
 } // namespace openmc
