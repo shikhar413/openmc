@@ -40,8 +40,6 @@ ConvergenceTally::ConvergenceTally(pugi::xml_node node)
     n_bins_ = ((radial_order_+1) * (radial_order_+2)) / 2;
   }
 
-  // Set scaling factor
-  set_scaling_factor(1.0 / settings::n_particles);
   // TODO: set n_bins_ properly for dim = 3
 }
 
@@ -87,14 +85,15 @@ ConvergenceTally::compute()
 {
   if (dimension_ == 1) compute_1d();
   else if (dimension_ == 2) compute_2d();
+}
 
+void
+ConvergenceTally::scale()
+{
   // Multiply tally results by scaling factor
+  float sf = 1.0 / simulation::total_weight;
   for ( auto& r : results)
-    r *= scaling_factor();
-
-  // Set scaling factor for next batch
-  float sf = simulation::keff / simulation::total_weight;
-  set_scaling_factor(sf);
+    r *= sf;
 }
 
 void
@@ -188,7 +187,7 @@ ConvergenceTally::compute_2d()
         double res_tmp[n_bins_] = {0};
         calc_zn(radial_order_, b_r, theta, res_tmp);
         for (auto j = 0; j < n_bins_; j++)
-          res_private[ithread*n_bins_+j] += res_tmp[j];
+          res_private[ithread*n_bins_+j] += res_tmp[j] * simulation::keff;
       }
     }
 

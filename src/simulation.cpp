@@ -355,6 +355,10 @@ void finalize_batch()
     simulation::n_realizations = 0;
   }
 
+  // Scale convergence tally after tallies have been accumulated
+  if (simulation::conv_tally)
+    simulation::conv_tally->scale();
+
   if (settings::run_mode == RUN_MODE_EIGENVALUE) {
     // Write batch output
     if (mpi::master && settings::verbosity >= 7) print_batch_keff();

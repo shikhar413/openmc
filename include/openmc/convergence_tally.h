@@ -26,6 +26,9 @@ public:
   //! Calculate FET convergence results
   void compute();
 
+  //! Scale FET convergence results by total source weight
+  void scale();
+
   //----------------------------------------------------------------------------
   // Accessors
 
@@ -52,9 +55,6 @@ public:
   void set_minmax(double min, double max);
 
   int n_bins() const { return n_bins_; }
-
-  float scaling_factor() const { return scaling_factor_; }
-  void set_scaling_factor(double sf) { scaling_factor_ = sf; }
 
   // FET convergence tally results for each bin
   std::vector<double> results;
@@ -101,9 +101,6 @@ protected:
 
   //! Number of bins for expansion
   int n_bins_;
-
-  // Scaling factor used for tally normalization
-  float scaling_factor_;
 };
 
 }  // namespace openmc
