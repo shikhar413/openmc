@@ -575,7 +575,10 @@ void free_memory_simulation()
 {
   simulation::k_generation.clear();
   simulation::entropy.clear();
-  simulation::conv_results.clear();
+  if (simulation::conv_tally) {
+    simulation::conv_tally->results.clear();
+    simulation::conv_tally = nullptr;
+  }
 }
 
 } // namespace openmc

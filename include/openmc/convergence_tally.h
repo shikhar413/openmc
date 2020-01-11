@@ -20,8 +20,6 @@ public:
   // Constructors, destructors
   ConvergenceTally(pugi::xml_node node);
 
-  ~ConvergenceTally() { results_.clear(); }
-
   //----------------------------------------------------------------------------
   // Methods
 
@@ -55,7 +53,8 @@ public:
 
   int n_bins() const { return n_bins_; }
 
-  std::vector<double> results() const { return results_; }
+  // FET convergence tally results for each bin
+  std::vector<double> results;
 
 private:
   //----------------------------------------------------------------------------
@@ -99,9 +98,6 @@ protected:
 
   //! Number of bins for expansion
   int n_bins_;
-
-  // FET convergence tally results for each bin
-  std::vector<double> results_;
 };
 
 }  // namespace openmc

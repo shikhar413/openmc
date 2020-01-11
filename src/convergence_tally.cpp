@@ -132,17 +132,14 @@ ConvergenceTally::compute_1d()
   delete[] res_private;
 
   std::vector<double> results_local;
-  results_.clear();
-  simulation::conv_results.clear();
+  results.clear();
   for(int i = 0; i < n_bins_; i++) {
     results_local.push_back(res[i]);
-    results_.push_back(0.0);
-    simulation::conv_results.push_back(0.0);
+    results.push_back(0.0);
   }
 
 #ifdef OPENMC_MPI
-  //MPI_Reduce(results_local.data(), results_.data(), results_local.size(),
-  MPI_Reduce(results_local.data(), simulation::conv_results.data(), results_local.size(),
+  MPI_Reduce(results_local.data(), results.data(), results_local.size(),
             MPI_DOUBLE, MPI_SUM, 0, mpi::intracomm);
 #endif
 }
@@ -197,17 +194,14 @@ ConvergenceTally::compute_2d()
   delete[] res_private;
 
   std::vector<double> results_local;
-  results_.clear();
-  simulation::conv_results.clear();
+  results.clear();
   for(int i = 0; i < n_bins_; i++) {
     results_local.push_back(res[i]);
-    results_.push_back(0.0);
-    simulation::conv_results.push_back(0.0);
+    results.push_back(0.0);
   }
 
 #ifdef OPENMC_MPI
-  //MPI_Reduce(results_local.data(), results_.data(), results_local.size(),
-  MPI_Reduce(results_local.data(), simulation::conv_results.data(), results_local.size(),
+  MPI_Reduce(results_local.data(), results.data(), results_local.size(),
             MPI_DOUBLE, MPI_SUM, 0, mpi::intracomm);
 #endif
 }
@@ -218,16 +212,13 @@ ConvergenceTally::compute_2d()
 
 extern "C" int openmc_get_convergence_tally(double** tally_data, int32_t* n)
 {
-  //if (simulation::conv_tally->results().size() == 0) {
-  if (simulation::conv_results.size() == 0) {
+  if (simulation::conv_tally->results.size() == 0) {
     set_errmsg("Convergence tally has not been allocated");
     return OPENMC_E_ALLOCATE;
   }
   else {
-    //*tally_data = simulation::conv_tally->results().data();
-    //*n = simulation::conv_tally->results().size();
-    *tally_data = simulation::conv_results.data();
-    *n = simulation::conv_results.size();
+    *tally_data = simulation::conv_tally->results.data();
+    *n = simulation::conv_tally->results.size();
     return 0;
   }
 }
