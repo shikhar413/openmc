@@ -33,7 +33,6 @@
 
 namespace openmc {
 
-
 //==============================================================================
 // Global variables
 //==============================================================================
@@ -535,11 +534,6 @@ int openmc_get_keff(double* k_combined)
     k_combined[1] = std::sqrt(k_combined[1]);
 
   }
-  return 0;
-}
-
-int openmc_get_keff_gen(double* keff) {
-  *keff = simulation::keff;
   return 0;
 }
 

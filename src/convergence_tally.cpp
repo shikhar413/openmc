@@ -9,9 +9,7 @@
 #include "openmc/math_functions.h"
 #include "openmc/message_passing.h"
 #include "openmc/simulation.h"
-
-
-#include "openmc/eigenvalue.h"
+#include "openmc/settings.h"
 
 namespace openmc {
 
@@ -41,6 +39,9 @@ ConvergenceTally::ConvergenceTally(pugi::xml_node node)
     r_ = std::stod(get_node_value(node, "r"));
     n_bins_ = ((radial_order_+1) * (radial_order_+2)) / 2;
   }
+
+  // Set scaling factor
+  set_scaling_factor(1.0 / settings::n_particles);
   // TODO: set n_bins_ properly for dim = 3
 }
 
@@ -217,8 +218,16 @@ extern "C" int openmc_get_convergence_tally(double** tally_data, int32_t* n)
     return OPENMC_E_ALLOCATE;
   }
   else {
+    // Multiply tally results by scaling factor
+    for ( auto& t : simulation::conv_tally->results)
+      t *= simulation::conv_tally->scaling_factor();
+
     *tally_data = simulation::conv_tally->results.data();
     *n = simulation::conv_tally->results.size();
+
+    // Set scaling factor for next batch
+    float sf = simulation::keff / simulation::total_weight;
+    simulation::conv_tally->set_scaling_factor(sf);
     return 0;
   }
 }

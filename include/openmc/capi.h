@@ -44,7 +44,6 @@ extern "C" {
   int openmc_get_convergence_tally(double** conv_tally, int32_t* n);
   void openmc_get_filter_next_id(int32_t* id);
   int openmc_get_keff(double k_combined[]);
-  int openmc_get_keff_gen(double* keff);
   int openmc_get_material_index(int32_t id, int32_t* index);
   int openmc_get_mesh_index(int32_t id, int32_t* index);
   int openmc_get_nuclide_index(const char name[], int* index);

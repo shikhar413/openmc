@@ -63,7 +63,6 @@ void join_bank_from_threads();
 //! \param[out] k_combined Estimate of k-effective and its standard deviation
 //! \return Error status
 extern "C" int openmc_get_keff(double* k_combined);
-extern "C" int openmc_get_keff_gen(double* keff);
 
 //! Sample/redistribute source sites from accumulated fission sites
 void synchronize_bank();
