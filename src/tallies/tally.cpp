@@ -318,7 +318,7 @@ Tally::Tally(pugi::xml_node node)
       }
     } else if (filt_type == "spatiallegendre" || filt_type == "zernike"
       || filt_type == "zernikeradial") {
-      estimator_ = ESTIMATOR_ANALOG;
+      estimator_ = ESTIMATOR_COLLISION;
     }
   }
 

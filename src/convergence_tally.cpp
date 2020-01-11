@@ -87,6 +87,14 @@ ConvergenceTally::compute()
 {
   if (dimension_ == 1) compute_1d();
   else if (dimension_ == 2) compute_2d();
+
+  // Multiply tally results by scaling factor
+  for ( auto& r : results)
+    r *= scaling_factor();
+
+  // Set scaling factor for next batch
+  float sf = simulation::keff / simulation::total_weight;
+  set_scaling_factor(sf);
 }
 
 void
@@ -205,6 +213,7 @@ ConvergenceTally::compute_2d()
   MPI_Reduce(results_local.data(), results.data(), results_local.size(),
             MPI_DOUBLE, MPI_SUM, 0, mpi::intracomm);
 #endif
+
 }
 
 //==============================================================================
@@ -218,16 +227,8 @@ extern "C" int openmc_get_convergence_tally(double** tally_data, int32_t* n)
     return OPENMC_E_ALLOCATE;
   }
   else {
-    // Multiply tally results by scaling factor
-    for ( auto& t : simulation::conv_tally->results)
-      t *= simulation::conv_tally->scaling_factor();
-
     *tally_data = simulation::conv_tally->results.data();
     *n = simulation::conv_tally->results.size();
-
-    // Set scaling factor for next batch
-    float sf = simulation::keff / simulation::total_weight;
-    simulation::conv_tally->set_scaling_factor(sf);
     return 0;
   }
 }
