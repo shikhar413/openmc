@@ -38,9 +38,6 @@ _dll.openmc_find_cell.argtypes = [POINTER(c_double*3), POINTER(c_int32),
                                   POINTER(c_int32)]
 _dll.openmc_find_cell.restype = c_int
 _dll.openmc_find_cell.errcheck = _error_handler
-_dll.openmc_fission_bank.argtypes = [POINTER(POINTER(_Bank)), POINTER(c_int64)]
-_dll.openmc_fission_bank.restype = c_int
-_dll.openmc_fission_bank.errcheck = _error_handler
 _dll.openmc_hard_reset.restype = c_int
 _dll.openmc_hard_reset.errcheck = _error_handler
 _dll.openmc_init.argtypes = [c_int, POINTER(POINTER(c_char)), c_void_p]
@@ -178,23 +175,6 @@ def find_material(xyz):
         return mats
     else:
         return mats[instance.value]
-
-
-def fission_bank():
-    """Return fission bank as NumPy array
-    Returns
-    -------
-    numpy.ndarray
-        Fission sites
-    """
-    # Get pointer to source bank
-    ptr = POINTER(_Bank)()
-    n = c_int64()
-    _dll.openmc_fission_bank(ptr, n)
-
-    # Convert to numpy array with appropriate datatype
-    bank_dtype = np.dtype(_Bank)
-    return as_array(ptr, (n.value,)).view(bank_dtype)
 
 
 def hard_reset():
