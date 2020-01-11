@@ -52,9 +52,6 @@ _dll.openmc_get_convergence_tally.restype = c_int
 _dll.openmc_get_keff.argtypes = [POINTER(c_double*2)]
 _dll.openmc_get_keff.restype = c_int
 _dll.openmc_get_keff.errcheck = _error_handler
-_dll.openmc_get_keff_gen.argtypes = [POINTER(c_double)]
-_dll.openmc_get_keff_gen.restype = c_int
-_dll.openmc_get_keff_gen.errcheck = _error_handler
 _init_linsolver_argtypes = [_array_1d_int, c_int, _array_1d_int, c_int, c_int,
                             c_double, _array_1d_int, _array_1d_int, c_bool]
 _dll.openmc_initialize_linsolver.argtypes = _init_linsolver_argtypes
@@ -105,12 +102,12 @@ def global_bounding_box():
     return llc, urc
 
 
-def convergence_tally(sf):
+def convergence_tally():
     """Return convergence tally in memory."""
     data = POINTER(c_double)()
     shape = c_int32()
     _dll.openmc_get_convergence_tally(data, shape)
-    return as_array(data, (shape.value,))*sf
+    return as_array(data, (shape.value,))
 
 
 def calculate_volumes():
@@ -301,18 +298,6 @@ def keff():
     k = (c_double*2)()
     _dll.openmc_get_keff(k)
     return tuple(k)
-
-
-def keff_gen():
-    """Return the k-eigenvalue at the previous generation.
-    Returns
-    -------
-    tuple
-        Mean k-eigenvalue and standard deviation of the mean
-    """
-    k = c_double()
-    _dll.openmc_get_keff_gen(k)
-    return k.value
 
 
 def master():
