@@ -87,6 +87,8 @@ void write_eigenvalue_hdf5(hid_t group);
 //! \param[in] group HDF5 group
 void read_eigenvalue_hdf5(hid_t group);
 
+void free_memory_entropy();
+
 } // namespace openmc
 
 #endif // OPENMC_EIGENVALUE_H

@@ -44,6 +44,7 @@ void free_memory()
   free_memory_mesh();
   free_memory_tally();
   free_memory_bank();
+  free_memory_entropy();
   if (mpi::master) {
     free_memory_cmfd();
   }

@@ -39,6 +39,7 @@ extern "C" {
   int openmc_global_bounding_box(double* llc, double* urc);
   int openmc_fission_bank(void** ptr, int64_t* n);
   int openmc_get_cell_index(int32_t id, int32_t* index);
+  int openmc_get_entropy_p(double** entropy_p, int32_t* n);
   int openmc_get_filter_index(int32_t id, int32_t* index);
   int openmc_get_convergence_tally(double** conv_tally, int32_t* n);
   void openmc_get_filter_next_id(int32_t* id);
