@@ -1,25 +1,13 @@
 #!/bin/bash
-# submit with sbatch <filename>.slurm
-# commandline arguments may instead by supplied with #SBATCH <flag> <value>
-# commandline arguments override these values
 
-# Number of nodes
 #SBATCH -N {num_nodes}
-# Number of processor core (num_nodes*32=1024, psfc, mit and emiliob nodes have 32 cores per node)
 #SBATCH -n {num_procs}
-# specify how long your job needs. Be HONEST, it affects how long the job may wait for its turn.
 #SBATCH --time=12:00:00
-# which partition or queue the jobs runs in
 #SBATCH -p sched_mit_nse
-
 #SBATCH --mem-per-cpu=4000 #in MB, max is 4000
-#customize the name of the stderr/stdout file. %j is the job number
-#SBATCH -o {filename}-%j.out
-
-#
-
-#load default system modules
-. /etc/profile.d/modules.sh
+#SBATCH --job-name={filename}
+#SBATCH -o %x-%j.out
+#SBATCH -e %x-%j.out
 
 #load modules your job depends on.
 #better here than in your $HOME/.bashrc to make debugging and requirements easier to track.
@@ -34,5 +22,5 @@
 #Note that mpirun knows from SLURM how many processor we have
 #In this case, we use all processes.
 
-mpiexec -n {num_mpi_procs} python3 run_openmc_capi.py {num_omp_threads} {prob_type}
-touch done.out
+scontrol show hostnames $SLURM_JOB_NODELIST | sort | uniq > hostfile
+mpiexec --machinefile hostfile -n {num_mpi_procs} python3 run_openmc_capi.py {num_omp_threads} {prob_type}

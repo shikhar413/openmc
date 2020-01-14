@@ -1,3 +1,8 @@
+# Example directories
+examples/phd_testing/fet-stationarity/1d-homog
+examples/phd_testing/fet-stationarity/2d-beavrs/seed*
+examples/phd_testing/fet-stationarity/3d-exasmr/seed*
+
 # Compiled objects and modules
 *.a
 *.o
