@@ -1,0 +1,13 @@
+<?xml version='1.0' encoding='utf-8'?>
+<tallies>
+  <filter id="1" type="spatiallegendre">
+    <order>10</order>
+    <axis>z</axis>
+    <min>-200.0</min>
+    <max>200.0</max>
+  </filter>
+  <tally id="1">
+    <filters>1</filters>
+    <scores>nu-fission</scores>
+  </tally>
+</tallies>

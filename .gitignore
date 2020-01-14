@@ -2,6 +2,8 @@
 examples/phd_testing/fet-stationarity/1d-homog
 examples/phd_testing/fet-stationarity/2d-beavrs/seed*
 examples/phd_testing/fet-stationarity/3d-exasmr/seed*
+examples/phd_testing/fb-fet-timing/1d-*
+examples/phd_testing/fb-fet-timing/2d-*
 
 # Compiled objects and modules
 *.a

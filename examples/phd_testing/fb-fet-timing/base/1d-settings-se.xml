@@ -1,0 +1,22 @@
+<?xml version='1.0' encoding='utf-8'?>
+<settings>
+  <run_mode>eigenvalue</run_mode>
+  <particles>10000</particles>
+  <batches>200</batches>
+  <inactive>199</inactive>
+  <source strength="1.0">
+    <space type="cartesian">
+      <x parameters="-5.0 5.0" type="uniform" />
+      <y parameters="-5.0 5.0" type="uniform" />
+      <z interpolation="histogram" type="tabular">
+        <parameters>-200.0 196.0 200.0 0.00025 0.225 0.225</parameters>
+      </z>
+    </space>
+  </source>
+  <mesh id="1">
+    <dimension>1 1 400</dimension>
+    <lower_left>-5.0 -5.0 -200.0</lower_left>
+    <upper_right>5.0 5.0 200.0</upper_right>
+  </mesh>
+  <entropy_mesh>1</entropy_mesh>
+</settings>
