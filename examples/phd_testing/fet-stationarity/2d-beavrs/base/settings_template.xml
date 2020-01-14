@@ -1,0 +1,23 @@
+<?xml version='1.0' encoding='utf-8'?>
+<settings>
+  <run_mode>eigenvalue</run_mode>
+  <particles>{num_particles}</particles>
+  <batches>{num_batches}</batches>
+  <inactive>{num_inactive}</inactive>
+  <source strength="1.0">
+    <space type="fission">
+      <parameters>{source_loc}</parameters>
+    </space>
+  </source>
+  <output>
+    <tallies>false</tallies>
+    <summary>false</summary>
+  </output>
+  <seed>{seed}</seed>
+  <mesh id="1" type="regular">
+    <dimension>{SE_dim}</dimension>
+    <lower_left>-182.78094000000002 -182.78094000000002 220.0</lower_left>
+    <upper_right>182.78094000000002 182.78094000000002 230.0</upper_right>
+  </mesh>
+  <entropy_mesh>1</entropy_mesh>
+</settings>

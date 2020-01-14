@@ -1,0 +1,13 @@
+<?xml version='1.0' encoding='utf-8'?>
+<tallies>
+  <filter id="2" type="zernike">
+    <order>{tally_order}</order>
+    <x>0.0</x>
+    <y>0.0</y>
+    <r>183.2</r>
+  </filter>
+  <tally id="2">
+    <filters>2</filters>
+    <scores>nu-fission</scores>
+  </tally>
+</tallies>

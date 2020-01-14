@@ -1,0 +1,1664 @@
+<geometry>
+    <cell fill="1" id="10000" name="RCCA bank A axial 4: RCCA AIC" region="-10000 10001" universe="92" />
+    <cell fill="7" id="10001" name="(RCCA bank A) wrapped by ((Empty Guide Tube) wrapped by (Grids axial universe)) radial outer: (Empty Guide Tube) wrapped by (Grids axial universe)" region="10002" universe="74" />
+    <cell fill="9" id="10002" name="Grid sleeve axial universe axial 15: Intermediate grid sleeve pincell" region="-10003 10004" universe="36" />
+    <cell id="10003" material="10001" name="SW Shield Panel" region="10005 -10006 -10007 10008 -10009 10010" universe="200" />
+    <cell fill="16" id="10004" name="Fuel 1.6% enr no instr RCCA SB universe radial 0: Fuel 1.6% enr no instr RCCA SB" region="10011 -10012 10013 -10014" universe="120" />
+    <cell id="10005" material="10014" name="RCCA AIC radial outer: water" region="10002" universe="1" />
+    <cell fill="28" id="10006" name="Fuel 3.1% enr no instr 6N universe radial 0: Fuel 3.1% enr no instr 6N" region="10011 -10012 10013 -10014" universe="114" />
+    <cell fill="6" id="10007" name="Empty Guide Tube axial 3: Empty GT above the dashpot" region="-10015 10016" universe="2" />
+    <!--cell fill="34" id="10008" name="(Instrument tube axial stack) wrapped by ((Empty Guide Tube in Center Position) wrapped by (Grids axial universe)) radial 0: Instrument tube axial stack" region="-10017" universe="39" /-->
+    <cell fill="36" id="10009" name="Fuel 1.6% enr no instr RCCA D universe radial outer: Grid sleeve axial universe box S" region="-10011" universe="88" />
+    <cell fill="36" id="10010" name="Fuel 2.4% enr instr RCCA D universe radial outer: Grid sleeve axial universe box W" region="-10013 10011 -10012" universe="91" />
+    <cell id="10011" material="10014" name="Grids axial universe axial 12: water" region="-10018 10019" universe="3" />
+    <cell fill="35" id="10012" name="Grid sleeve axial universe axial 3: Top/Bottom grid sleeve pincell" region="-10020 10021" universe="36" />
+    <cell fill="37" id="10013" name="(RCCA bank C) wrapped by ((Empty Guide Tube) wrapped by (Grids axial universe)) radial 0: RCCA bank C" region="-10002" universe="122" />
+    <cell fill="36" id="10014" name="Fuel 3.1% enr instr 6E universe radial outer: Grid sleeve axial universe box N" region="10012" universe="105" />
+    <cell fill="11" id="10015" name="RCCA bank SE axial 7: RCCA plenum" region="-10022 10023" universe="69" />
+    <cell fill="36" id="10016" name="Fuel 1.6% enr instr RCCA C universe radial outer: Grid sleeve axial universe box N" region="10012" universe="111" />
+    <cell fill="36" id="10017" name="Fuel 3.1% enr instr 6S universe radial outer: Grid sleeve axial universe box E" region="10014 10011 -10012" universe="125" />
+    <cell fill="20" id="10018" name="RCCA bank B axial 3: RCCA rod cap" region="-10024 10025" universe="97" />
+    <cell id="10019" material="10014" name="Grid sleeve axial universe axial 0: water" region="-10026" universe="36" />
+    <cell id="10020" material="10014" name="Grid sleeve axial universe axial 14: water" region="-10004 10027" universe="36" />
+    <cell id="10021" material="10014" name="E Shield Water" region="10005 -10006 10028 10007 -10009 10010" universe="200" />
+    <cell id="10022" material="10014" name="North Baffle Outer Water" region="-10029" universe="38" />
+    <cell fill="1" id="10023" name="RCCA bank B axial 4: RCCA AIC" region="-10030 10024" universe="97" />
+    <cell id="10024" material="10007" name="RPV" region="-10031 10032 -10009 10010" universe="200" />
+    <cell fill="38" id="10025" name="Baffle East radial 0: Baffle North" region="-10033" rotation="0.0 0.0 270.0" universe="100" />
+    <cell fill="36" id="10026" name="Fuel 2.4% enr no instr 12 universe radial outer: Grid sleeve axial universe box W" region="-10013 10011 -10012" universe="141" />
+    <cell id="10027" material="10014" name="RCCA bank SB axial 0: water" region="-10026" universe="17" />
+    <cell id="10028" material="10014" name="Grid sleeve axial universe axial top: water" region="10034" universe="36" />
+    <cell fill="13" id="10029" name="RCCA bank D axial 5: RCCA B4C" region="-10035 10036" universe="48" />
+    <cell id="10030" material="10006" name="Fuel rod active region - 2.4% enr radial 2: zirc" region="10037 -10038" universe="43" />
+    <cell fill="40" id="10031" name="Fuel 1.6% enr instr RCCA SB universe radial 0: Fuel 1.6% enr instr RCCA SB" region="10011 -10012 10013 -10014" universe="76" />
+    <cell fill="3" id="10032" name="(Empty Guide Tube) wrapped by (Grids axial universe) radial outer: Grids axial universe" region="10039" universe="7" />
+    <cell id="10033" material="10014" name="Grids axial universe axial 0: water" region="-10026" universe="3" />
+    <cell id="10034" material="10014" name="Intermediate grid pincell radial 0: water" region="10040 -10041 10042 -10043" universe="8" />
+    <cell fill="41" id="10035" name="(RCCA bank SD) wrapped by ((Empty Guide Tube) wrapped by (Grids axial universe)) radial 0: RCCA bank SD" region="-10002" universe="129" />
+    <cell id="10036" material="10015" name="RCCA bank A axial 1: water_spn" region="-10044 10026" universe="92" />
+    <cell fill="44" id="10037" name="Fuel 2.4% enr no instr 12 universe radial 0: Fuel 2.4% enr no instr 12" region="10011 -10012 10013 -10014" universe="141" />
+    <cell id="10038" material="10014" name="Grids axial universe axial 16: water" region="-10045 10003" universe="3" />
+    <cell id="10039" material="10014" name="Baffle South East Corner radial outer: water" region="10033" universe="143" />
+    <cell id="10040" material="10015" name="RCCA bank SE axial 1: water_spn" region="-10044 10026" universe="69" />
+    <cell fill="13" id="10041" name="RCCA bank C axial 5: RCCA B4C" region="-10046 10047" universe="37" />
+    <cell fill="36" id="10042" name="Fuel 1.6% enr no instr RCCA A universe radial outer: Grid sleeve axial universe box W" region="-10013 10011 -10012" universe="110" />
+    <cell id="10043" material="10014" name="Baffle East radial outer: water" region="10033" universe="100" />
+    <!--cell id="10044" material="10015" name="Instrument tube axial stack axial 3: water_spn" region="-10034 10048" universe="34" /-->
+    <cell id="10045" material="10015" name="RCCA bank C axial 1: water_spn" region="-10044 10026" universe="37" />
+    <cell id="10046" material="10001" name="BPRA rod active poison radial 1: SS304" region="10049 -10050" universe="30" />
+    <!--cell id="10047" material="10006" name="Instrument tube thimble radial 1: zirc" region="10051 -10017" universe="33" /-->
+    <cell id="10048" material="10014" name="RCCA bank A axial 2: water" region="-10052 10044" universe="92" />
+    <cell fill="12" id="10049" name="RCCA bank C axial 6: RCCA Spacer" region="-10053 10046" universe="37" />
+    <cell fill="47" id="10050" name="Fuel 2.4% enr no instr RCCA D universe radial 0: Fuel 2.4% enr no instr RCCA D" region="10011 -10012 10013 -10014" universe="127" />
+    <cell fill="36" id="10051" name="Fuel 3.1% enr no instr 15NW universe radial outer: Grid sleeve axial universe box S" region="-10011" universe="68" />
+    <cell fill="21" id="10052" name="(Empty Guide Tube in Center Position) wrapped by (Grids axial universe) radial 0: Empty Guide Tube in Center Position" region="-10039" universe="18" />
+    <cell id="10053" material="10015" name="Grid sleeve axial universe axial 19: water_spn" region="-10034 10048" universe="36" />
+    <cell id="10054" material="10000" name="BPRA rod active poison radial 0: air" region="-10049" universe="30" />
+    <cell fill="49" id="10055" name="Baffle South East Corner radial 0: Baffle North West Corner" region="-10033" rotation="0.0 0.0 180.0" universe="143" />
+    <cell fill="36" id="10056" name="Fuel 3.1% enr no instr 20 universe radial outer: Grid sleeve axial universe box S" region="-10011" universe="130" />
+    <cell id="10057" material="10014" name="Grids axial universe axial 4: water" region="-10054 10020" universe="3" />
+    <cell fill="48" id="10058" name="(RCCA bank D) wrapped by ((Empty Guide Tube) wrapped by (Grids axial universe)) radial 0: RCCA bank D" region="-10002" universe="46" />
+    <cell fill="13" id="10059" name="RCCA bank SB axial 5: RCCA B4C" region="-10055 10056" universe="17" />
+    <cell fill="36" id="10060" name="Fuel 1.6% enr no instr RCCA SB universe radial outer: Grid sleeve axial universe box S" region="-10011" universe="120" />
+    <cell fill="50" id="10061" name="Fuel 2.4% enr instr RCCA D universe radial 0: Fuel 2.4% enr instr RCCA D" region="10011 -10012 10013 -10014" universe="91" />
+    <cell fill="36" id="10062" name="Fuel 2.4% enr no instr 12 universe radial outer: Grid sleeve axial universe box N" region="10012" universe="141" />
+    <cell id="10063" material="10014" name="Grids axial universe axial top: water" region="10034" universe="3" />
+    <cell fill="36" id="10064" name="Fuel 1.6% enr no instr RCCA SE universe radial outer: Grid sleeve axial universe box S" region="-10011" universe="118" />
+    <cell fill="36" id="10065" name="Fuel 3.1% enr no instr 6E universe radial outer: Grid sleeve axial universe box W" region="-10013 10011 -10012" universe="84" />
+    <cell id="10066" material="10001" name="Corner Baffle Steel W" region="-10029 10057 -10058" universe="49" />
+    <cell id="10067" material="10015" name="RCCA bank D axial 1: water_spn" region="-10044 10026" universe="48" />
+    <cell id="10068" material="10014" name="Water between barrel and shield" region="10059 -10005 -10009 10010" universe="200" />
+    <cell fill="36" id="10069" name="Fuel 1.6% enr instr RCCA B universe radial outer: Grid sleeve axial universe box S" region="-10011" universe="103" />
+    <cell fill="36" id="10070" name="Fuel 3.1% enr no instr 15SE universe radial outer: Grid sleeve axial universe box S" region="-10011" universe="80" />
+    <cell id="10071" material="10014" name="Grid sleeve axial universe axial 12: water" region="-10018 10019" universe="36" />
+    <cell id="10072" material="10014" name="Tip Baffle Outer Water SE" region="-10029 10058" universe="123" />
+    <cell id="10073" material="10015" name="RCCA bank SD axial 1: water_spn" region="-10044 10026" universe="41" />
+    <cell fill="36" id="10074" name="Fuel 1.6% enr no instr RCCA A universe radial outer: Grid sleeve axial universe box S" region="-10011" universe="110" />
+    <cell fill="36" id="10075" name="Fuel 3.1% enr instr RCCA SA universe radial outer: Grid sleeve axial universe box N" region="10012" universe="63" />
+    <cell id="10076" material="10014" name="RCCA bank SE axial 0: water" region="-10026" universe="69" />
+    <cell fill="25" id="10077" name="(BPRA rod) wrapped by ((Empty Guide Tube) wrapped by (Grids axial universe)) radial 0: BPRA rod" region="-10060" universe="27" />
+    <cell id="10078" material="10014" name="RCCA bank D axial 2: water" region="-10061 10044" universe="48" />
+    <cell id="10079" material="10014" name="Empty GT below the dashpot radial outer: water" region="10062" universe="5" />
+    <cell fill="36" id="10080" name="Fuel 3.1% enr no instr 15NW universe radial outer: Grid sleeve axial universe box N" region="10012" universe="68" />
+    <cell fill="36" id="10081" name="Fuel 2.4% enr instr RCCA D universe radial outer: Grid sleeve axial universe box E" region="10014 10011 -10012" universe="91" />
+    <cell id="10082" material="10015" name="Empty Guide Tube axial 4: water_spn" region="-10034 10015" universe="2" />
+    <cell id="10083" material="10014" name="Grid sleeve axial universe axial 8: water" region="-10063 10064" universe="36" />
+    <cell fill="36" id="10084" name="Fuel 1.6% enr instr RCCA SD universe radial outer: Grid sleeve axial universe box S" region="-10011" universe="71" />
+    <cell id="10085" material="10001" name="Tip Baffle Steel W" region="-10065 10029 -10057" universe="123" />
+    <cell id="10086" material="10000" name="RCCA B4C radial 1: air" region="10066 -10067" universe="13" />
+    <cell fill="20" id="10087" name="RCCA bank A axial top: RCCA rod cap" region="10068" universe="92" />
+    <cell fill="4" id="10088" name="Grids axial universe axial 3: Top/Bottom grid pincell" region="-10020 10021" universe="3" />
+    <cell id="10089" material="10014" name="Top/Bottom grid sleeve pincell radial outer: water box S" region="-10069" universe="35" />
+    <cell fill="36" id="10090" name="Fuel 2.4% enr no instr RCCA D universe radial outer: Grid sleeve axial universe box W" region="-10013 10011 -10012" universe="127" />
+    <cell id="10091" material="10014" name="Fuel rod - 2.4% enr axial top: water" region="10034" universe="45" />
+    <cell fill="20" id="10092" name="RCCA bank C axial 3: RCCA rod cap" region="-10070 10071" universe="37" />
+    <cell id="10093" material="10015" name="Grids axial universe axial 19: water_spn" region="-10034 10048" universe="3" />
+    <cell fill="36" id="10094" name="Fuel 3.1% enr no instr 15NW universe radial outer: Grid sleeve axial universe box E" region="10014 10011 -10012" universe="68" />
+    <cell fill="3" id="10095" name="(Fuel rod - 3.1% enr) wrapped by (Grids axial universe) radial outer: Grids axial universe" region="10038" universe="31" />
+    <cell fill="11" id="10096" name="RCCA bank D axial 7: RCCA plenum" region="-10072 10073" universe="48" />
+    <cell id="10097" material="10014" name="Empty GT above the dashpot radial 0: water" region="-10074" universe="6" />
+    <cell fill="52" id="10098" name="Fuel 3.1% enr instr RCCA SA universe radial 0: Fuel 3.1% enr instr RCCA SA" region="10011 -10012 10013 -10014" universe="63" />
+    <cell id="10099" material="10014" name="Corner Baffle Water Gap W" region="-10065 -10057" universe="49" />
+    <cell fill="36" id="10100" name="Fuel 2.4% enr no instr 16 universe radial outer: Grid sleeve axial universe box S" region="-10011" universe="136" />
+    <cell fill="36" id="10101" name="Fuel 1.6% enr instr RCCA SB universe radial outer: Grid sleeve axial universe box W" region="-10013 10011 -10012" universe="76" />
+    <cell fill="36" id="10102" name="Fuel 1.6% enr instr RCCA C universe radial outer: Grid sleeve axial universe box E" region="10014 10011 -10012" universe="111" />
+    <cell fill="36" id="10103" name="Fuel 1.6% enr no instr RCCA SC universe radial outer: Grid sleeve axial universe box E" region="10014 10011 -10012" universe="93" />
+    <cell fill="14" id="10104" name="Fuel rod - 3.1% enr axial 2: Fuel rod lower/upper fitting" region="-10075 10076" universe="26" />
+    <cell id="10105" material="10014" name="RCCA bank D axial 0: water" region="-10026" universe="48" />
+    <cell id="10106" material="10006" name="RCCA Spacer radial 2: zirc" region="10067 -10002" universe="12" />
+    <cell fill="36" id="10107" name="Fuel 3.1% enr no instr 20 universe radial outer: Grid sleeve axial universe box E" region="10014 10011 -10012" universe="130" />
+    <cell fill="36" id="10108" name="Fuel 1.6% enr instr RCCA SD universe radial outer: Grid sleeve axial universe box E" region="10014 10011 -10012" universe="71" />
+    <cell id="10109" material="10000" name="BPRA rod plenum radial 0: air" region="-10049" universe="29" />
+    <cell fill="36" id="10110" name="Fuel 3.1% enr no instr no BAs universe radial outer: Grid sleeve axial universe box S" region="-10011" universe="145" />
+    <cell id="10111" material="10006" name="Intermediate grid pincell radial outer: zirc box N" region="10041" universe="8" />
+    <cell id="10112" material="10014" name="Fuel rod - 3.1% enr axial top: water" region="10034" universe="26" />
+    <cell fill="4" id="10113" name="Grids axial universe axial 17: Top/Bottom grid pincell" region="-10077 10045" universe="3" />
+    <cell fill="36" id="10114" name="Fuel 3.1% enr no instr 6N universe radial outer: Grid sleeve axial universe box S" region="-10011" universe="114" />
+    <cell fill="8" id="10115" name="Grids axial universe axial 9: Intermediate grid pincell" region="-10078 10063" universe="3" />
+    
+    <cell id="10116" material="10014" name="RCCA B4C radial 0: b4c_rod" region="-10066" universe="13" />
+    
+    <cell id="10117" material="10006" name="Intermediate grid sleeve pincell radial 0: zirc" region="10069 -10079 10080 -10081" universe="9" />
+    <cell fill="36" id="10118" name="Fuel 1.6% enr no instr RCCA SC universe radial outer: Grid sleeve axial universe box S" region="-10011" universe="93" />
+    <cell id="10119" material="10005" name="Top/Bottom grid pincell radial outer: inconel box E" region="10082 10083 -10084" universe="4" />
+    <cell fill="54" id="10120" name="Fuel 3.1% enr no instr 15SW universe radial 0: Fuel 3.1% enr no instr 15SW" region="10011 -10012 10013 -10014" universe="113" />
+    <cell fill="36" id="10121" name="Fuel 1.6% enr instr RCCA SD universe radial outer: Grid sleeve axial universe box W" region="-10013 10011 -10012" universe="71" />
+    <cell fill="36" id="10122" name="Fuel 1.6% enr no instr RCCA SC universe radial outer: Grid sleeve axial universe box N" region="10012" universe="93" />
+    <cell fill="36" id="10123" name="Fuel 3.1% enr no instr no BAs universe radial outer: Grid sleeve axial universe box N" region="10012" universe="145" />
+    <cell id="10124" material="10005" name="Top/Bottom grid pincell radial outer: inconel box N" region="10084" universe="4" />
+    <cell fill="36" id="10125" name="Fuel 2.4% enr instr 16 universe radial outer: Grid sleeve axial universe box N" region="10012" universe="135" />
+    <cell fill="20" id="10126" name="RCCA bank SA axial 3: RCCA rod cap" region="-10085 10086" universe="51" />
+    <cell fill="6" id="10127" name="Empty Guide Tube in Center Position axial 2: Empty GT above the dashpot" region="-10015 10087" universe="21" />
+    <cell id="10128" material="10015" name="Empty Guide Tube in Center Position axial 3: water_spn" region="-10034 10015" universe="21" />
+    <cell id="10129" material="10014" name="Tip Baffle Outer Water W" region="-10029 -10058" universe="123" />
+    <cell id="10130" material="10006" name="Empty GT above the dashpot radial 1: zirc" region="10074 -10039" universe="6" />
+    <cell fill="11" id="10131" name="RCCA bank SA axial 7: RCCA plenum" region="-10088 10089" universe="51" />
+    <cell fill="36" id="10132" name="Fuel 1.6% enr no instr no BAs universe radial outer: Grid sleeve axial universe box W" region="-10013 10011 -10012" universe="67" />
+    <cell fill="55" id="10133" name="Fuel 2.4% enr instr 12 universe radial 0: Fuel 2.4% enr instr 12" region="10011 -10012 10013 -10014" universe="108" />
+    <cell fill="8" id="10134" name="Grids axial universe axial 5: Intermediate grid pincell" region="-10090 10054" universe="3" />
+    <cell fill="36" id="10135" name="Fuel 3.1% enr no instr 6W universe radial outer: Grid sleeve axial universe box E" region="10014 10011 -10012" universe="149" />
+    <cell id="10136" material="10014" name="Tip Baffle Water Gap" region="10065 -10057" universe="123" />
+    <cell id="10137" material="10014" name="Baffle North East Tip radial outer: water" region="10033" universe="138" />
+    <cell fill="36" id="10138" name="Fuel 3.1% enr no instr 6S universe radial outer: Grid sleeve axial universe box S" region="-10011" universe="150" />
+    <cell fill="57" id="10139" name="Fuel 1.6% enr instr RCCA SC universe radial 0: Fuel 1.6% enr instr RCCA SC" region="10011 -10012 10013 -10014" universe="73" />
+    <cell id="10140" material="10014" name="RCCA bank SC axial 2: water" region="-10091 10044" universe="58" />
+    <cell id="10141" material="10016" name="Fuel rod - 3.1% enr axial 7: ss_spn" region="-10034 10048" universe="26" />
+    <cell fill="8" id="10142" name="Grids axial universe axial 11: Intermediate grid pincell" region="-10019 10092" universe="3" />
+    <cell id="10143" material="10014" name="RCCA B4C radial outer: water" region="10002" universe="13" />
+    <cell id="10144" material="10005" name="Top/Bottom grid pincell radial outer: inconel box W" region="-10093 10083 -10084" universe="4" />
+    <cell fill="36" id="10145" name="Fuel 3.1% enr no instr 6S universe radial outer: Grid sleeve axial universe box N" region="10012" universe="150" />
+    <cell id="10146" material="10016" name="Fuel rod - 2.4% enr axial 1: ss_spn" region="-10076 10026" universe="45" />
+    <cell id="10147" material="10001" name="NE Shield Panel" region="10005 -10006 10007 -10008 -10009 10010" universe="200" />
+    <cell fill="7" id="10148" name="(RCCA bank SE) wrapped by ((Empty Guide Tube) wrapped by (Grids axial universe)) radial outer: (Empty Guide Tube) wrapped by (Grids axial universe" region="10002" universe="121" />
+    <cell id="10149" material="10016" name="Fuel rod - 1.6% enr axial 1: ss_spn" region="-10076 10026" universe="23" />
+    <cell id="10150" material="10014" name="Fuel rod - 2.4% enr axial 6: water" region="-10048 10094" universe="45" />
+    <cell id="10151" material="10006" name="Fuel rod active region - 1.6% enr radial 2: zirc" region="10037 -10038" universe="15" />
+    <cell fill="36" id="10152" name="Fuel 1.6% enr no instr no BAs universe radial outer: Grid sleeve axial universe box E" region="10014 10011 -10012" universe="67" />
+    <cell fill="36" id="10153" name="Fuel 3.1% enr no instr 20 universe radial outer: Grid sleeve axial universe box N" region="10012" universe="130" />
+    <cell fill="36" id="10154" name="Fuel 1.6% enr instr no BAs universe radial outer: Grid sleeve axial universe box N" region="10012" universe="115" />
+    <cell fill="36" id="10155" name="Fuel 1.6% enr no instr no BAs universe radial outer: Grid sleeve axial universe box S" region="-10011" universe="67" />
+    <cell fill="36" id="10156" name="Fuel 3.1% enr instr RCCA SA universe radial outer: Grid sleeve axial universe box W" region="-10013 10011 -10012" universe="63" />
+    <cell id="10157" material="10014" name="RCCA bank SE axial 2: water" region="-10095 10044" universe="69" />
+    <cell id="10158" material="10014" name="Grid sleeve axial universe axial 18: water" region="-10048 10077" universe="36" />
+    <cell id="10159" material="10014" name="Corner Baffle Water Gap N" region="10065" universe="49" />
+    <cell fill="36" id="10160" name="Fuel 1.6% enr no instr RCCA C universe radial outer: Grid sleeve axial universe box N" region="10012" universe="124" />
+    <cell fill="29" id="10161" name="BPRA rod axial 5: BPRA rod plenum" region="-10096 10097" universe="25" />
+    <cell fill="36" id="10162" name="Fuel 3.1% enr instr 20 universe radial outer: Grid sleeve axial universe box E" region="10014 10011 -10012" universe="140" />
+    <cell fill="36" id="10163" name="Fuel 1.6% enr no instr RCCA SE universe radial outer: Grid sleeve axial universe box E" region="10014 10011 -10012" universe="118" />
+    <cell fill="36" id="10164" name="Fuel 1.6% enr instr RCCA SC universe radial outer: Grid sleeve axial universe box S" region="-10011" universe="73" />
+    <cell fill="49" id="10165" name="Baffle North East Corner radial 0: Baffle North West Corner" region="-10033" rotation="0.0 0.0 270.0" universe="137" />
+    <cell id="10166" material="10014" name="Fuel rod active region - 3.1% enr radial outer: water" region="10038" universe="32" />
+    <cell fill="36" id="10167" name="Fuel 1.6% enr instr RCCA SE universe radial outer: Grid sleeve axial universe box S" region="-10011" universe="81" />
+    <cell id="10168" material="10006" name="Fuel rod plenum radial 2: zirc" region="10037 -10038" universe="10" />
+    <cell id="10169" material="10014" name="BPRA rod axial top: water" region="10098" universe="25" />
+    <cell id="10170" material="10016" name="Fuel rod - 3.1% enr axial 1: ss_spn" region="-10076 10026" universe="26" />
+    <cell fill="36" id="10171" name="Fuel 3.1% enr instr 6S universe radial outer: Grid sleeve axial universe box N" region="10012" universe="125" />
+    <cell id="10172" material="10014" name="Grids axial universe axial 10: water" region="-10092 10078" universe="3" />
+    <cell fill="1" id="10173" name="RCCA bank SA axial 4: RCCA AIC" region="-10099 10085" universe="51" />
+    <cell id="10174" material="10014" name="Baffle West radial outer: water" region="10033" universe="70" />
+    <cell fill="36" id="10175" name="Fuel 3.1% enr instr 15NE universe radial outer: Grid sleeve axial universe box E" region="10014 10011 -10012" universe="104" />
+    <cell id="10176" material="10014" name="Fuel rod - 1.6% enr axial top: water" region="10034" universe="23" />
+    <cell fill="13" id="10177" name="RCCA bank A axial 5: RCCA B4C" region="-10100 10000" universe="92" />
+    <cell fill="9" id="10178" name="Grid sleeve axial universe axial 11: Intermediate grid sleeve pincell" region="-10019 10092" universe="36" />
+    <cell id="10179" material="10014" name="RCCA bank SA axial 0: water" region="-10026" universe="51" />
+    <cell id="10180" material="10001" name="NW Shield Panel" region="10005 -10006 10028 -10101 -10009 10010" universe="200" />
+    <cell fill="20" id="10181" name="RCCA bank SB axial 3: RCCA rod cap" region="-10102 10103" universe="17" />
+    <cell id="10182" material="10014" name="BPRA rod active poison radial outer: water" region="10060" universe="30" />
+    <cell fill="1" id="10183" name="RCCA bank SD axial 4: RCCA AIC" region="-10104 10105" universe="41" />
+    <!--cell fill="18" id="10184" name="(Instrument tube axial stack) wrapped by ((Empty Guide Tube in Center Position) wrapped by (Grids axial universe)) radial outer: (Empty Guide Tube in Center Position) wrapped by (Grids axial universe" region="10017" universe="39" /-->
+    <cell fill="59" id="10185" name="Fuel 3.1% enr no instr RCCA SA universe radial 0: Fuel 3.1% enr no instr RCCA SA" region="10011 -10012 10013 -10014" universe="82" />
+    <cell id="10186" material="10006" name="Intermediate grid pincell radial outer: zirc box E" region="10043 10040 -10041" universe="8" />
+    <cell fill="36" id="10187" name="Fuel 3.1% enr no instr 6E universe radial outer: Grid sleeve axial universe box S" region="-10011" universe="84" />
+    <cell id="10188" material="10014" name="W Shield Water" region="10005 -10006 -10028 -10007 -10009 10010" universe="200" />
+    <cell id="10189" material="10014" name="N Shield Water" region="10005 -10006 10101 -10008 -10009 10010" universe="200" />
+    <cell fill="36" id="10190" name="Fuel 3.1% enr instr 6E universe radial outer: Grid sleeve axial universe box W" region="-10013 10011 -10012" universe="105" />
+    <cell fill="36" id="10191" name="Fuel 2.4% enr instr RCCA D universe radial outer: Grid sleeve axial universe box S" region="-10011" universe="91" />
+    <cell fill="36" id="10192" name="Fuel 1.6% enr no instr RCCA B universe radial outer: Grid sleeve axial universe box N" region="10012" universe="78" />
+    <cell id="10193" material="10014" name="RCCA bank SD axial 2: water" region="-10106 10044" universe="41" />
+    <cell fill="7" id="10194" name="(RCCA bank B) wrapped by ((Empty Guide Tube) wrapped by (Grids axial universe)) radial outer: (Empty Guide Tube) wrapped by (Grids axial universe" region="10002" universe="75" />
+    <cell fill="36" id="10195" name="Fuel 1.6% enr no instr RCCA D universe radial outer: Grid sleeve axial universe box N" region="10012" universe="88" />
+    <cell id="10196" material="10015" name="Empty Guide Tube in Center Position axial 1: water_spn" region="-10087 10026" universe="21" />
+    
+    <cell fill="200" id="10545" name="Bounding box" region="10143 -10144 10145 -10146 -10009 10010" universe="0" />
+    <cell fill="61" id="10197" name="Core lattice" region="-10107 -10009 10010" universe="200" />
+    <cell id="10537" material="10000" name="Outer air" region="10031" universe="200" />
+        
+    <cell fill="36" id="10198" name="Fuel 1.6% enr no instr RCCA D universe radial outer: Grid sleeve axial universe box E" region="10014 10011 -10012" universe="88" />
+    <cell fill="36" id="10199" name="Fuel 1.6% enr instr RCCA SB universe radial outer: Grid sleeve axial universe box E" region="10014 10011 -10012" universe="76" />
+    <cell fill="36" id="10200" name="Fuel 1.6% enr no instr RCCA C universe radial outer: Grid sleeve axial universe box S" region="-10011" universe="124" />
+    <cell fill="36" id="10201" name="Fuel 1.6% enr no instr RCCA C universe radial outer: Grid sleeve axial universe box E" region="10014 10011 -10012" universe="124" />
+    <cell fill="101" id="10202" name="Fuel 3.1% enr no instr 15SE universe radial 0: Fuel 3.1% enr no instr 15SE" region="10011 -10012 10013 -10014" universe="80" />
+    <cell id="10203" material="10014" name="Fuel rod active region - 2.4% enr radial outer: water" region="10038" universe="43" />
+    <cell fill="36" id="10204" name="Fuel 2.4% enr instr 12 universe radial outer: Grid sleeve axial universe box N" region="10012" universe="108" />
+    <cell fill="102" id="10205" name="Fuel 3.1% enr no instr 16 universe radial 0: Fuel 3.1% enr no instr 16" region="10011 -10012 10013 -10014" universe="98" />
+    <cell id="10206" material="10015" name="Empty Guide Tube axial 1: water_spn" region="-10087 10026" universe="2" />
+    <cell fill="72" id="10207" name="Fuel 1.6% enr no instr RCCA SD universe radial 0: Fuel 1.6% enr no instr RCCA SD" region="10011 -10012 10013 -10014" universe="89" />
+    <cell fill="20" id="10208" name="RCCA bank SE axial top: RCCA rod cap" region="10022" universe="69" />
+    <cell id="10209" material="10015" name="RCCA bank SC axial 1: water_spn" region="-10044 10026" universe="58" />
+    <cell id="10210" material="10002" name="RCCA AIC radial 0: aic_rod" region="-10108" universe="1" />
+    <cell id="10211" material="10014" name="North Baffle Water Gap" region="10065" universe="38" />
+    <cell fill="9" id="10212" name="Grid sleeve axial universe axial 9: Intermediate grid sleeve pincell" region="-10078 10063" universe="36" />
+    <cell fill="36" id="10213" name="Fuel 1.6% enr instr RCCA B universe radial outer: Grid sleeve axial universe box E" region="10014 10011 -10012" universe="103" />
+    <cell fill="17" id="10214" name="(RCCA bank SB) wrapped by ((Empty Guide Tube) wrapped by (Grids axial universe)) radial 0: RCCA bank SB" region="-10002" universe="22" />
+    <cell fill="36" id="10215" name="Fuel 3.1% enr instr 6E universe radial outer: Grid sleeve axial universe box E" region="10014 10011 -10012" universe="105" />
+    <cell fill="36" id="10216" name="Fuel 1.6% enr instr RCCA C universe radial outer: Grid sleeve axial universe box S" region="-10011" universe="111" />
+    <cell fill="86" id="10217" name="Fuel 3.1% enr instr no BAs universe radial 0: Fuel 3.1% enr instr no BAs" region="10011 -10012 10013 -10014" universe="87" />
+    <cell fill="38" id="10218" name="Baffle South radial 0: Baffle North" region="-10033" rotation="0.0 0.0 180.0" universe="85" />
+    <cell id="10219" material="10010" name="Fuel rod active region - 3.1% enr radial 0: fuel 3.1%" region="-10109" universe="32" />
+    <cell fill="12" id="10220" name="RCCA bank SB axial 6: RCCA Spacer" region="-10110 10055" universe="17" />
+    <cell fill="83" id="10221" name="Fuel 1.6% enr no instr RCCA B universe radial 0: Fuel 1.6% enr no instr RCCA B" region="10011 -10012 10013 -10014" universe="78" />
+    <cell fill="9" id="10222" name="Grid sleeve axial universe axial 13: Intermediate grid sleeve pincell" region="-10027 10018" universe="36" />
+    <cell fill="13" id="10223" name="RCCA bank SD axial 5: RCCA B4C" region="-10111 10104" universe="41" />
+    <cell id="10224" material="10004" name="Fuel rod active region - 2.4% enr radial 1: helium" region="10109 -10037" universe="43" />
+    <cell id="10225" material="10004" name="Fuel rod plenum radial 1: helium" region="10112 -10037" universe="10" />
+    <cell fill="36" id="10226" name="Fuel 2.4% enr no instr 12 universe radial outer: Grid sleeve axial universe box S" region="-10011" universe="141" />
+    <cell fill="12" id="10227" name="RCCA bank SA axial 6: RCCA Spacer" region="-10089 10113" universe="51" />
+    <cell fill="30" id="10228" name="BPRA rod axial 4: BPRA rod active poison" region="-10097 10114" universe="25" />
+    <cell fill="36" id="10229" name="Fuel 3.1% enr instr 20 universe radial outer: Grid sleeve axial universe box S" region="-10011" universe="140" />
+    <cell fill="36" id="10230" name="Fuel 3.1% enr no instr 6W universe radial outer: Grid sleeve axial universe box S" region="-10011" universe="149" />
+    <cell fill="20" id="10231" name="RCCA bank SC axial 3: RCCA rod cap" region="-10115 10091" universe="58" />
+    <cell fill="36" id="10232" name="Fuel 2.4% enr instr 16 universe radial outer: Grid sleeve axial universe box W" region="-10013 10011 -10012" universe="135" />
+    <cell id="10233" material="10016" name="Fuel rod - 2.4% enr axial 7: ss_spn" region="-10034 10048" universe="45" />
+    <cell id="10234" material="10014" name="BPRA rod lower/upper fitting radial outer: water" region="10060" universe="24" />
+    <cell id="10235" material="10015" name="RCCA bank B axial 1: water_spn" region="-10044 10026" universe="97" />
+    <cell id="10236" material="10005" name="RCCA plenum radial 0: inconel" region="-10116" universe="11" />
+    <cell id="10237" material="10014" name="Baffle North East Corner radial outer: water" region="10033" universe="137" />
+    <cell fill="10" id="10238" name="Fuel rod - 3.1% enr axial 4: Fuel rod plenum" region="-10117 10118" universe="26" />
+    <cell fill="128" id="10239" name="Fuel 1.6% enr instr RCCA C universe radial 0: Fuel 1.6% enr instr RCCA C" region="10011 -10012 10013 -10014" universe="111" />
+    <cell id="10240" material="10014" name="Top/Bottom grid sleeve pincell radial outer: water box E" region="10081 10069 -10079" universe="35" />
+    <cell id="10241" material="10015" name="Grids axial universe axial 1: water_spn" region="-10044 10026" universe="3" />
+    <cell fill="23" id="10242" name="(Fuel rod - 1.6% enr) wrapped by (Grids axial universe) radial 0: Fuel rod - 1.6% enr" region="-10038" universe="19" />
+    <cell id="10243" material="10014" name="Fuel rod active region - 1.6% enr radial outer: water" region="10038" universe="15" />
+    <cell fill="3" id="10244" name="(Empty Guide Tube in Center Position) wrapped by (Grids axial universe) radial outer: Grids axial universe" region="10039" universe="18" />
+    <cell id="10245" material="10014" name="RCCA bank C axial 2: water" region="-10071 10044" universe="37" />
+    <cell fill="79" id="10246" name="Fuel 1.6% enr instr RCCA SD universe radial 0: Fuel 1.6% enr instr RCCA SD" region="10011 -10012 10013 -10014" universe="71" />
+    <cell fill="20" id="10247" name="RCCA bank A axial 3: RCCA rod cap" region="-10001 10052" universe="92" />
+    <cell fill="36" id="10248" name="Fuel 1.6% enr instr RCCA SE universe radial outer: Grid sleeve axial universe box W" region="-10013 10011 -10012" universe="81" />
+    <cell id="10249" material="10014" name="Empty Guide Tube axial 0: water" region="-10026" universe="2" />
+    <cell fill="36" id="10250" name="Fuel 3.1% enr no instr 16 universe radial outer: Grid sleeve axial universe box N" region="10012" universe="98" />
+    <cell fill="14" id="10251" name="Fuel rod - 1.6% enr axial 2: Fuel rod lower/upper fitting" region="-10075 10076" universe="23" />
+    <cell fill="36" id="10252" name="Fuel 2.4% enr no instr 16 universe radial outer: Grid sleeve axial universe box E" region="10014 10011 -10012" universe="136" />
+    <cell id="10253" material="10001" name="RCCA Spacer radial 0: SS304" region="-10119" universe="12" />
+    <cell id="10254" material="10014" name="Empty GT below the dashpot radial 0: water" region="-10120" universe="5" />
+    <cell fill="1" id="10255" name="RCCA bank C axial 4: RCCA AIC" region="-10047 10070" universe="37" />
+    <cell fill="112" id="10256" name="Fuel 3.1% enr no instr 6S universe radial 0: Fuel 3.1% enr no instr 6S" region="10011 -10012 10013 -10014" universe="150" />
+    <cell fill="36" id="10257" name="Fuel 3.1% enr no instr 15SW universe radial outer: Grid sleeve axial universe box S" region="-10011" universe="113" />
+    <cell fill="36" id="10258" name="Fuel 2.4% enr instr 12 universe radial outer: Grid sleeve axial universe box W" region="-10013 10011 -10012" universe="108" />
+    <cell fill="36" id="10259" name="Fuel 3.1% enr no instr 16 universe radial outer: Grid sleeve axial universe box S" region="-10011" universe="98" />
+    <cell fill="36" id="10260" name="Fuel 3.1% enr no instr 6W universe radial outer: Grid sleeve axial universe box W" region="-10013 10011 -10012" universe="149" />
+    <cell fill="36" id="10261" name="Fuel 3.1% enr no instr 6N universe radial outer: Grid sleeve axial universe box W" region="-10013 10011 -10012" universe="114" />
+    <cell fill="2" id="10262" name="(Empty Guide Tube) wrapped by (Grids axial universe) radial 0: Empty Guide Tube" region="-10039" universe="7" />
+    <cell fill="14" id="10263" name="Fuel rod - 1.6% enr axial 5: Fuel rod lower/upper fitting" region="-10094 10117" universe="23" />
+    <cell fill="20" id="10264" name="RCCA bank SB axial top: RCCA rod cap" region="10121" universe="17" />
+    <cell fill="36" id="10265" name="Fuel 1.6% enr instr RCCA SE universe radial outer: Grid sleeve axial universe box E" region="10014 10011 -10012" universe="81" />
+    <cell fill="20" id="10266" name="RCCA bank SD axial 3: RCCA rod cap" region="-10105 10106" universe="41" />
+    <cell fill="36" id="10267" name="Fuel 3.1% enr instr 6N universe radial outer: Grid sleeve axial universe box E" region="10014 10011 -10012" universe="139" />
+    <cell fill="1" id="10268" name="RCCA bank SB axial 4: RCCA AIC" region="-10056 10102" universe="17" />
+    <cell id="10269" material="10014" name="Intermediate grid sleeve pincell radial outer: water box N" region="10079" universe="9" />
+    <cell id="10270" material="10001" name="Core Barrel" region="-10059 10107 -10009 10010" universe="200" />
+    <cell fill="1" id="10271" name="RCCA bank SE axial 4: RCCA AIC" region="-10122 10123" universe="69" />
+    <cell id="10272" material="10014" name="Grids axial universe axial 14: water" region="-10004 10027" universe="3" />
+    <cell fill="99" id="10273" name="Fuel 3.1% enr instr 15NE universe radial 0: Fuel 3.1% enr instr 15NE" region="10011 -10012 10013 -10014" universe="104" />
+    <cell fill="97" id="10274" name="(RCCA bank B) wrapped by ((Empty Guide Tube) wrapped by (Grids axial universe)) radial 0: RCCA bank B" region="-10002" universe="75" />
+    <cell id="10275" material="10014" name="RCCA bank SD axial 0: water" region="-10026" universe="41" />
+    <cell fill="12" id="10276" name="RCCA bank SC axial 6: RCCA Spacer" region="-10124 10125" universe="58" />
+    <cell id="10277" material="10014" name="Fuel rod - 3.1% enr axial 6: water" region="-10048 10094" universe="26" />
+    <cell fill="36" id="10278" name="Fuel 2.4% enr instr 12 universe radial outer: Grid sleeve axial universe box S" region="-10011" universe="108" />
+    <cell id="10279" material="10014" name="RCCA plenum radial outer: water" region="10002" universe="11" />
+    <cell fill="36" id="10280" name="Fuel 1.6% enr instr RCCA SE universe radial outer: Grid sleeve axial universe box N" region="10012" universe="81" />
+    <cell fill="36" id="10281" name="Fuel 3.1% enr instr 6N universe radial outer: Grid sleeve axial universe box W" region="-10013 10011 -10012" universe="139" />
+    <cell fill="36" id="10282" name="Fuel 2.4% enr no instr RCCA D universe radial outer: Grid sleeve axial universe box E" region="10014 10011 -10012" universe="127" />
+    <cell fill="131" id="10283" name="Fuel 1.6% enr instr no BAs universe radial 0: Fuel 1.6% enr instr no BAs" region="10011 -10012 10013 -10014" universe="115" />
+    <cell fill="13" id="10284" name="RCCA bank SE axial 5: RCCA B4C" region="-10126 10122" universe="69" />
+    <cell id="10285" material="10014" name="Grid sleeve axial universe axial 16: water" region="-10045 10003" universe="36" />
+    <cell fill="36" id="10286" name="Fuel 1.6% enr instr no BAs universe radial outer: Grid sleeve axial universe box S" region="-10011" universe="115" />
+    <cell fill="36" id="10287" name="Fuel 2.4% enr no instr RCCA D universe radial outer: Grid sleeve axial universe box S" region="-10011" universe="127" />
+    <cell fill="36" id="10288" name="Fuel 1.6% enr instr no BAs universe radial outer: Grid sleeve axial universe box E" region="10014 10011 -10012" universe="115" />
+    <cell fill="8" id="10289" name="Grids axial universe axial 13: Intermediate grid pincell" region="-10027 10018" universe="3" />
+    <cell id="10290" material="10005" name="Fuel rod plenum radial 0: inconel" region="-10112" universe="10" />
+    <cell fill="36" id="10291" name="Fuel 3.1% enr instr no BAs universe radial outer: Grid sleeve axial universe box W" region="-10013 10011 -10012" universe="87" />
+    <cell fill="11" id="10292" name="RCCA bank SB axial 7: RCCA plenum" region="-10121 10110" universe="17" />
+    <cell fill="5" id="10293" name="Empty Guide Tube axial 2: Empty GT below the dashpot" region="-10016 10087" universe="2" />
+    <cell id="10294" material="10014" name="Water" region="" universe="90" />
+    <cell fill="49" id="10295" name="Baffle South West Corner radial 0: Baffle North West Corner" region="-10033" rotation="0.0 0.0 90.0" universe="148" />
+    <!--cell id="10296" material="10015" name="Instrument tube axial stack axial 1: water_spn" region="-10076 10026" universe="34" /-->
+    <cell id="10297" material="10014" name="RCCA rod cap radial outer: water" region="10002" universe="20" />
+    <cell id="10298" material="10014" name="RCCA bank C axial 0: water" region="-10026" universe="37" />
+    <cell fill="36" id="10299" name="Fuel 3.1% enr no instr 15SE universe radial outer: Grid sleeve axial universe box N" region="10012" universe="80" />
+    <cell fill="11" id="10300" name="RCCA bank SD axial 7: RCCA plenum" region="-10127 10128" universe="41" />
+    <cell id="10301" material="10001" name="BPRA rod active poison radial 5: SS304" region="10129 -10060" universe="30" />
+    <cell id="10302" material="10006" name="RCCA plenum radial 2: zirc" region="10067 -10002" universe="11" />
+    <cell fill="36" id="10303" name="Fuel 1.6% enr instr RCCA A universe radial outer: Grid sleeve axial universe box N" region="10012" universe="94" />
+    <cell fill="24" id="10304" name="BPRA rod axial 6: BPRA rod lower/upper fitting" region="-10098 10096" universe="25" />
+    <cell id="10305" material="10014" name="Grids axial universe axial 18: water" region="-10048 10077" universe="3" />
+    <cell fill="123" id="10306" name="Baffle North East Tip radial 0: Baffle North West Tip" region="-10033" rotation="0.0 0.0 270.0" universe="138" />
+    <cell fill="36" id="10307" name="Fuel 3.1% enr no instr RCCA SA universe radial outer: Grid sleeve axial universe box W" region="-10013 10011 -10012" universe="82" />
+    <cell id="10308" material="10014" name="Baffle South radial outer: water" region="10033" universe="85" />
+    <cell id="10309" material="10014" name="Corner Baffle Outer Water" region="-10029 10058" universe="49" />
+    <!--cell id="10310" material="10014" name="Instrument tube thimble radial outer: water" region="10017" universe="33" /-->
+    <cell id="10311" material="10014" name="RCCA bank A axial 0: water" region="-10026" universe="92" />
+    <cell fill="36" id="10312" name="Fuel 3.1% enr instr 20 universe radial outer: Grid sleeve axial universe box N" region="10012" universe="140" />
+    <cell id="10313" material="10014" name="Fuel rod - 3.1% enr axial 0: water" region="-10026" universe="26" />
+    <cell id="10314" material="10014" name="Grid sleeve axial universe axial 6: water" region="-10130 10090" universe="36" />
+    <cell fill="7" id="10315" name="(RCCA bank C) wrapped by ((Empty Guide Tube) wrapped by (Grids axial universe)) radial outer: (Empty Guide Tube) wrapped by (Grids axial universe" region="10002" universe="122" />
+    <cell fill="36" id="10316" name="Fuel 1.6% enr no instr RCCA SD universe radial outer: Grid sleeve axial universe box N" region="10012" universe="89" />
+    <cell id="10317" material="10000" name="RCCA plenum radial 1: air" region="10116 -10067" universe="11" />
+    <cell id="10318" material="10015" name="RCCA bank SB axial 1: water_spn" region="-10044 10026" universe="17" />
+    <cell fill="36" id="10319" name="Fuel 3.1% enr no instr 15NW universe radial outer: Grid sleeve axial universe box W" region="-10013 10011 -10012" universe="68" />
+    <cell fill="36" id="10320" name="Fuel 3.1% enr no instr no BAs universe radial outer: Grid sleeve axial universe box W" region="-10013 10011 -10012" universe="145" />
+    <cell id="10321" material="10014" name="Empty GT above the dashpot radial outer: water" region="10039" universe="6" />
+    <cell id="10322" material="10014" name="RCCA bank B axial 2: water" region="-10025 10044" universe="97" />
+    <cell fill="36" id="10323" name="Fuel 1.6% enr instr RCCA A universe radial outer: Grid sleeve axial universe box S" region="-10011" universe="94" />
+    <cell fill="123" id="10324" name="Baffle South West Tip radial 0: Baffle North West Tip" region="-10033" rotation="0.0 0.0 90.0" universe="126" />
+    <!--cell id="10325" material="10000" name="Instrument tube thimble radial 0: air" region="-10051" universe="33" /-->
+    <cell fill="36" id="10326" name="Fuel 1.6% enr no instr RCCA D universe radial outer: Grid sleeve axial universe box W" region="-10013 10011 -10012" universe="88" />
+    <cell fill="13" id="10327" name="RCCA bank B axial 5: RCCA B4C" region="-10131 10030" universe="97" />
+    <cell fill="36" id="10328" name="Fuel 1.6% enr instr RCCA C universe radial outer: Grid sleeve axial universe box W" region="-10013 10011 -10012" universe="111" />
+    <!--cell id="10329" material="10014" name="Instrument tube axial stack axial 0: water" region="-10026" universe="34" /-->
+    <cell fill="20" id="10330" name="RCCA bank SC axial top: RCCA rod cap" region="10132" universe="58" />
+    <cell fill="12" id="10331" name="RCCA bank A axial 6: RCCA Spacer" region="-10133 10100" universe="92" />
+    <cell fill="36" id="10332" name="Fuel 3.1% enr no instr RCCA SA universe radial outer: Grid sleeve axial universe box N" region="10012" universe="82" />
+    <cell fill="36" id="10333" name="Fuel 3.1% enr instr RCCA SA universe radial outer: Grid sleeve axial universe box S" region="-10011" universe="63" />
+    <cell id="10334" material="10014" name="Grids axial universe axial 2: water" region="-10021 10044" universe="3" />
+    <cell id="10335" material="10001" name="Corner Baffle Steel N" region="-10065 10029 10057" universe="49" />
+    <cell fill="36" id="10336" name="Fuel 1.6% enr instr RCCA SD universe radial outer: Grid sleeve axial universe box N" region="10012" universe="71" />
+    <cell id="10337" material="10014" name="Grid sleeve axial universe axial 4: water" region="-10054 10020" universe="36" />
+    <cell fill="36" id="10338" name="Fuel 2.4% enr no instr 16 universe radial outer: Grid sleeve axial universe box N" region="10012" universe="136" />
+    <cell fill="36" id="10339" name="Fuel 1.6% enr instr RCCA SC universe radial outer: Grid sleeve axial universe box E" region="10014 10011 -10012" universe="73" />
+    <cell id="10340" material="10015" name="RCCA bank SA axial 1: water_spn" region="-10044 10026" universe="51" />
+    <cell id="10341" material="10014" name="Empty Guide Tube axial top: water" region="10034" universe="2" />
+    <cell fill="36" id="10342" name="Fuel 2.4% enr instr 16 universe radial outer: Grid sleeve axial universe box E" region="10014 10011 -10012" universe="135" />
+    <cell fill="64" id="10343" name="Fuel 3.1% enr instr 6S universe radial 0: Fuel 3.1% enr instr 6S" region="10011 -10012 10013 -10014" universe="125" />
+    <cell fill="9" id="10344" name="Grid sleeve axial universe axial 5: Intermediate grid sleeve pincell" region="-10090 10054" universe="36" />
+    <cell fill="36" id="10345" name="Fuel 2.4% enr instr 16 universe radial outer: Grid sleeve axial universe box S" region="-10011" universe="135" />
+    <cell fill="1" id="10346" name="RCCA bank D axial 4: RCCA AIC" region="-10036 10134" universe="48" />
+    <cell fill="36" id="10347" name="Fuel 3.1% enr no instr RCCA SA universe radial outer: Grid sleeve axial universe box S" region="-10011" universe="82" />
+    <cell fill="36" id="10348" name="Fuel 1.6% enr no instr RCCA A universe radial outer: Grid sleeve axial universe box N" region="10012" universe="110" />
+    <cell id="10349" material="10014" name="Baffle South West Tip radial outer: water" region="10033" universe="126" />
+    <cell id="10350" material="10014" name="Baffle South East Tip radial outer: water" region="10033" universe="117" />
+    <cell fill="11" id="10351" name="RCCA bank B axial 7: RCCA plenum" region="-10135 10136" universe="97" />
+    <cell id="10352" material="10014" name="RCCA bank SC axial 0: water" region="-10026" universe="58" />
+    <cell fill="7" id="10353" name="(RCCA bank SB) wrapped by ((Empty Guide Tube) wrapped by (Grids axial universe)) radial outer: (Empty Guide Tube) wrapped by (Grids axial universe" region="10002" universe="22" />
+    <cell id="10354" material="10014" name="Downcomer" region="-10137 10006 -10009 10010" universe="200" />
+    <cell fill="36" id="10355" name="Fuel 3.1% enr no instr 6N universe radial outer: Grid sleeve axial universe box E" region="10014 10011 -10012" universe="114" />
+    <cell fill="8" id="10356" name="Grids axial universe axial 15: Intermediate grid pincell" region="-10003 10004" universe="3" />
+    <cell id="10357" material="10006" name="Empty GT below the dashpot radial 1: zirc" region="10120 -10062" universe="5" />
+    <cell id="10358" material="10014" name="Grids axial universe axial 8: water" region="-10063 10064" universe="3" />
+    <cell fill="36" id="10359" name="Fuel 3.1% enr instr 15NE universe radial outer: Grid sleeve axial universe box W" region="-10013 10011 -10012" universe="104" />
+    <cell id="10360" material="10008" name="Fuel rod active region - 1.6% enr radial 0: fuel 1.6%" region="-10109" universe="15" />
+    <cell fill="36" id="10361" name="Fuel 3.1% enr no instr 15SW universe radial outer: Grid sleeve axial universe box N" region="10012" universe="113" />
+    <cell fill="36" id="10362" name="Fuel 2.4% enr no instr RCCA D universe radial outer: Grid sleeve axial universe box N" region="10012" universe="127" />
+    <cell id="10363" material="10001" name="RPV Liner" region="-10032 10137 -10009 10010" universe="200" />
+    <cell fill="36" id="10364" name="Fuel 3.1% enr no instr 6E universe radial outer: Grid sleeve axial universe box N" region="10012" universe="84" />
+    <cell id="10365" material="10014" name="Top/Bottom grid sleeve pincell radial outer: water box W" region="-10080 10069 -10079" universe="35" />
+    <cell fill="45" id="10366" name="(Fuel rod - 2.4% enr) wrapped by (Grids axial universe) radial 0: Fuel rod - 2.4% enr" region="-10038" universe="42" />
+    <cell fill="51" id="10367" name="(RCCA bank SA) wrapped by ((Empty Guide Tube) wrapped by (Grids axial universe)) radial 0: RCCA bank SA" region="-10002" universe="53" />
+    <cell id="10368" material="10001" name="BPRA rod plenum radial 1: SS304" region="10049 -10050" universe="29" />
+    <cell fill="36" id="10369" name="Fuel 3.1% enr no instr 6E universe radial outer: Grid sleeve axial universe box E" region="10014 10011 -10012" universe="84" />
+    <cell fill="36" id="10370" name="Fuel 1.6% enr no instr RCCA SE universe radial outer: Grid sleeve axial universe box N" region="10012" universe="118" />
+    <cell fill="36" id="10371" name="Fuel 1.6% enr no instr RCCA B universe radial outer: Grid sleeve axial universe box E" region="10014 10011 -10012" universe="78" />
+    <cell fill="32" id="10372" name="Fuel rod - 3.1% enr axial 3: Fuel rod active region - 3.1% enr" region="-10118 10075" universe="26" />
+    <cell fill="36" id="10373" name="Fuel 3.1% enr instr no BAs universe radial outer: Grid sleeve axial universe box E" region="10014 10011 -10012" universe="87" />
+    <cell fill="36" id="10374" name="Fuel 3.1% enr no instr 6S universe radial outer: Grid sleeve axial universe box W" region="-10013 10011 -10012" universe="150" />
+    <cell fill="36" id="10375" name="Fuel 3.1% enr instr 6E universe radial outer: Grid sleeve axial universe box S" region="-10011" universe="105" />
+    <cell fill="36" id="10376" name="Fuel 3.1% enr no instr 6W universe radial outer: Grid sleeve axial universe box N" region="10012" universe="149" />
+    <cell fill="36" id="10377" name="Fuel 2.4% enr instr RCCA D universe radial outer: Grid sleeve axial universe box N" region="10012" universe="91" />
+    <cell fill="36" id="10378" name="Fuel 1.6% enr instr RCCA A universe radial outer: Grid sleeve axial universe box E" region="10014 10011 -10012" universe="94" />
+    <cell id="10379" material="10014" name="Intermediate grid sleeve pincell radial outer: water box E" region="10081 10069 -10079" universe="9" />
+    <cell fill="36" id="10380" name="Fuel 1.6% enr no instr no BAs universe radial outer: Grid sleeve axial universe box N" region="10012" universe="67" />
+    <cell id="10381" material="10000" name="BPRA rod plenum radial 2: air" region="10050 -10129" universe="29" />
+    <cell fill="3" id="10382" name="(Fuel rod - 1.6% enr) wrapped by (Grids axial universe) radial outer: Grids axial universe" region="10038" universe="19" />
+    <cell fill="36" id="10383" name="Fuel 3.1% enr instr no BAs universe radial outer: Grid sleeve axial universe box N" region="10012" universe="87" />
+    <cell id="10384" material="10014" name="Fuel rod plenum radial outer: water" region="10038" universe="10" />
+    <cell fill="36" id="10385" name="Fuel 1.6% enr instr no BAs universe radial outer: Grid sleeve axial universe box W" region="-10013 10011 -10012" universe="115" />
+    <cell fill="36" id="10386" name="Fuel 1.6% enr instr RCCA B universe radial outer: Grid sleeve axial universe box W" region="-10013 10011 -10012" universe="103" />
+    <cell fill="12" id="10387" name="RCCA bank D axial 6: RCCA Spacer" region="-10073 10035" universe="48" />
+    <cell id="10388" material="10000" name="RCCA Spacer radial 1: air" region="10119 -10067" universe="12" />
+    <cell id="10389" material="10014" name="S Shield Water" region="10005 -10006 10008 -10101 -10009 10010" universe="200" />
+    <cell fill="36" id="10390" name="Fuel 3.1% enr no instr 15SW universe radial outer: Grid sleeve axial universe box E" region="10014 10011 -10012" universe="113" />
+    <cell fill="36" id="10391" name="Fuel 3.1% enr instr RCCA SA universe radial outer: Grid sleeve axial universe box E" region="10014 10011 -10012" universe="63" />
+    <cell fill="36" id="10392" name="Fuel 1.6% enr instr RCCA SC universe radial outer: Grid sleeve axial universe box N" region="10012" universe="73" />
+    <cell id="10393" material="10001" name="RCCA rod cap radial 0: SS304" region="-10002" universe="20" />
+    <cell fill="132" id="10394" name="Fuel 3.1% enr instr 20 universe radial 0: Fuel 3.1% enr instr 20" region="10011 -10012 10013 -10014" universe="140" />
+    <cell id="10395" material="10001" name="BPRA rod lower/upper fitting radial 0: SS304" region="-10060" universe="24" />
+    <cell fill="36" id="10396" name="Fuel 1.6% enr no instr RCCA B universe radial outer: Grid sleeve axial universe box W" region="-10013 10011 -10012" universe="78" />
+    <cell id="10397" material="10009" name="Fuel rod active region - 2.4% enr radial 0: fuel 2.4%" region="-10109" universe="43" />
+    <cell fill="106" id="10398" name="Fuel 1.6% enr instr RCCA B universe radial 0: Fuel 1.6% enr instr RCCA B" region="10011 -10012 10013 -10014" universe="103" />
+    <cell fill="123" id="10399" name="Baffle South East Tip radial 0: Baffle North West Tip" region="-10033" rotation="0.0 0.0 180.0" universe="117" />
+    <cell id="10400" material="10006" name="RCCA AIC radial 2: zirc" region="10067 -10002" universe="1" />
+    <cell fill="36" id="10401" name="Fuel 1.6% enr instr RCCA SB universe radial outer: Grid sleeve axial universe box S" region="-10011" universe="76" />
+    <cell fill="36" id="10402" name="Fuel 1.6% enr no instr RCCA A universe radial outer: Grid sleeve axial universe box E" region="10014 10011 -10012" universe="110" />
+    <cell fill="7" id="10403" name="(RCCA bank SA) wrapped by ((Empty Guide Tube) wrapped by (Grids axial universe)) radial outer: (Empty Guide Tube) wrapped by (Grids axial universe" region="10002" universe="53" />
+    <cell fill="36" id="10404" name="Fuel 3.1% enr no instr 15SW universe radial outer: Grid sleeve axial universe box W" region="-10013 10011 -10012" universe="113" />
+    <cell fill="36" id="10405" name="Fuel 1.6% enr no instr RCCA SE universe radial outer: Grid sleeve axial universe box W" region="-10013 10011 -10012" universe="118" />
+    <cell fill="20" id="10406" name="RCCA bank C axial top: RCCA rod cap" region="10138" universe="37" />
+    <cell id="10407" material="10014" name="RCCA bank SA axial 2: water" region="-10086 10044" universe="51" />
+    <cell fill="36" id="10408" name="Fuel 1.6% enr no instr RCCA SB universe radial outer: Grid sleeve axial universe box W" region="-10013 10011 -10012" universe="120" />
+    <cell id="10409" material="10004" name="Fuel rod active region - 1.6% enr radial 1: helium" region="10109 -10037" universe="15" />
+    <cell id="10410" material="10014" name="BPRA rod plenum radial outer: water" region="10060" universe="29" />
+    <cell id="10411" material="10004" name="Fuel rod active region - 3.1% enr radial 1: helium" region="10109 -10037" universe="32" />
+    <cell fill="15" id="10412" name="Fuel rod - 1.6% enr axial 3: Fuel rod active region - 1.6% enr" region="-10118 10075" universe="23" />
+    <cell fill="9" id="10413" name="Grid sleeve axial universe axial 7: Intermediate grid sleeve pincell" region="-10064 10130" universe="36" />
+    <cell fill="116" id="10414" name="Fuel 2.4% enr instr 16 universe radial 0: Fuel 2.4% enr instr 16" region="10011 -10012 10013 -10014" universe="135" />
+    <cell fill="36" id="10415" name="Fuel 3.1% enr no instr RCCA SA universe radial outer: Grid sleeve axial universe box E" region="10014 10011 -10012" universe="82" />
+    <cell fill="36" id="10416" name="Fuel 1.6% enr instr RCCA B universe radial outer: Grid sleeve axial universe box N" region="10012" universe="103" />
+    <cell id="10417" material="10014" name="Grids axial universe axial 6: water" region="-10130 10090" universe="3" />
+    <cell id="10418" material="10014" name="RCCA bank B axial 0: water" region="-10026" universe="97" />
+    <cell fill="36" id="10419" name="Fuel 1.6% enr no instr RCCA SB universe radial outer: Grid sleeve axial universe box N" region="10012" universe="120" />
+    <cell fill="133" id="10420" name="Fuel 1.6% enr no instr RCCA SC universe radial 0: Fuel 1.6% enr no instr RCCA SC" region="10011 -10012 10013 -10014" universe="93" />
+    <cell fill="77" id="10421" name="Fuel 2.4% enr no instr 16 universe radial 0: Fuel 2.4% enr no instr 16" region="10011 -10012 10013 -10014" universe="136" />
+    <cell id="10422" material="10014" name="Fuel rod - 2.4% enr axial 0: water" region="-10026" universe="45" />
+    <cell fill="12" id="10423" name="RCCA bank SD axial 6: RCCA Spacer" region="-10128 10111" universe="41" />
+    <cell fill="69" id="10424" name="(RCCA bank SE) wrapped by ((Empty Guide Tube) wrapped by (Grids axial universe)) radial 0: RCCA bank SE" region="-10002" universe="121" />
+    <cell id="10425" material="10014" name="Grid sleeve axial universe axial 2: water" region="-10021 10044" universe="36" />
+    <cell fill="20" id="10426" name="RCCA bank D axial 3: RCCA rod cap" region="-10134 10061" universe="48" />
+    <cell id="10427" material="10006" name="Intermediate grid pincell radial outer: zirc box S" region="-10040" universe="8" />
+    <cell id="10428" material="10014" name="Fuel rod lower/upper fitting radial outer: water" region="10038" universe="14" />
+    <cell fill="20" id="10429" name="RCCA bank D axial top: RCCA rod cap" region="10072" universe="48" />
+    <cell id="10430" material="10015" name="BPRA rod axial 1: water_spn" region="-10044 10026" universe="25" />
+    <cell id="10431" material="10006" name="Fuel rod active region - 3.1% enr radial 2: zirc" region="10037 -10038" universe="32" />
+    <cell fill="146" id="10432" name="Fuel 3.1% enr instr 6E universe radial 0: Fuel 3.1% enr instr 6E" region="10011 -10012 10013 -10014" universe="105" />
+    <cell id="10433" material="10014" name="Intermediate grid sleeve pincell radial outer: water box S" region="-10069" universe="9" />
+    <cell fill="1" id="10434" name="RCCA bank SC axial 4: RCCA AIC" region="-10139 10115" universe="58" />
+    <cell fill="12" id="10435" name="RCCA bank B axial 6: RCCA Spacer" region="-10136 10131" universe="97" />
+    <cell fill="36" id="10436" name="Fuel 3.1% enr no instr no BAs universe radial outer: Grid sleeve axial universe box E" region="10014 10011 -10012" universe="145" />
+    <!--cell id="10437" material="10014" name="Instrument tube axial stack axial top: water" region="10034" universe="34" /-->
+    <cell fill="36" id="10438" name="Fuel 3.1% enr instr 6S universe radial outer: Grid sleeve axial universe box S" region="-10011" universe="125" />
+    <cell fill="36" id="10439" name="Fuel 3.1% enr no instr 16 universe radial outer: Grid sleeve axial universe box E" region="10014 10011 -10012" universe="98" />
+    <cell fill="24" id="10440" name="BPRA rod axial 3: BPRA rod lower/upper fitting" region="-10114 10140" universe="25" />
+    <cell fill="65" id="10441" name="Fuel 3.1% enr instr 6N universe radial 0: Fuel 3.1% enr instr 6N" region="10011 -10012 10013 -10014" universe="139" />
+    <cell fill="14" id="10442" name="Fuel rod - 3.1% enr axial 5: Fuel rod lower/upper fitting" region="-10094 10117" universe="26" />
+    <cell fill="3" id="10443" name="(Fuel rod - 2.4% enr) wrapped by (Grids axial universe) radial outer: Grids axial universe" region="10038" universe="42" />
+    <cell fill="11" id="10444" name="RCCA bank C axial 7: RCCA plenum" region="-10138 10053" universe="37" />
+    <cell fill="60" id="10445" name="Fuel 1.6% enr no instr RCCA D universe radial 0: Fuel 1.6% enr no instr RCCA D" region="10011 -10012 10013 -10014" universe="88" />
+    <cell fill="36" id="10446" name="Fuel 3.1% enr no instr 15SE universe radial outer: Grid sleeve axial universe box E" region="10014 10011 -10012" universe="80" />
+    <cell id="10447" material="10014" name="Top/Bottom grid pincell radial 0: water" region="10083 -10084 10093 -10082" universe="4" />
+    <cell id="10448" material="10014" name="Top/Bottom grid sleeve pincell radial outer: water box N" region="10079" universe="35" />
+    <cell id="10449" material="10015" name="Grid sleeve axial universe axial 1: water_spn" region="-10044 10026" universe="36" />
+    <cell fill="10" id="10450" name="Fuel rod - 2.4% enr axial 4: Fuel rod plenum" region="-10117 10118" universe="45" />
+    <cell fill="20" id="10451" name="RCCA bank B axial top: RCCA rod cap" region="10135" universe="97" />
+    <cell fill="147" id="10452" name="Fuel 1.6% enr instr RCCA SE universe radial 0: Fuel 1.6% enr instr RCCA SE" region="10011 -10012 10013 -10014" universe="81" />
+    <cell fill="36" id="10453" name="Fuel 3.1% enr instr 6S universe radial outer: Grid sleeve axial universe box W" region="-10013 10011 -10012" universe="125" />
+    <cell fill="10" id="10454" name="Fuel rod - 1.6% enr axial 4: Fuel rod plenum" region="-10117 10118" universe="23" />
+    <cell id="10455" material="10014" name="Baffle South West Corner radial outer: water" region="10033" universe="148" />
+    <cell fill="107" id="10456" name="Fuel 1.6% enr no instr RCCA A universe radial 0: Fuel 1.6% enr no instr RCCA A" region="10011 -10012 10013 -10014" universe="110" />
+    <cell fill="95" id="10457" name="Fuel 3.1% enr no instr no BAs universe radial 0: Fuel 3.1% enr no instr no BAs" region="10011 -10012 10013 -10014" universe="145" />
+    <cell fill="144" id="10458" name="Fuel 1.6% enr no instr no BAs universe radial 0: Fuel 1.6% enr no instr no BAs" region="10011 -10012 10013 -10014" universe="67" />
+    <cell fill="11" id="10459" name="RCCA bank A axial 7: RCCA plenum" region="-10068 10133" universe="92" />
+    <cell fill="36" id="10460" name="Fuel 3.1% enr no instr 16 universe radial outer: Grid sleeve axial universe box W" region="-10013 10011 -10012" universe="98" />
+    <cell fill="14" id="10461" name="Fuel rod - 2.4% enr axial 5: Fuel rod lower/upper fitting" region="-10094 10117" universe="45" />
+    <cell id="10462" material="10006" name="Fuel rod lower/upper fitting radial 0: zirc" region="-10038" universe="14" />
+    <cell fill="134" id="10463" name="Fuel 3.1% enr no instr 20 universe radial 0: Fuel 3.1% enr no instr 20" region="10011 -10012 10013 -10014" universe="130" />
+    <cell fill="92" id="10464" name="(RCCA bank A) wrapped by ((Empty Guide Tube) wrapped by (Grids axial universe)) radial 0: RCCA bank A" region="-10002" universe="74" />
+    <cell fill="12" id="10465" name="RCCA bank SE axial 6: RCCA Spacer" region="-10023 10126" universe="69" />
+    <cell fill="109" id="10466" name="Fuel 1.6% enr no instr RCCA SE universe radial 0: Fuel 1.6% enr no instr RCCA SE" region="10011 -10012 10013 -10014" universe="118" />
+    <cell fill="36" id="10467" name="Fuel 3.1% enr instr 20 universe radial outer: Grid sleeve axial universe box W" region="-10013 10011 -10012" universe="140" />
+    <cell id="10468" material="10014" name="BPRA rod axial 0: water" region="-10026" universe="25" />
+    <cell id="10469" material="10014" name="RCCA Spacer radial outer: water" region="10002" universe="12" />
+    <cell fill="142" id="10470" name="Fuel 1.6% enr instr RCCA A universe radial 0: Fuel 1.6% enr instr RCCA A" region="10011 -10012 10013 -10014" universe="94" />
+    <cell fill="38" id="10471" name="Baffle West radial 0: Baffle North" region="-10033" rotation="0.0 0.0 90.0" universe="70" />
+    <cell fill="96" id="10472" name="Fuel 3.1% enr no instr 15NW universe radial 0: Fuel 3.1% enr no instr 15NW" region="10011 -10012 10013 -10014" universe="68" />
+    <cell id="10473" material="10005" name="Top/Bottom grid sleeve pincell radial 0: inconel" region="10069 -10079 10080 -10081" universe="35" />
+    <cell fill="36" id="10474" name="Fuel 1.6% enr instr RCCA SB universe radial outer: Grid sleeve axial universe box N" region="10012" universe="76" />
+    <cell id="10475" material="10014" name="BPRA rod axial 2: water" region="-10140 10044" universe="25" />
+    <cell fill="36" id="10476" name="Fuel 2.4% enr no instr 16 universe radial outer: Grid sleeve axial universe box W" region="-10013 10011 -10012" universe="136" />
+    <cell fill="36" id="10477" name="Fuel 1.6% enr instr RCCA A universe radial outer: Grid sleeve axial universe box W" region="-10013 10011 -10012" universe="94" />
+    <cell fill="36" id="10478" name="Fuel 2.4% enr no instr 12 universe radial outer: Grid sleeve axial universe box E" region="10014 10011 -10012" universe="141" />
+    <cell id="10479" material="10000" name="RCCA AIC radial 1: air" region="10108 -10067" universe="1" />
+    <cell fill="43" id="10480" name="Fuel rod - 2.4% enr axial 3: Fuel rod active region - 2.4% enr" region="-10118 10075" universe="45" />
+    <cell fill="20" id="10481" name="RCCA bank SA axial top: RCCA rod cap" region="10088" universe="51" />
+    <cell fill="36" id="10482" name="Fuel 2.4% enr instr 12 universe radial outer: Grid sleeve axial universe box E" region="10014 10011 -10012" universe="108" />
+    <cell fill="7" id="10483" name="(RCCA bank SC) wrapped by ((Empty Guide Tube) wrapped by (Grids axial universe)) radial outer: (Empty Guide Tube) wrapped by (Grids axial universe" region="10002" universe="56" />
+    <cell fill="36" id="10484" name="Fuel 1.6% enr no instr RCCA SD universe radial outer: Grid sleeve axial universe box S" region="-10011" universe="89" />
+    <cell id="10485" material="10014" name="Grid sleeve axial universe axial 10: water" region="-10092 10078" universe="36" />
+    <cell fill="7" id="10486" name="(RCCA bank SD) wrapped by ((Empty Guide Tube) wrapped by (Grids axial universe)) radial outer: (Empty Guide Tube) wrapped by (Grids axial universe" region="10002" universe="129" />
+    <cell id="10487" material="10014" name="Empty Guide Tube in Center Position axial 0: water" region="-10026" universe="21" />
+    <cell fill="26" id="10488" name="(Fuel rod - 3.1% enr) wrapped by (Grids axial universe) radial 0: Fuel rod - 3.1% enr" region="-10038" universe="31" />
+    <!--cell fill="33" id="10489" name="Instrument tube axial stack axial 2: Instrument tube thimble" region="-10048 10076" universe="34" /-->
+    <cell fill="36" id="10490" name="Fuel 1.6% enr no instr RCCA SC universe radial outer: Grid sleeve axial universe box W" region="-10013 10011 -10012" universe="93" />
+    <cell fill="13" id="10491" name="RCCA bank SA axial 5: RCCA B4C" region="-10113 10099" universe="51" />
+    <cell id="10492" material="10006" name="Intermediate grid pincell radial outer: zirc box W" region="-10042 10040 -10041" universe="8" />
+    <cell id="10493" material="10001" name="North Baffle Steel" region="-10065 10029" universe="38" />
+    <cell fill="36" id="10494" name="Fuel 3.1% enr no instr 15SE universe radial outer: Grid sleeve axial universe box W" region="-10013 10011 -10012" universe="80" />
+    <cell id="10495" material="10014" name="Fuel rod - 1.6% enr axial 0: water" region="-10026" universe="23" />
+    <cell fill="119" id="10496" name="Fuel 1.6% enr no instr RCCA C universe radial 0: Fuel 1.6% enr no instr RCCA C" region="10011 -10012 10013 -10014" universe="124" />
+    <cell fill="11" id="10497" name="RCCA bank SC axial 7: RCCA plenum" region="-10132 10124" universe="58" />
+    <cell fill="66" id="10498" name="Fuel 3.1% enr no instr 6E universe radial 0: Fuel 3.1% enr no instr 6E" region="10011 -10012 10013 -10014" universe="84" />
+    <cell fill="36" id="10499" name="Fuel 1.6% enr instr RCCA SC universe radial outer: Grid sleeve axial universe box W" region="-10013 10011 -10012" universe="73" />
+    <cell id="10500" material="10014" name="Intermediate grid sleeve pincell radial outer: water box W" region="-10080 10069 -10079" universe="9" />
+    <cell id="10501" material="10014" name="RCCA bank SB axial 2: water" region="-10103 10044" universe="17" />
+    <cell id="10502" material="10014" name="Empty Guide Tube in Center Position axial top: water" region="10034" universe="21" />
+    <cell id="10503" material="10000" name="BPRA rod active poison radial 4: air" region="10141 -10129" universe="30" />
+    <cell fill="36" id="10504" name="Fuel 3.1% enr instr 15NE universe radial outer: Grid sleeve axial universe box S" region="-10011" universe="104" />
+    <cell fill="35" id="10505" name="Grid sleeve axial universe axial 17: Top/Bottom grid sleeve pincell" region="-10077 10045" universe="36" />
+    <cell id="10506" material="10014" name="Tip Baffle Outer Water N" region="10029 10058" universe="123" />
+    <cell fill="36" id="10507" name="Fuel 1.6% enr no instr RCCA B universe radial outer: Grid sleeve axial universe box S" region="-10011" universe="78" />
+    <cell fill="8" id="10508" name="Grids axial universe axial 7: Intermediate grid pincell" region="-10064 10130" universe="3" />
+    <cell fill="36" id="10509" name="Fuel 3.1% enr instr 6N universe radial outer: Grid sleeve axial universe box N" region="10012" universe="139" />
+    <cell id="10510" material="10001" name="SE Shield Panel" region="10005 -10006 -10028 10101 -10009 10010" universe="200" />
+    <cell fill="36" id="10511" name="Fuel 3.1% enr instr no BAs universe radial outer: Grid sleeve axial universe box S" region="-10011" universe="87" />
+    <cell fill="36" id="10512" name="Fuel 1.6% enr no instr RCCA SD universe radial outer: Grid sleeve axial universe box E" region="10014 10011 -10012" universe="89" />
+    <cell fill="13" id="10513" name="RCCA bank SC axial 5: RCCA B4C" region="-10125 10139" universe="58" />
+    <cell fill="7" id="10514" name="(BPRA rod) wrapped by ((Empty Guide Tube) wrapped by (Grids axial universe)) radial outer: (Empty Guide Tube) wrapped by (Grids axial universe" region="10060" universe="27" />
+    <cell id="10515" material="10001" name="Tip Baffle steel N" region="10029 -10058 10057" universe="123" />
+    <cell fill="36" id="10516" name="Fuel 3.1% enr instr 15NE universe radial outer: Grid sleeve axial universe box N" region="10012" universe="104" />
+    <cell fill="20" id="10517" name="RCCA bank SE axial 3: RCCA rod cap" region="-10123 10095" universe="69" />
+    <cell id="10518" material="10014" name="Fuel rod - 1.6% enr axial 6: water" region="-10048 10094" universe="23" />
+    <cell fill="36" id="10519" name="Fuel 1.6% enr no instr RCCA SB universe radial outer: Grid sleeve axial universe box E" region="10014 10011 -10012" universe="120" />
+    <cell id="10520" material="10005" name="Top/Bottom grid pincell radial outer: inconel box S" region="-10083" universe="4" />
+    <cell fill="20" id="10521" name="RCCA bank SD axial top: RCCA rod cap" region="10127" universe="41" />
+    <cell id="10522" material="10000" name="BPRA rod active poison radial 2: air" region="10050 -10142" universe="30" />
+    <cell fill="36" id="10523" name="Fuel 1.6% enr no instr RCCA C universe radial outer: Grid sleeve axial universe box W" region="-10013 10011 -10012" universe="124" />
+    <cell fill="36" id="10524" name="Fuel 3.1% enr no instr 6N universe radial outer: Grid sleeve axial universe box N" region="10012" universe="114" />
+    <cell id="10525" material="10001" name="BPRA rod plenum radial 3: SS304" region="10129 -10060" universe="29" />
+    <cell id="10526" material="10013" name="BPRA rod active poison radial 3: borosilicate" region="10142 -10141" universe="30" />
+    <cell fill="58" id="10527" name="(RCCA bank SC) wrapped by ((Empty Guide Tube) wrapped by (Grids axial universe)) radial 0: RCCA bank SC" region="-10002" universe="56" />
+    <cell fill="7" id="10528" name="(RCCA bank D) wrapped by ((Empty Guide Tube) wrapped by (Grids axial universe)) radial outer: (Empty Guide Tube) wrapped by (Grids axial universe" region="10002" universe="46" />
+    <cell fill="36" id="10529" name="Fuel 3.1% enr instr 6N universe radial outer: Grid sleeve axial universe box S" region="-10011" universe="139" />
+    <cell id="10530" material="10006" name="RCCA B4C radial 2: zirc" region="10067 -10002" universe="13" />
+    <cell fill="36" id="10531" name="Fuel 1.6% enr no instr RCCA SD universe radial outer: Grid sleeve axial universe box W" region="-10013 10011 -10012" universe="89" />
+    <cell fill="36" id="10532" name="Fuel 3.1% enr no instr 20 universe radial outer: Grid sleeve axial universe box W" region="-10013 10011 -10012" universe="130" />
+    <cell fill="14" id="10533" name="Fuel rod - 2.4% enr axial 2: Fuel rod lower/upper fitting" region="-10075 10076" universe="45" />
+    <cell id="10534" material="10016" name="Fuel rod - 1.6% enr axial 7: ss_spn" region="-10034 10048" universe="23" />
+    <cell fill="36" id="10535" name="Fuel 3.1% enr no instr 6S universe radial outer: Grid sleeve axial universe box E" region="10014 10011 -10012" universe="150" />
+    <cell fill="62" id="10536" name="Fuel 3.1% enr no instr 6W universe radial 0: Fuel 3.1% enr no instr 6W" region="10011 -10012 10013 -10014" universe="149" />
+    <lattice id="101" outer="174405519">
+        <pitch>1.25984 1.25984 1000.0</pitch>
+        <dimension>17 17 1</dimension>
+        <lower_left>-10.70864 -10.70864 -500.0</lower_left>
+        <universes>
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 7 31 31 7 31 31 7 31 31 31 31 31 
+31 31 31 7 31 31 31 31 31 31 31 31 31 7 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 7 31 31 27 31 31 27 31 31 27 31 31 27 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 7 31 31 27 31 31 18 31 31 27 31 31 27 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 7 31 31 27 31 31 27 31 31 27 31 31 27 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 7 31 31 31 31 31 31 31 31 31 27 31 31 31 
+31 31 31 31 31 27 31 31 27 31 31 27 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 </universes>
+    </lattice>
+    <lattice id="102" outer="1868661187">
+        <pitch>1.25984 1.25984 1000.0</pitch>
+        <dimension>17 17 1</dimension>
+        <lower_left>-10.70864 -10.70864 -500.0</lower_left>
+        <universes>
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 27 31 31 27 31 31 27 31 31 31 31 31 
+31 31 31 27 31 31 31 31 31 31 31 31 31 27 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 27 31 31 7 31 31 7 31 31 7 31 31 27 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 27 31 31 7 31 31 18 31 31 7 31 31 27 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 27 31 31 7 31 31 7 31 31 7 31 31 27 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 27 31 31 31 31 31 31 31 31 31 27 31 31 31 
+31 31 31 31 31 27 31 31 27 31 31 27 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 </universes>
+    </lattice>
+    <lattice id="106" outer="295403073">
+        <pitch>1.25984 1.25984 1000.0</pitch>
+        <dimension>17 17 1</dimension>
+        <lower_left>-10.70864 -10.70864 -500.0</lower_left>
+        <universes>
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 75 19 19 75 19 19 75 19 19 19 19 19 
+19 19 19 75 19 19 19 19 19 19 19 19 19 75 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 75 19 19 75 19 19 75 19 19 75 19 19 75 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 75 19 19 75 19 19 18 19 19 75 19 19 75 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 75 19 19 75 19 19 75 19 19 75 19 19 75 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 75 19 19 19 19 19 19 19 19 19 75 19 19 19 
+19 19 19 19 19 75 19 19 75 19 19 75 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 </universes>
+    </lattice>
+    <lattice id="107" outer="1204411372">
+        <pitch>1.25984 1.25984 1000.0</pitch>
+        <dimension>17 17 1</dimension>
+        <lower_left>-10.70864 -10.70864 -500.0</lower_left>
+        <universes>
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 74 19 19 74 19 19 74 19 19 19 19 19 
+19 19 19 74 19 19 19 19 19 19 19 19 19 74 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 74 19 19 74 19 19 74 19 19 74 19 19 74 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 74 19 19 74 19 19 18 19 19 74 19 19 74 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 74 19 19 74 19 19 74 19 19 74 19 19 74 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 74 19 19 19 19 19 19 19 19 19 74 19 19 19 
+19 19 19 19 19 74 19 19 74 19 19 74 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 </universes>
+    </lattice>
+    <lattice id="109" outer="133466425">
+        <pitch>1.25984 1.25984 1000.0</pitch>
+        <dimension>17 17 1</dimension>
+        <lower_left>-10.70864 -10.70864 -500.0</lower_left>
+        <universes>
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 121 19 19 121 19 19 121 19 19 19 19 19 
+19 19 19 121 19 19 19 19 19 19 19 19 19 121 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 121 19 19 121 19 19 121 19 19 121 19 19 121 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 121 19 19 121 19 19 18 19 19 121 19 19 121 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 121 19 19 121 19 19 121 19 19 121 19 19 121 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 121 19 19 19 19 19 19 19 19 19 121 19 19 19 
+19 19 19 19 19 121 19 19 121 19 19 121 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 </universes>
+    </lattice>
+    <lattice id="112" outer="1313838824">
+        <pitch>1.25984 1.25984 1000.0</pitch>
+        <dimension>17 17 1</dimension>
+        <lower_left>-10.70864 -10.70864 -500.0</lower_left>
+        <universes>
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 7 31 31 7 31 31 7 31 31 31 31 31 
+31 31 31 7 31 31 31 31 31 31 31 31 31 7 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 7 31 31 7 31 31 7 31 31 7 31 31 7 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 7 31 31 7 31 31 18 31 31 7 31 31 7 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 27 31 31 7 31 31 7 31 31 7 31 31 27 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 27 31 31 31 31 31 31 31 31 31 27 31 31 31 
+31 31 31 31 31 27 31 31 7 31 31 27 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 </universes>
+    </lattice>
+    <lattice id="116" outer="1131112384">
+        <pitch>1.25984 1.25984 1000.0</pitch>
+        <dimension>17 17 1</dimension>
+        <lower_left>-10.70864 -10.70864 -500.0</lower_left>
+        <universes>
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 42 42 42 27 42 42 27 42 42 27 42 42 42 42 42 
+42 42 42 27 42 42 42 42 42 42 42 42 42 27 42 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 27 42 42 7 42 42 7 42 42 7 42 42 27 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 27 42 42 7 42 42 18 42 42 7 42 42 27 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 27 42 42 7 42 42 7 42 42 7 42 42 27 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 42 27 42 42 42 42 42 42 42 42 42 27 42 42 42 
+42 42 42 42 42 27 42 42 27 42 42 27 42 42 42 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 </universes>
+    </lattice>
+    <lattice id="119" outer="663742071">
+        <pitch>1.25984 1.25984 1000.0</pitch>
+        <dimension>17 17 1</dimension>
+        <lower_left>-10.70864 -10.70864 -500.0</lower_left>
+        <universes>
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 122 19 19 122 19 19 122 19 19 19 19 19 
+19 19 19 122 19 19 19 19 19 19 19 19 19 122 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 122 19 19 122 19 19 122 19 19 122 19 19 122 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 122 19 19 122 19 19 18 19 19 122 19 19 122 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 122 19 19 122 19 19 122 19 19 122 19 19 122 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 122 19 19 19 19 19 19 19 19 19 122 19 19 19 
+19 19 19 19 19 122 19 19 122 19 19 122 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 </universes>
+    </lattice>
+    <lattice id="128" outer="1647228722">
+        <pitch>1.25984 1.25984 1000.0</pitch>
+        <dimension>17 17 1</dimension>
+        <lower_left>-10.70864 -10.70864 -500.0</lower_left>
+        <universes>
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 122 19 19 122 19 19 122 19 19 19 19 19 
+19 19 19 122 19 19 19 19 19 19 19 19 19 122 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 122 19 19 122 19 19 122 19 19 122 19 19 122 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 122 19 19 122 19 19 18 19 19 122 19 19 122 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 122 19 19 122 19 19 122 19 19 122 19 19 122 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 122 19 19 19 19 19 19 19 19 19 122 19 19 19 
+19 19 19 19 19 122 19 19 122 19 19 122 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 </universes>
+    </lattice>
+    <lattice id="131" outer="151">
+        <pitch>1.25984 1.25984 1000.0</pitch>
+        <dimension>17 17 1</dimension>
+        <lower_left>-10.70864 -10.70864 -500.0</lower_left>
+        <universes>
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 7 19 19 7 19 19 7 19 19 19 19 19 
+19 19 19 7 19 19 19 19 19 19 19 19 19 7 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 7 19 19 7 19 19 7 19 19 7 19 19 7 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 7 19 19 7 19 19 18 19 19 7 19 19 7 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 7 19 19 7 19 19 7 19 19 7 19 19 7 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 7 19 19 19 19 19 19 19 19 19 7 19 19 19 
+19 19 19 19 19 7 19 19 7 19 19 7 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 </universes>
+    </lattice>
+    <lattice id="132" outer="152">
+        <pitch>1.25984 1.25984 1000.0</pitch>
+        <dimension>17 17 1</dimension>
+        <lower_left>-10.70864 -10.70864 -500.0</lower_left>
+        <universes>
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 27 31 31 27 31 31 27 31 31 31 31 31 
+31 31 31 27 31 31 31 31 31 31 31 31 31 27 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 27 31 31 27 31 31 7 31 31 27 31 31 27 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 27 31 31 7 31 31 18 31 31 7 31 31 27 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 27 31 31 27 31 31 7 31 31 27 31 31 27 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 27 31 31 31 31 31 31 31 31 31 27 31 31 31 
+31 31 31 31 31 27 31 31 27 31 31 27 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 </universes>
+    </lattice>
+    <lattice id="133" outer="153">
+        <pitch>1.25984 1.25984 1000.0</pitch>
+        <dimension>17 17 1</dimension>
+        <lower_left>-10.70864 -10.70864 -500.0</lower_left>
+        <universes>
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 56 19 19 56 19 19 56 19 19 19 19 19 
+19 19 19 56 19 19 19 19 19 19 19 19 19 56 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 56 19 19 56 19 19 56 19 19 56 19 19 56 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 56 19 19 56 19 19 18 19 19 56 19 19 56 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 56 19 19 56 19 19 56 19 19 56 19 19 56 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 56 19 19 19 19 19 19 19 19 19 56 19 19 19 
+19 19 19 19 19 56 19 19 56 19 19 56 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 </universes>
+    </lattice>
+    <lattice id="134" outer="154">
+        <pitch>1.25984 1.25984 1000.0</pitch>
+        <dimension>17 17 1</dimension>
+        <lower_left>-10.70864 -10.70864 -500.0</lower_left>
+        <universes>
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 27 31 31 27 31 31 27 31 31 31 31 31 
+31 31 31 27 31 31 31 31 31 31 31 31 31 27 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 27 31 31 27 31 31 7 31 31 27 31 31 27 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 27 31 31 7 31 31 18 31 31 7 31 31 27 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 27 31 31 27 31 31 7 31 31 27 31 31 27 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 27 31 31 31 31 31 31 31 31 31 27 31 31 31 
+31 31 31 31 31 27 31 31 27 31 31 27 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 </universes>
+    </lattice>
+    <lattice id="142" outer="155">
+        <pitch>1.25984 1.25984 1000.0</pitch>
+        <dimension>17 17 1</dimension>
+        <lower_left>-10.70864 -10.70864 -500.0</lower_left>
+        <universes>
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 74 19 19 74 19 19 74 19 19 19 19 19 
+19 19 19 74 19 19 19 19 19 19 19 19 19 74 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 74 19 19 74 19 19 74 19 19 74 19 19 74 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 74 19 19 74 19 19 18 19 19 74 19 19 74 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 74 19 19 74 19 19 74 19 19 74 19 19 74 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 74 19 19 19 19 19 19 19 19 19 74 19 19 19 
+19 19 19 19 19 74 19 19 74 19 19 74 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 </universes>
+    </lattice>
+    <lattice id="144" outer="156">
+        <pitch>1.25984 1.25984 1000.0</pitch>
+        <dimension>17 17 1</dimension>
+        <lower_left>-10.70864 -10.70864 -500.0</lower_left>
+        <universes>
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 7 19 19 7 19 19 7 19 19 19 19 19 
+19 19 19 7 19 19 19 19 19 19 19 19 19 7 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 7 19 19 7 19 19 7 19 19 7 19 19 7 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 7 19 19 7 19 19 18 19 19 7 19 19 7 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 7 19 19 7 19 19 7 19 19 7 19 19 7 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 7 19 19 19 19 19 19 19 19 19 7 19 19 19 
+19 19 19 19 19 7 19 19 7 19 19 7 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 </universes>
+    </lattice>
+    <lattice id="146" outer="157">
+        <pitch>1.25984 1.25984 1000.0</pitch>
+        <dimension>17 17 1</dimension>
+        <lower_left>-10.70864 -10.70864 -500.0</lower_left>
+        <universes>
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 7 31 31 7 31 31 27 31 31 31 31 31 
+31 31 31 7 31 31 31 31 31 31 31 31 31 27 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 7 31 31 7 31 31 7 31 31 7 31 31 27 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 7 31 31 7 31 31 18 31 31 7 31 31 7 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 7 31 31 7 31 31 7 31 31 7 31 31 27 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 7 31 31 31 31 31 31 31 31 31 27 31 31 31 
+31 31 31 31 31 7 31 31 7 31 31 27 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 </universes>
+    </lattice>
+    <lattice id="147" outer="158">
+        <pitch>1.25984 1.25984 1000.0</pitch>
+        <dimension>17 17 1</dimension>
+        <lower_left>-10.70864 -10.70864 -500.0</lower_left>
+        <universes>
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 121 19 19 121 19 19 121 19 19 19 19 19 
+19 19 19 121 19 19 19 19 19 19 19 19 19 121 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 121 19 19 121 19 19 121 19 19 121 19 19 121 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 121 19 19 121 19 19 18 19 19 121 19 19 121 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 121 19 19 121 19 19 121 19 19 121 19 19 121 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 121 19 19 19 19 19 19 19 19 19 121 19 19 19 
+19 19 19 19 19 121 19 19 121 19 19 121 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 </universes>
+    </lattice>
+    <lattice id="16" outer="1554525308">
+        <pitch>1.25984 1.25984 1000.0</pitch>
+        <dimension>17 17 1</dimension>
+        <lower_left>-10.70864 -10.70864 -500.0</lower_left>
+        <universes>
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 22 19 19 22 19 19 22 19 19 19 19 19 
+19 19 19 22 19 19 19 19 19 19 19 19 19 22 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 22 19 19 22 19 19 22 19 19 22 19 19 22 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 22 19 19 22 19 19 18 19 19 22 19 19 22 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 22 19 19 22 19 19 22 19 19 22 19 19 22 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 22 19 19 19 19 19 19 19 19 19 22 19 19 19 
+19 19 19 19 19 22 19 19 22 19 19 22 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 </universes>
+    </lattice>
+    <lattice id="28" outer="2028781239">
+        <pitch>1.25984 1.25984 1000.0</pitch>
+        <dimension>17 17 1</dimension>
+        <lower_left>-10.70864 -10.70864 -500.0</lower_left>
+        <universes>
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 27 31 31 7 31 31 27 31 31 31 31 31 
+31 31 31 27 31 31 31 31 31 31 31 31 31 27 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 27 31 31 7 31 31 7 31 31 7 31 31 27 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 7 31 31 7 31 31 18 31 31 7 31 31 7 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 7 31 31 7 31 31 7 31 31 7 31 31 7 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 7 31 31 31 31 31 31 31 31 31 7 31 31 31 
+31 31 31 31 31 7 31 31 7 31 31 7 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 </universes>
+    </lattice>
+    <lattice id="40" outer="271532046">
+        <pitch>1.25984 1.25984 1000.0</pitch>
+        <dimension>17 17 1</dimension>
+        <lower_left>-10.70864 -10.70864 -500.0</lower_left>
+        <universes>
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 22 19 19 22 19 19 22 19 19 19 19 19 
+19 19 19 22 19 19 19 19 19 19 19 19 19 22 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 22 19 19 22 19 19 22 19 19 22 19 19 22 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 22 19 19 22 19 19 18 19 19 22 19 19 22 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 22 19 19 22 19 19 22 19 19 22 19 19 22 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 22 19 19 19 19 19 19 19 19 19 22 19 19 19 
+19 19 19 19 19 22 19 19 22 19 19 22 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 </universes>
+    </lattice>
+    <lattice id="44" outer="1449686684">
+        <pitch>1.25984 1.25984 1000.0</pitch>
+        <dimension>17 17 1</dimension>
+        <lower_left>-10.70864 -10.70864 -500.0</lower_left>
+        <universes>
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 42 42 42 27 42 42 7 42 42 27 42 42 42 42 42 
+42 42 42 27 42 42 42 42 42 42 42 42 42 27 42 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 27 42 42 7 42 42 7 42 42 7 42 42 27 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 7 42 42 7 42 42 18 42 42 7 42 42 7 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 27 42 42 7 42 42 7 42 42 7 42 42 27 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 42 27 42 42 42 42 42 42 42 42 42 27 42 42 42 
+42 42 42 42 42 27 42 42 7 42 42 27 42 42 42 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 </universes>
+    </lattice>
+    <lattice id="47" outer="2009169451">
+        <pitch>1.25984 1.25984 1000.0</pitch>
+        <dimension>17 17 1</dimension>
+        <lower_left>-10.70864 -10.70864 -500.0</lower_left>
+        <universes>
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 42 42 42 46 42 42 46 42 42 46 42 42 42 42 42 
+42 42 42 46 42 42 42 42 42 42 42 42 42 46 42 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 46 42 42 46 42 42 46 42 42 46 42 42 46 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 46 42 42 46 42 42 18 42 42 46 42 42 46 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 46 42 42 46 42 42 46 42 42 46 42 42 46 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 42 46 42 42 42 42 42 42 42 42 42 46 42 42 42 
+42 42 42 42 42 46 42 42 46 42 42 46 42 42 42 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 </universes>
+    </lattice>
+    <lattice id="50" outer="1259226820">
+        <pitch>1.25984 1.25984 1000.0</pitch>
+        <dimension>17 17 1</dimension>
+        <lower_left>-10.70864 -10.70864 -500.0</lower_left>
+        <universes>
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 42 42 42 46 42 42 46 42 42 46 42 42 42 42 42 
+42 42 42 46 42 42 42 42 42 42 42 42 42 46 42 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 46 42 42 46 42 42 46 42 42 46 42 42 46 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 46 42 42 46 42 42 18 42 42 46 42 42 46 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 46 42 42 46 42 42 46 42 42 46 42 42 46 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 42 46 42 42 42 42 42 42 42 42 42 46 42 42 42 
+42 42 42 42 42 46 42 42 46 42 42 46 42 42 42 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 </universes>
+    </lattice>
+    <lattice id="52" outer="1581685404">
+        <pitch>1.25984 1.25984 1000.0</pitch>
+        <dimension>17 17 1</dimension>
+        <lower_left>-10.70864 -10.70864 -500.0</lower_left>
+        <universes>
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 53 31 31 53 31 31 53 31 31 31 31 31 
+31 31 31 53 31 31 31 31 31 31 31 31 31 53 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 53 31 31 53 31 31 53 31 31 53 31 31 53 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 53 31 31 53 31 31 18 31 31 53 31 31 53 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 53 31 31 53 31 31 53 31 31 53 31 31 53 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 53 31 31 31 31 31 31 31 31 31 53 31 31 31 
+31 31 31 31 31 53 31 31 53 31 31 53 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 </universes>
+    </lattice>
+    <lattice id="54" outer="563948703">
+        <pitch>1.25984 1.25984 1000.0</pitch>
+        <dimension>17 17 1</dimension>
+        <lower_left>-10.70864 -10.70864 -500.0</lower_left>
+        <universes>
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 7 31 31 7 31 31 7 31 31 31 31 31 
+31 31 31 7 31 31 31 31 31 31 31 31 31 7 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 27 31 31 27 31 31 27 31 31 27 31 31 7 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 27 31 31 27 31 31 18 31 31 27 31 31 7 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 27 31 31 27 31 31 27 31 31 27 31 31 7 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 27 31 31 31 31 31 31 31 31 31 7 31 31 31 
+31 31 31 31 31 27 31 31 27 31 31 27 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 </universes>
+    </lattice>
+    <lattice id="55" outer="168248532">
+        <pitch>1.25984 1.25984 1000.0</pitch>
+        <dimension>17 17 1</dimension>
+        <lower_left>-10.70864 -10.70864 -500.0</lower_left>
+        <universes>
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 42 42 42 27 42 42 7 42 42 27 42 42 42 42 42 
+42 42 42 27 42 42 42 42 42 42 42 42 42 27 42 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 27 42 42 7 42 42 7 42 42 7 42 42 27 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 7 42 42 7 42 42 18 42 42 7 42 42 7 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 27 42 42 7 42 42 7 42 42 7 42 42 27 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 42 27 42 42 42 42 42 42 42 42 42 27 42 42 42 
+42 42 42 42 42 27 42 42 7 42 42 27 42 42 42 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 </universes>
+    </lattice>
+    <lattice id="57" outer="1670628931">
+        <pitch>1.25984 1.25984 1000.0</pitch>
+        <dimension>17 17 1</dimension>
+        <lower_left>-10.70864 -10.70864 -500.0</lower_left>
+        <universes>
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 56 19 19 56 19 19 56 19 19 19 19 19 
+19 19 19 56 19 19 19 19 19 19 19 19 19 56 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 56 19 19 56 19 19 56 19 19 56 19 19 56 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 56 19 19 56 19 19 18 19 19 56 19 19 56 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 56 19 19 56 19 19 56 19 19 56 19 19 56 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 56 19 19 19 19 19 19 19 19 19 56 19 19 19 
+19 19 19 19 19 56 19 19 56 19 19 56 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 </universes>
+    </lattice>
+    <lattice id="59" outer="1856047671">
+        <pitch>1.25984 1.25984 1000.0</pitch>
+        <dimension>17 17 1</dimension>
+        <lower_left>-10.70864 -10.70864 -500.0</lower_left>
+        <universes>
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 53 31 31 53 31 31 53 31 31 31 31 31 
+31 31 31 53 31 31 31 31 31 31 31 31 31 53 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 53 31 31 53 31 31 53 31 31 53 31 31 53 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 53 31 31 53 31 31 18 31 31 53 31 31 53 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 53 31 31 53 31 31 53 31 31 53 31 31 53 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 53 31 31 31 31 31 31 31 31 31 53 31 31 31 
+31 31 31 31 31 53 31 31 53 31 31 53 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 </universes>
+    </lattice>
+    <lattice id="60" outer="1953627898">
+        <pitch>1.25984 1.25984 1000.0</pitch>
+        <dimension>17 17 1</dimension>
+        <lower_left>-10.70864 -10.70864 -500.0</lower_left>
+        <universes>
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 46 19 19 46 19 19 46 19 19 19 19 19 
+19 19 19 46 19 19 19 19 19 19 19 19 19 46 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 46 19 19 46 19 19 46 19 19 46 19 19 46 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 46 19 19 46 19 19 18 19 19 46 19 19 46 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 46 19 19 46 19 19 46 19 19 46 19 19 46 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 46 19 19 19 19 19 19 19 19 19 46 19 19 19 
+19 19 19 19 19 46 19 19 46 19 19 46 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 </universes>
+    </lattice>
+    <lattice id="61" outer="553712052">
+        <pitch>21.50364 21.50364 1000.0</pitch>
+        <dimension>19 19 1</dimension>
+        <lower_left>-204.28458 -204.28458 -500.0</lower_left>
+        <universes>
+90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 
+90 90 90 90 90 117 85 85 85 85 85 85 85 126 90 90 90 90 90 
+90 90 90 117 85 143 145 150 87 150 145 125 145 148 85 126 90 90 90 
+90 90 117 143 87 82 98 103 130 111 130 78 98 82 145 148 126 90 90 
+90 90 100 145 80 136 89 136 120 135 120 135 93 135 113 87 70 90 90 
+90 117 143 63 135 127 136 67 141 81 141 67 136 127 136 82 148 126 90 
+90 100 145 98 93 136 115 141 67 141 115 141 115 136 71 98 145 70 90 
+90 100 105 78 135 67 141 111 141 94 141 124 141 67 136 103 149 70 90 
+90 100 145 130 120 108 67 141 115 136 67 108 67 141 76 130 145 70 90 
+90 100 105 124 135 118 108 110 135 88 136 94 141 81 135 111 149 70 90 
+90 100 145 140 120 141 67 141 67 136 115 141 115 141 120 130 87 70 90 
+90 100 84 78 136 67 108 124 108 110 141 124 141 115 136 78 149 70 90 
+90 100 87 98 89 136 115 141 67 108 67 141 115 136 93 98 87 70 90 
+90 138 137 82 136 127 136 115 141 118 108 67 136 91 136 82 49 123 90 
+90 90 100 145 104 136 73 136 120 135 120 136 89 136 68 87 70 90 90 
+90 90 138 137 87 82 98 78 140 124 130 103 98 63 145 49 123 90 90 
+90 90 90 138 38 137 87 114 145 139 145 114 145 49 38 123 90 90 90 
+90 90 90 90 90 138 38 38 38 38 38 38 38 123 90 90 90 90 90 
+90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 </universes>
+    </lattice>
+    <lattice id="62" outer="627015093">
+        <pitch>1.25984 1.25984 1000.0</pitch>
+        <dimension>17 17 1</dimension>
+        <lower_left>-10.70864 -10.70864 -500.0</lower_left>
+        <universes>
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 27 31 31 7 31 31 7 31 31 31 31 31 
+31 31 31 27 31 31 31 31 31 31 31 31 31 7 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 27 31 31 7 31 31 7 31 31 7 31 31 7 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 7 31 31 7 31 31 18 31 31 7 31 31 7 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 27 31 31 7 31 31 7 31 31 7 31 31 7 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 27 31 31 31 31 31 31 31 31 31 7 31 31 31 
+31 31 31 31 31 27 31 31 7 31 31 7 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 </universes>
+    </lattice>
+    <lattice id="64" outer="916999194">
+        <pitch>1.25984 1.25984 1000.0</pitch>
+        <dimension>17 17 1</dimension>
+        <lower_left>-10.70864 -10.70864 -500.0</lower_left>
+        <universes>
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 7 31 31 7 31 31 7 31 31 31 31 31 
+31 31 31 7 31 31 31 31 31 31 31 31 31 7 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 7 31 31 7 31 31 7 31 31 7 31 31 7 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 7 31 31 7 31 31 18 31 31 7 31 31 7 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 27 31 31 7 31 31 7 31 31 7 31 31 27 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 27 31 31 31 31 31 31 31 31 31 27 31 31 31 
+31 31 31 31 31 27 31 31 7 31 31 27 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 </universes>
+    </lattice>
+    <lattice id="65" outer="1694277281">
+        <pitch>1.25984 1.25984 1000.0</pitch>
+        <dimension>17 17 1</dimension>
+        <lower_left>-10.70864 -10.70864 -500.0</lower_left>
+        <universes>
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 27 31 31 7 31 31 27 31 31 31 31 31 
+31 31 31 27 31 31 31 31 31 31 31 31 31 27 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 27 31 31 7 31 31 7 31 31 7 31 31 27 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 7 31 31 7 31 31 18 31 31 7 31 31 7 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 7 31 31 7 31 31 7 31 31 7 31 31 7 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 7 31 31 31 31 31 31 31 31 31 7 31 31 31 
+31 31 31 31 31 7 31 31 7 31 31 7 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 </universes>
+    </lattice>
+    <lattice id="66" outer="151974679">
+        <pitch>1.25984 1.25984 1000.0</pitch>
+        <dimension>17 17 1</dimension>
+        <lower_left>-10.70864 -10.70864 -500.0</lower_left>
+        <universes>
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 7 31 31 7 31 31 27 31 31 31 31 31 
+31 31 31 7 31 31 31 31 31 31 31 31 31 27 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 7 31 31 7 31 31 7 31 31 7 31 31 27 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 7 31 31 7 31 31 18 31 31 7 31 31 7 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 7 31 31 7 31 31 7 31 31 7 31 31 27 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 7 31 31 31 31 31 31 31 31 31 27 31 31 31 
+31 31 31 31 31 7 31 31 7 31 31 27 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 </universes>
+    </lattice>
+    <lattice id="72" outer="1588739484">
+        <pitch>1.25984 1.25984 1000.0</pitch>
+        <dimension>17 17 1</dimension>
+        <lower_left>-10.70864 -10.70864 -500.0</lower_left>
+        <universes>
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 129 19 19 129 19 19 129 19 19 19 19 19 
+19 19 19 129 19 19 19 19 19 19 19 19 19 129 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 129 19 19 129 19 19 129 19 19 129 19 19 129 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 129 19 19 129 19 19 18 19 19 129 19 19 129 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 129 19 19 129 19 19 129 19 19 129 19 19 129 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 129 19 19 19 19 19 19 19 19 19 129 19 19 19 
+19 19 19 19 19 129 19 19 129 19 19 129 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 </universes>
+    </lattice>
+    <lattice id="77" outer="637096532">
+        <pitch>1.25984 1.25984 1000.0</pitch>
+        <dimension>17 17 1</dimension>
+        <lower_left>-10.70864 -10.70864 -500.0</lower_left>
+        <universes>
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 42 42 42 27 42 42 27 42 42 27 42 42 42 42 42 
+42 42 42 27 42 42 42 42 42 42 42 42 42 27 42 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 27 42 42 7 42 42 7 42 42 7 42 42 27 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 27 42 42 7 42 42 18 42 42 7 42 42 27 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 27 42 42 7 42 42 7 42 42 7 42 42 27 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 42 27 42 42 42 42 42 42 42 42 42 27 42 42 42 
+42 42 42 42 42 27 42 42 27 42 42 27 42 42 42 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 
+42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 42 </universes>
+    </lattice>
+    <lattice id="79" outer="1326562995">
+        <pitch>1.25984 1.25984 1000.0</pitch>
+        <dimension>17 17 1</dimension>
+        <lower_left>-10.70864 -10.70864 -500.0</lower_left>
+        <universes>
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 129 19 19 129 19 19 129 19 19 19 19 19 
+19 19 19 129 19 19 19 19 19 19 19 19 19 129 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 129 19 19 129 19 19 129 19 19 129 19 19 129 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 129 19 19 129 19 19 18 19 19 129 19 19 129 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 129 19 19 129 19 19 129 19 19 129 19 19 129 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 129 19 19 19 19 19 19 19 19 19 129 19 19 19 
+19 19 19 19 19 129 19 19 129 19 19 129 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 </universes>
+    </lattice>
+    <lattice id="83" outer="135625395">
+        <pitch>1.25984 1.25984 1000.0</pitch>
+        <dimension>17 17 1</dimension>
+        <lower_left>-10.70864 -10.70864 -500.0</lower_left>
+        <universes>
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 75 19 19 75 19 19 75 19 19 19 19 19 
+19 19 19 75 19 19 19 19 19 19 19 19 19 75 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 75 19 19 75 19 19 75 19 19 75 19 19 75 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 75 19 19 75 19 19 18 19 19 75 19 19 75 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 75 19 19 75 19 19 75 19 19 75 19 19 75 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 75 19 19 19 19 19 19 19 19 19 75 19 19 19 
+19 19 19 19 19 75 19 19 75 19 19 75 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 
+19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 19 </universes>
+    </lattice>
+    <lattice id="86" outer="582153346">
+        <pitch>1.25984 1.25984 1000.0</pitch>
+        <dimension>17 17 1</dimension>
+        <lower_left>-10.70864 -10.70864 -500.0</lower_left>
+        <universes>
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 7 31 31 7 31 31 7 31 31 31 31 31 
+31 31 31 7 31 31 31 31 31 31 31 31 31 7 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 7 31 31 7 31 31 7 31 31 7 31 31 7 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 7 31 31 7 31 31 18 31 31 7 31 31 7 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 7 31 31 7 31 31 7 31 31 7 31 31 7 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 7 31 31 31 31 31 31 31 31 31 7 31 31 31 
+31 31 31 31 31 7 31 31 7 31 31 7 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 </universes>
+    </lattice>
+    <lattice id="95" outer="1948223159">
+        <pitch>1.25984 1.25984 1000.0</pitch>
+        <dimension>17 17 1</dimension>
+        <lower_left>-10.70864 -10.70864 -500.0</lower_left>
+        <universes>
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 7 31 31 7 31 31 7 31 31 31 31 31 
+31 31 31 7 31 31 31 31 31 31 31 31 31 7 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 7 31 31 7 31 31 7 31 31 7 31 31 7 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 7 31 31 7 31 31 18 31 31 7 31 31 7 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 7 31 31 7 31 31 7 31 31 7 31 31 7 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 7 31 31 31 31 31 31 31 31 31 7 31 31 31 
+31 31 31 31 31 7 31 31 7 31 31 7 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 </universes>
+    </lattice>
+    <lattice id="96" outer="1213525841">
+        <pitch>1.25984 1.25984 1000.0</pitch>
+        <dimension>17 17 1</dimension>
+        <lower_left>-10.70864 -10.70864 -500.0</lower_left>
+        <universes>
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 27 31 31 27 31 31 27 31 31 31 31 31 
+31 31 31 27 31 31 31 31 31 31 31 31 31 7 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 27 31 31 27 31 31 27 31 31 27 31 31 7 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 27 31 31 27 31 31 18 31 31 27 31 31 7 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 27 31 31 27 31 31 27 31 31 27 31 31 7 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 7 31 31 31 31 31 31 31 31 31 7 31 31 31 
+31 31 31 31 31 7 31 31 7 31 31 7 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 </universes>
+    </lattice>
+    <lattice id="99" outer="802167038">
+        <pitch>1.25984 1.25984 1000.0</pitch>
+        <dimension>17 17 1</dimension>
+        <lower_left>-10.70864 -10.70864 -500.0</lower_left>
+        <universes>
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 27 31 31 27 31 31 27 31 31 31 31 31 
+31 31 31 7 31 31 31 31 31 31 31 31 31 27 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 7 31 31 27 31 31 27 31 31 27 31 31 27 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 7 31 31 27 31 31 18 31 31 27 31 31 27 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 7 31 31 27 31 31 27 31 31 27 31 31 27 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 7 31 31 31 31 31 31 31 31 31 7 31 31 31 
+31 31 31 31 31 7 31 31 7 31 31 7 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 
+31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 31 </universes>
+    </lattice>
+    <surface coeffs="504.10804" id="10000" name="Top of RCCA rod AIC bank A" type="z-plane" />
+    <surface coeffs="402.50804" id="10001" name="Top of RCCA rod lower fitting bank A" type="z-plane" />
+    <surface coeffs="0.0 0.0 0.48387" id="10002" name="RCCA rod clad OR" type="z-cylinder" />
+    <surface coeffs="364.725" id="10003" name="Top of grid 7" type="z-plane" />
+    <surface coeffs="359.01" id="10004" name="Bottom of grid 7" type="z-plane" />
+    <surface coeffs="0.0 0.0 194.84" id="10005" name="Shield Panel IR" type="z-cylinder" />
+    <surface coeffs="0.0 0.0 201.63" id="10006" name="Shield Panel OR" type="z-cylinder" />
+    <surface coeffs="1.0 -1.80404775527 0.0 0.0" id="10007" name="Shield Panel NEbot/SWtop" type="plane" />
+    <surface coeffs="1.0 -0.554309051453 0.0 0.0" id="10008" name="Shield Panel NEtop/SWbot" type="plane" />
+    
+    <surface boundary="reflective" coeffs="230" id="10009" name="Highest Extent" type="z-plane" />
+    <surface boundary="reflective" coeffs="220" id="10010" name="Lowest Extent" type="z-plane" />
+    
+    <surface coeffs="-10.70864" id="10011" name="Pinlattice Y min" type="y-plane" />
+    <surface coeffs="10.70864" id="10012" name="Pinlattice Y max" type="y-plane" />
+    <surface coeffs="-10.70864" id="10013" name="Pinlattice X min" type="x-plane" />
+    <surface coeffs="10.70864" id="10014" name="Pinlattice X max" type="x-plane" />
+    <surface coeffs="423.049" id="10015" name="Top of GT rod" type="z-plane" />
+    <surface coeffs="39.958" id="10016" name="GT Dashpot plane" type="z-plane" />
+    <surface coeffs="0.0 0.0 0.48387" id="10017" name="Instrument tube thimble OR" type="z-cylinder" />
+    <surface coeffs="306.813" id="10018" name="Bottom of grid 6" type="z-plane" />
+    <surface coeffs="260.331" id="10019" name="Top of grid 5" type="z-plane" />
+    <surface coeffs="40.52" id="10020" name="Top of grid 1" type="z-plane" />
+    <surface coeffs="37.1621" id="10021" name="Bottom of grid 1" type="z-plane" />
+    <surface coeffs="776.23804" id="10022" name="Top of RCCA rod plenum bank SE" type="z-plane" />
+    <surface coeffs="764.45804" id="10023" name="Top of RCCA rod spacer bank SE" type="z-plane" />
+    <surface coeffs="402.50804" id="10024" name="Top of RCCA rod lower fitting bank B" type="z-plane" />
+    <surface coeffs="400.63804" id="10025" name="Bottom of RCCA rod bank B" type="z-plane" />
+    <surface coeffs="20.0" id="10026" name="Support plate bottom" type="z-plane" />
+    <surface coeffs="312.528" id="10027" name="Top of grid 6" type="z-plane" />
+    <surface coeffs="1.0 1.80404775527 0.0 0.0" id="10028" name="Shield Panel NWbot/SEtop" type="plane" />
+    <surface coeffs="8.36662" id="10029" name="North Baffle Surface" type="y-plane" />
+    <surface coeffs="504.10804" id="10030" name="Top of RCCA rod AIC bank B" type="z-plane" />
+    
+    <surface coeffs="0.0 0.0 241.3" id="10031" name="RPV OR" type="z-cylinder" />
+    <surface boundary="vacuum" coeffs="-182.78094" id="10143" name="Left Box" type="x-plane" />
+    <surface boundary="vacuum" coeffs="182.78094" id="10144" name="Right Box" type="x-plane" />
+    <surface boundary="vacuum" coeffs="-182.78094" id="10145" name="Bottom Box" type="y-plane" />
+    <surface boundary="vacuum" coeffs="182.78094" id="10146" name="Top Box" type="y-plane" />    
+    
+    <surface coeffs="0.0 0.0 219.71" id="10032" name="RPV IR" type="z-cylinder" />
+    <surface coeffs="0.0 0.0 4000.0" id="10033" name="Dummy universe filling surface" type="z-cylinder" />
+    <surface coeffs="431.876" id="10034" name="Upper nozzle top" type="z-plane" />
+    <surface coeffs="402.508" id="10035" name="Top of RCCA rod B4C bank D" type="z-plane" />
+    <surface coeffs="143.428" id="10036" name="Top of RCCA rod AIC bank D" type="z-plane" />
+    <surface coeffs="0.0 0.0 0.40005" id="10037" name="Fuel clad IR" type="z-cylinder" />
+    <surface coeffs="0.0 0.0 0.4572" id="10038" name="Fuel clad OR" type="z-cylinder" />
+    <surface coeffs="0.0 0.0 0.60198" id="10039" name="Guide tube OR" type="z-cylinder" />
+    <surface coeffs="-0.61049" id="10040" name="Intermediate grid Y min around rods" type="y-plane" />
+    <surface coeffs="0.61049" id="10041" name="Intermediate grid Y max around rods" type="y-plane" />
+    <surface coeffs="-0.61049" id="10042" name="Intermediate grid X min around rods" type="x-plane" />
+    <surface coeffs="0.61049" id="10043" name="Intermediate grid X max around rods" type="x-plane" />
+    <surface coeffs="35.0" id="10044" name="Lower nozzle top" type="z-plane" />
+    <surface coeffs="411.806" id="10045" name="Bottom of grid 8" type="z-plane" />
+    <surface coeffs="763.18804" id="10046" name="Top of RCCA rod B4C bank C" type="z-plane" />
+    <surface coeffs="504.10804" id="10047" name="Top of RCCA rod AIC bank C" type="z-plane" />
+    <surface coeffs="423.049" id="10048" name="Upper nozzle bottom" type="z-plane" />
+    <surface coeffs="0.0 0.0 0.214" id="10049" name="BPRA rod radius 1" type="z-cylinder" />
+    <surface coeffs="0.0 0.0 0.23051" id="10050" name="BPRA rod radius 2" type="z-cylinder" />
+    <surface coeffs="0.0 0.0 0.43688" id="10051" name="Instrument tube thimble IR" type="z-cylinder" />
+    <surface coeffs="400.63804" id="10052" name="Bottom of RCCA rod bank A" type="z-plane" />
+    <surface coeffs="764.45804" id="10053" name="Top of RCCA rod spacer bank C" type="z-plane" />
+    <surface coeffs="98.025" id="10054" name="Bottom of grid 2" type="z-plane" />
+    <surface coeffs="763.18804" id="10055" name="Top of RCCA rod B4C bank SB" type="z-plane" />
+    <surface coeffs="504.10804" id="10056" name="Top of RCCA rod AIC bank SB" type="z-plane" />
+    <surface coeffs="-10.58912" id="10057" name="West Baffle Water Gap Surface" type="x-plane" />
+    <surface coeffs="-8.36662" id="10058" name="West Baffle Surface" type="x-plane" />
+    <surface coeffs="0.0 0.0 193.675" id="10059" name="Core Barrel OR" type="z-cylinder" />
+    <surface coeffs="0.0 0.0 0.48387" id="10060" name="BPRA rod radius 6" type="z-cylinder" />
+    <surface coeffs="39.958" id="10061" name="Bottom of RCCA rod bank D" type="z-plane" />
+    <surface coeffs="0.0 0.0 0.5461" id="10062" name="Guide tube OR below dashpot" type="z-cylinder" />
+    <surface coeffs="202.419" id="10063" name="Bottom of grid 4" type="z-plane" />
+    <surface coeffs="155.937" id="10064" name="Top of grid 3" type="z-plane" />
+    <surface coeffs="10.58912" id="10065" name="North Baffle Water Gap Surface" type="y-plane" />
+    <surface coeffs="0.0 0.0 0.37338" id="10066" name="RCCA rod B4C OR" type="z-cylinder" />
+    <surface coeffs="0.0 0.0 0.38608" id="10067" name="RCCA rod clad IR" type="z-cylinder" />
+    <surface coeffs="776.23804" id="10068" name="Top of RCCA rod plenum bank A" type="z-plane" />
+    <surface coeffs="-10.747975" id="10069" name="Grid sleeve Y min around assemblies" type="y-plane" />
+    <surface coeffs="402.50804" id="10070" name="Top of RCCA rod lower fitting bank C" type="z-plane" />
+    <surface coeffs="400.63804" id="10071" name="Bottom of RCCA rod bank C" type="z-plane" />
+    <surface coeffs="415.558" id="10072" name="Top of RCCA rod plenum bank D" type="z-plane" />
+    <surface coeffs="403.778" id="10073" name="Top of RCCA rod spacer bank D" type="z-plane" />
+    <surface coeffs="0.0 0.0 0.56134" id="10074" name="Guide tube IR" type="z-cylinder" />
+    <surface coeffs="36.748" id="10075" name="Fuel lower fitting top" type="z-plane" />
+    <surface coeffs="35.0" id="10076" name="Fuel rod bottom" type="z-plane" />
+    <surface coeffs="415.164" id="10077" name="Top of grid 8" type="z-plane" />
+    <surface coeffs="208.134" id="10078" name="Top of grid 4" type="z-plane" />
+    <surface coeffs="10.747975" id="10079" name="Grid sleeve Y max around assemblies" type="y-plane" />
+    <surface coeffs="-10.747975" id="10080" name="Grid sleeve X min around assemblies" type="x-plane" />
+    <surface coeffs="10.747975" id="10081" name="Grid sleeve X max around assemblies" type="x-plane" />
+    <surface coeffs="0.61015" id="10082" name="Top/Bottom grid X max around rods" type="x-plane" />
+    <surface coeffs="-0.61015" id="10083" name="Top/Bottom grid Y min around rods" type="y-plane" />
+    <surface coeffs="0.61015" id="10084" name="Top/Bottom grid Y max around rods" type="y-plane" />
+    <surface coeffs="402.50804" id="10085" name="Top of RCCA rod lower fitting bank SA" type="z-plane" />
+    <surface coeffs="400.63804" id="10086" name="Bottom of RCCA rod bank SA" type="z-plane" />
+    <surface coeffs="35.0" id="10087" name="Bottom of GT rod" type="z-plane" />
+    <surface coeffs="776.23804" id="10088" name="Top of RCCA rod plenum bank SA" type="z-plane" />
+    <surface coeffs="764.45804" id="10089" name="Top of RCCA rod spacer bank SA" type="z-plane" />
+    <surface coeffs="103.74" id="10090" name="Top of grid 2" type="z-plane" />
+    <surface coeffs="400.63804" id="10091" name="Bottom of RCCA rod bank SC" type="z-plane" />
+    <surface coeffs="254.616" id="10092" name="Bottom of grid 5" type="z-plane" />
+    <surface coeffs="-0.61015" id="10093" name="Top/Bottom grid X min around rods" type="x-plane" />
+    <surface coeffs="419.704" id="10094" name="Fuel upper fitting top" type="z-plane" />
+    <surface coeffs="400.63804" id="10095" name="Bottom of RCCA rod bank SE" type="z-plane" />
+    <surface coeffs="421.532" id="10096" name="Top of plenum in BPRA rod" type="z-plane" />
+    <surface coeffs="401.238" id="10097" name="Top of active poison in BPRA rod" type="z-plane" />
+    <surface coeffs="431.876" id="10098" name="Top of BPRA rod" type="z-plane" />
+    <surface coeffs="504.10804" id="10099" name="Top of RCCA rod AIC bank SA" type="z-plane" />
+    <surface coeffs="763.18804" id="10100" name="Top of RCCA rod B4C bank A" type="z-plane" />
+    <surface coeffs="1.0 0.554309051453 0.0 0.0" id="10101" name="Shield Panel NWtop/SEbot" type="plane" />
+    <surface coeffs="402.50804" id="10102" name="Top of RCCA rod lower fitting bank SB" type="z-plane" />
+    <surface coeffs="400.63804" id="10103" name="Bottom of RCCA rod bank SB" type="z-plane" />
+    <surface coeffs="504.10804" id="10104" name="Top of RCCA rod AIC bank SD" type="z-plane" />
+    <surface coeffs="402.50804" id="10105" name="Top of RCCA rod lower fitting bank SD" type="z-plane" />
+    <surface coeffs="400.63804" id="10106" name="Bottom of RCCA rod bank SD" type="z-plane" />
+    <surface coeffs="0.0 0.0 187.96" id="10107" name="Core Barrel IR" type="z-cylinder" />
+    <surface coeffs="0.0 0.0 0.38227" id="10108" name="RCCA rod AIC OR" type="z-cylinder" />
+    <surface coeffs="0.0 0.0 0.39218" id="10109" name="Fuel pellet OR" type="z-cylinder" />
+    <surface coeffs="764.45804" id="10110" name="Top of RCCA rod spacer bank SB" type="z-plane" />
+    <surface coeffs="763.18804" id="10111" name="Top of RCCA rod B4C bank SD" type="z-plane" />
+    <surface coeffs="0.0 0.0 0.06459" id="10112" name="Fuel rod plenum spring OR" type="z-cylinder" />
+    <surface coeffs="763.18804" id="10113" name="Top of RCCA rod B4C bank SA" type="z-plane" />
+    <surface coeffs="40.558" id="10114" name="Top of lower fitting in BPRA rod" type="z-plane" />
+    <surface coeffs="402.50804" id="10115" name="Top of RCCA rod lower fitting bank SC" type="z-plane" />
+    <surface coeffs="0.0 0.0 0.06459" id="10116" name="RCCA rod plenum spring OR" type="z-cylinder" />
+    <surface coeffs="417.164" id="10117" name="Fuel plenum top" type="z-plane" />
+    <surface coeffs="402.508" id="10118" name="Fuel active region top" type="z-plane" />
+    <surface coeffs="0.0 0.0 0.37845" id="10119" name="RCCA rod spacer OR" type="z-cylinder" />
+    <surface coeffs="0.0 0.0 0.50419" id="10120" name="Guide tube IR below dashpot" type="z-cylinder" />
+    <surface coeffs="776.23804" id="10121" name="Top of RCCA rod plenum bank SB" type="z-plane" />
+    <surface coeffs="504.10804" id="10122" name="Top of RCCA rod AIC bank SE" type="z-plane" />
+    <surface coeffs="402.50804" id="10123" name="Top of RCCA rod lower fitting bank SE" type="z-plane" />
+    <surface coeffs="764.45804" id="10124" name="Top of RCCA rod spacer bank SC" type="z-plane" />
+    <surface coeffs="763.18804" id="10125" name="Top of RCCA rod B4C bank SC" type="z-plane" />
+    <surface coeffs="763.18804" id="10126" name="Top of RCCA rod B4C bank SE" type="z-plane" />
+    <surface coeffs="776.23804" id="10127" name="Top of RCCA rod plenum bank SD" type="z-plane" />
+    <surface coeffs="764.45804" id="10128" name="Top of RCCA rod spacer bank SD" type="z-plane" />
+    <surface coeffs="0.0 0.0 0.43688" id="10129" name="BPRA rod radius 5" type="z-cylinder" />
+    <surface coeffs="150.222" id="10130" name="Bottom of grid 3" type="z-plane" />
+    <surface coeffs="763.18804" id="10131" name="Top of RCCA rod B4C bank B" type="z-plane" />
+    <surface coeffs="776.23804" id="10132" name="Top of RCCA rod plenum bank SC" type="z-plane" />
+    <surface coeffs="764.45804" id="10133" name="Top of RCCA rod spacer bank A" type="z-plane" />
+    <surface coeffs="41.828" id="10134" name="Top of RCCA rod lower fitting bank D" type="z-plane" />
+    <surface coeffs="776.23804" id="10135" name="Top of RCCA rod plenum bank B" type="z-plane" />
+    <surface coeffs="764.45804" id="10136" name="Top of RCCA rod spacer bank B" type="z-plane" />
+    <surface coeffs="0.0 0.0 219.15" id="10137" name="RPV Liner IR" type="z-cylinder" />
+    <surface coeffs="776.23804" id="10138" name="Top of RCCA rod plenum bank C" type="z-plane" />
+    <surface coeffs="504.10804" id="10139" name="Top of RCCA rod AIC bank SC" type="z-plane" />
+    <surface coeffs="38.66" id="10140" name="Bottom of BPRA rod" type="z-plane" />
+    <surface coeffs="0.0 0.0 0.42672" id="10141" name="BPRA rod radius 4" type="z-cylinder" />
+    <surface coeffs="0.0 0.0 0.2413" id="10142" name="BPRA rod radius 3" type="z-cylinder" />
+<cell id="174405519" material="void" universe="174405519" /><cell id="1868661187" material="void" universe="1868661187" /><cell id="295403073" material="void" universe="295403073" /><cell id="1204411372" material="void" universe="1204411372" /><cell id="133466425" material="void" universe="133466425" /><cell id="1313838824" material="void" universe="1313838824" /><cell id="1131112384" material="void" universe="1131112384" /><cell id="663742071" material="void" universe="663742071" /><cell id="1647228722" material="void" universe="1647228722" /><cell id="151" material="void" universe="151" /><cell id="152" material="void" universe="152" /><cell id="153" material="void" universe="153" /><cell id="154" material="void" universe="154" /><cell id="155" material="void" universe="155" /><cell id="156" material="void" universe="156" /><cell id="157" material="void" universe="157" /><cell id="158" material="void" universe="158" /><cell id="1554525308" material="void" universe="1554525308" /><cell id="2028781239" material="void" universe="2028781239" /><cell id="271532046" material="void" universe="271532046" /><cell id="1449686684" material="void" universe="1449686684" /><cell id="2009169451" material="void" universe="2009169451" /><cell id="1259226820" material="void" universe="1259226820" /><cell id="1581685404" material="void" universe="1581685404" /><cell id="563948703" material="void" universe="563948703" /><cell id="168248532" material="void" universe="168248532" /><cell id="1670628931" material="void" universe="1670628931" /><cell id="1856047671" material="void" universe="1856047671" /><cell id="1953627898" material="void" universe="1953627898" /><cell id="553712052" material="void" universe="553712052" /><cell id="627015093" material="void" universe="627015093" /><cell id="916999194" material="void" universe="916999194" /><cell id="1694277281" material="void" universe="1694277281" /><cell id="151974679" material="void" universe="151974679" /><cell id="1588739484" material="void" universe="1588739484" /><cell id="637096532" material="void" universe="637096532" /><cell id="1326562995" material="void" universe="1326562995" /><cell id="135625395" material="void" universe="135625395" /><cell id="582153346" material="void" universe="582153346" /><cell id="1948223159" material="void" universe="1948223159" /><cell id="1213525841" material="void" universe="1213525841" /><cell id="802167038" material="void" universe="802167038" /></geometry>
