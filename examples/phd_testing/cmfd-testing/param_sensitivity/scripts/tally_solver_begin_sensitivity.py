@@ -35,7 +35,7 @@ def generate_input_files(cluster, n_seeds, run_file):
     with open('base/run_openmc_cmfd_ts_begin.py', 'r') as file:
         cmfd_template = file.read()
     with open('base/{}'.format(batch_file), 'r') as file:
-        runfile = file.read() 
+        batch_template = file.read() 
 
     os.system('mkdir -p vary_tally_solver_begin')
     os.chdir('vary_tally_solver_begin')
@@ -57,20 +57,21 @@ def generate_input_files(cluster, n_seeds, run_file):
                 comb_dir = 'tbeg{}_sbeg{}'.format(comb[0], comb[1])
                 os.system('mkdir -p {}'.format(comb_dir))
                 os.chdir(comb_dir)
-                cmfd_out = cmfd_template
 
+                cmfd_out = cmfd_template
                 cmfd_out = cmfd_out.replace('{seed}', str(seed))
                 cmfd_out = cmfd_out.replace('{tbeg}', str(comb[0]))
                 cmfd_out = cmfd_out.replace('{ref_d}', '{}'.format(ref_d))
                 cmfd_out = cmfd_out.replace('{sbeg}', str(comb[1]))
 
+                batch_out = batch_template
                 jobname = 'tb{}sb{}s{}'.format(comb[0], comb[1], seed)
-                runfile = runfile.replace('{job_name}', jobname)
+                batch_out = batch_out.replace('{job_name}', jobname)
 
                 with open('run_openmc_cmfd.py', "w") as file:
                     file.write(cmfd_out)
                 with open(batch_file, "w") as file:
-                    file.write(runfile)
+                    file.write(batch_out)
                 os.system("cp ../../../../base/*.xml ./")
 
                 if run_file:
