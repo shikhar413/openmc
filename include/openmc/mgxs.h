@@ -11,6 +11,7 @@
 
 #include "openmc/constants.h"
 #include "openmc/hdf5_interface.h"
+#include "openmc/particle.h"
 #include "openmc/xsdata.h"
 
 
@@ -110,7 +111,10 @@ class Mgxs {
     //!
     //! @param xs_id HDF5 group id for the cross section data.
     //! @param temperature Temperatures to read.
-    Mgxs(hid_t xs_id, const std::vector<double>& temperature);
+    //! @param num_group number of energy groups
+    //! @param num_delay number of delayed groups
+    Mgxs(hid_t xs_id, const std::vector<double>& temperature,
+        int num_group, int num_delay);
 
     //! \brief Constructor that initializes and populates all data to build a
     //!   macroscopic cross section from microscopic cross section.
@@ -119,8 +123,11 @@ class Mgxs {
     //! @param mat_kTs temperatures (in units of eV) that data is needed.
     //! @param micros Microscopic objects to combine.
     //! @param atom_densities Atom densities of those microscopic quantities.
+    //! @param num_group number of energy groups
+    //! @param num_delay number of delayed groups
     Mgxs(const std::string& in_name, const std::vector<double>& mat_kTs,
-         const std::vector<Mgxs*>& micros, const std::vector<double>& atom_densities);
+         const std::vector<Mgxs*>& micros, const std::vector<double>& atom_densities,
+         int num_group, int num_delay);
 
     //! \brief Provides a cross section value given certain parameters
     //!
@@ -137,13 +144,19 @@ class Mgxs {
     get_xs(int xstype, int gin, const int* gout, const double* mu,
       const int* dg);
 
+    inline double
+    get_xs(int xstype, int gin)
+    {return get_xs(xstype, gin, nullptr, nullptr, nullptr);}
+
+
     //! \brief Samples the fission neutron energy and if prompt or delayed.
     //!
     //! @param gin Incoming energy group.
     //! @param dg Sampled delayed group index.
     //! @param gout Sampled outgoing energy group.
+    //! @param seed Pseudorandom seed pointer
     void
-    sample_fission_energy(int gin, int& dg, int& gout);
+    sample_fission_energy(int gin, int& dg, int& gout, uint64_t* seed);
 
     //! \brief Samples the outgoing energy and angle from a scatter event.
     //!
@@ -151,20 +164,15 @@ class Mgxs {
     //! @param gout Sampled outgoing energy group.
     //! @param mu Sampled cosine of the change-in-angle.
     //! @param wgt Weight of the particle to be adjusted.
+    //! @param seed Pseudorandom seed pointer.
     void
-    sample_scatter(int gin, int& gout, double& mu, double& wgt);
+    sample_scatter(int gin, int& gout, double& mu, double& wgt, uint64_t* seed);
 
     //! \brief Calculates cross section quantities needed for tracking.
     //!
-    //! @param gin Incoming energy group.
-    //! @param sqrtkT Temperature of the material.
-    //! @param u Incoming particle direction.
-    //! @param total_xs Resultant total cross section.
-    //! @param abs_xs Resultant absorption cross section.
-    //! @param nu_fiss_xs Resultant nu-fission cross section.
+    //! @param p The particle whose attributes set which MGXS to get.
     void
-    calculate_xs(int gin, double sqrtkT, Direction u,
-         double& total_xs, double& abs_xs, double& nu_fiss_xs);
+    calculate_xs(Particle& p);
 
     //! \brief Sets the temperature index in cache given a temperature
     //!

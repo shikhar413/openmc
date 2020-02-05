@@ -483,12 +483,12 @@ Tally::create(int32_t id)
 void
 Tally::set_id(int32_t id)
 {
-  Expects(id >= -1);
+  Expects(id >= 0 || id == C_NONE);
 
   // Clear entry in tally map if an ID was already assigned before
-  if (id_ != -1) {
+  if (id_ != C_NONE) {
     model::tally_map.erase(id_);
-    id_ = -1;
+    id_ = C_NONE;
   }
 
   // Make sure no other tally has the same ID
@@ -497,7 +497,7 @@ Tally::set_id(int32_t id)
   }
 
   // If no ID specified, auto-assign next ID in sequence
-  if (id == -1) {
+  if (id == C_NONE) {
     id = 0;
     for (const auto& t : model::tallies) {
       id = std::max(id, t->id_);
@@ -810,8 +810,7 @@ void Tally::init_results()
 void Tally::reset()
 {
   n_realizations_ = 0;
-  // TODO: Change to zero when xtensor is updated
-  if (results_.size() != 1) {
+  if (results_.size() != 0) {
     xt::view(results_, xt::all()) = 0.0;
   }
 }
@@ -1047,6 +1046,7 @@ free_memory_tally()
   {
     model::tally_derivs.clear();
   }
+  model::tally_deriv_map.clear();
 
   model::tally_filters.clear();
   model::filter_map.clear();
@@ -1398,8 +1398,7 @@ openmc_tally_results(int32_t index, double** results, size_t* shape)
   }
 
   const auto& t {model::tallies[index]};
-  // TODO: Change to zero when xtensor is updated
-  if (t->results_.size() == 1) {
+  if (t->results_.size() == 0) {
     set_errmsg("Tally results have not been allocated yet.");
     return OPENMC_E_ALLOCATE;
   }
