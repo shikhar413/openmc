@@ -270,6 +270,8 @@ class CMFDRun(object):
     window_size : int
         Size of window to use for tally window scheme. Only relevant when
         window_type is set to "rolling"
+    max_window_size: int
+        TODO
     indices : numpy.ndarray
         Stores spatial and group dimensions as [nx, ny, nz, ng]
     cmfd_src : numpy.ndarray
@@ -329,6 +331,7 @@ class CMFDRun(object):
         self._adjoint_type = 'physical'
         self._window_type = 'none'
         self._window_size = 10
+        self._max_window_size = sys.maxsize
         self._intracomm = None
         self._use_all_threads = False
 
@@ -458,6 +461,10 @@ class CMFDRun(object):
     @property
     def window_size(self):
         return self._window_size
+
+    @property
+    def max_window_size(self):
+        return self._max_window_size
 
     @property
     def power_monitor(self):
@@ -642,6 +649,16 @@ class CMFDRun(object):
                        'unless window type is set to "rolling".'
             warnings.warn(warn_msg, RuntimeWarning)
         self._window_size = window_size
+
+    @max_window_size.setter
+    def max_window_size(self, window_size):
+        check_type('CMFD max window size', window_size, Integral)
+        check_greater_than('CMFD max window size', window_size, 0)
+        if self._window_type != 'expanding':
+            warn_msg = 'Window size will have no effect on CMFD simulation ' \
+                       'unless window type is set to "expanding".'
+            warnings.warn(warn_msg, RuntimeWarning)
+        self._max_window_size = window_size
 
     @power_monitor.setter
     def power_monitor(self, power_monitor):
@@ -1867,7 +1884,8 @@ class CMFDRun(object):
         # Update window size for expanding window if necessary
         num_cmfd_batches = openmc.lib.current_batch() - self._tally_begin + 1
         if (self._window_type == 'expanding' and
-                num_cmfd_batches == self._window_size * 2):
+                num_cmfd_batches == self._window_size * 2 and
+                self._window_size * 2 <= self._max_window_size):
             self._window_size *= 2
 
         # Discard tallies from oldest batch if window limit reached
