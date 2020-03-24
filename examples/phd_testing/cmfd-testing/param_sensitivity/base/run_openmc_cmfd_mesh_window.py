@@ -91,8 +91,8 @@ if __name__ == "__main__":
     cmfd_mesh = cmfd.CMFDMesh()
     cmfd_mesh.lower_left = [-5., -5., -200.]
     cmfd_mesh.upper_right = [5., 5., 200.]
-    cmfd_mesh.dimension = [1, 1, 400]
-    cmfd_mesh.albedo = [1., 1., 1., 1., 0., 0.]
+    cmfd_mesh.dimension = [{cmfd_dim}]       # VARIED PARAMETER
+    cmfd_mesh.albedo = [{albedo}]
 
     # Initialize CMFDRun object
     cmfd_run = cmfd.CMFDRun()
@@ -100,17 +100,21 @@ if __name__ == "__main__":
     # Set all runtime parameters (cmfd_mesh, tolerances, tally_resets, etc)
     # All error checking done under the hood when setter function called
     cmfd_run.mesh = cmfd_mesh
-    cmfd_run.tally_begin = {tbeg}   # VARIED PARAMETER
-    cmfd_run.solver_begin = {sbeg}  # VARIED PARAMETER
-    cmfd_run.ref_d = [{ref_d}]      # VARIED PARAMETER
+    cmfd_run.tally_begin = 10
+    cmfd_run.solver_begin = 20
+    {solver_end}
+    cmfd_run.ref_d = []
     cmfd_run.display = {'balance': True, 'dominance': True, 'entropy': True, 'source': True}
     cmfd_run.feedback = True
     cmfd_run.downscatter = True
     cmfd_run.gauss_seidel_tolerance = [1.e-15, 1.e-20]
-    cmfd_run.window_type = 'expanding'
+    cmfd_run.window_type = '{window_type}'      # VARIED PARAMETER
+    {window_size}
+    {max_window_size}
 
     with cmfd_run.run_in_memory(args=args):
-        capi.settings.seed = {seed} # VARIED PARAMETER
+        capi.settings.seed = {seed}           # VARIED PARAMETER
+        capi.settings.particles = {particles} # VARIED PARAMETER
         for _ in cmfd_run.iter_batches():
             curr_gen = capi.current_batch()
             

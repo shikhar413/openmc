@@ -29,16 +29,13 @@ def generate_input_files(cluster, n_seeds, run_file):
     # Get problem parameters
     params, ds = get_params(prob_type)
 
-    os.chdir('./../{}'.format(prob_type))
+    os.chdir('./../tally_solver_begin_sensitivity/{}'.format(prob_type))
 
     # Generate files for base run
     with open('base/run_openmc_cmfd_ts_begin.py', 'r') as file:
         cmfd_template = file.read()
     with open('base/{}'.format(batch_file), 'r') as file:
         batch_template = file.read() 
-
-    os.system('mkdir -p vary_tally_solver_begin')
-    os.chdir('vary_tally_solver_begin')
 
     for seed in n_seeds:
         seed_dir = 'seed{}'.format(str(seed))

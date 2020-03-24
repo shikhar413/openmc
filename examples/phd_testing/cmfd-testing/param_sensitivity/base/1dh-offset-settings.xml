@@ -2,14 +2,13 @@
 <settings>
   <run_mode>eigenvalue</run_mode>
   <particles>1000000</particles>
-  <batches>399</batches>
-  <inactive>398</inactive>
+  <batches>999</batches>
+  <inactive>998</inactive>
   <fet_convergence>
-    <dimension>2</dimension>
-    <radial_order>10</radial_order>
-    <r>183.2</r>
-    <x>0.0</x>
-    <y>0.0</y>
+    <dimension>1</dimension>
+    <axial_order>10</axial_order>
+    <min>-200.0</min>
+    <max>200.0</max>
   </fet_convergence>
   <source strength="1.0">
     <space type="cartesian">
@@ -25,7 +24,7 @@
     <tallies>false</tallies>
   </output>
   <mesh id="1">
-    <dimension>1 1 400</dimension>
+    <dimension>1 1 4000</dimension>
     <lower_left>-5.0 -5.0 -200.0</lower_left>
     <upper_right>5.0 5.0 200.0</upper_right>
   </mesh>
