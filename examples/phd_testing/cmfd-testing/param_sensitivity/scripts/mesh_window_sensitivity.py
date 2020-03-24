@@ -133,7 +133,7 @@ def create_files(py_template, batch_template, nparticles, cluster_params, seed, 
     tasks = cluster_params['nodes'] * cluster_params['ppn']
     # TODO does this still hold true for INL Cluster?**************
     nprocs = cluster_params['nodes']*2
-    nthreads = cluster_params['nthreads'] = int(cluster_params['ppn']/2)
+    nthreads = int(cluster_params['ppn']/2)
 
     batch_template = batch_template.replace('{prob_type}', cluster_params['prob_type'])
     batch_template = batch_template.replace('{tasks}', str(tasks))

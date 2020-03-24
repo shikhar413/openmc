@@ -21,21 +21,33 @@ def generate_input_files(cluster, n_seeds, run_file):
         prob_type = "1d-homog"
         batch_file = "job.qsub"
         run_command = "qsub "
+        xml_files = ['1dh-offset-settings.xml', '1dh-geometry.xml', '1dh-materials.xml']
+        ppn = 12
+        nodes = 5
+        walltime = '02:00:00'
     elif cluster == "Green Cluster":
         prob_type = "2d-beavrs"
         batch_file = "job.slurm"
         run_command = "sbatch "
+        xml_files = ['2db-settings.xml', '2db-geometry.xml', '2db-materials.xml']
+        ppn = 32
+        nodes = 1
+        walltime = '12:00:00'
 
     # Get problem parameters
     params, ds = get_params(prob_type)
 
-    os.chdir('./../tally_solver_begin_sensitivity/{}'.format(prob_type))
+    os.system('mkdir -p ./../tally_solver_begin_sensitivity')
+    os.chdir('./../tally_solver_begin_sensitivity')
 
     # Generate files for base run
-    with open('base/run_openmc_cmfd_ts_begin.py', 'r') as file:
+    with open('../base/run_openmc_cmfd_ts_begin.py', 'r') as file:
         cmfd_template = file.read()
-    with open('base/{}'.format(batch_file), 'r') as file:
+    with open('../base/{}'.format(batch_file), 'r') as file:
         batch_template = file.read() 
+
+    os.system('mkdir -p {}'.format(prob_type))
+    os.chdir(prob_type)
 
     for seed in n_seeds:
         seed_dir = 'seed{}'.format(str(seed))
@@ -61,21 +73,34 @@ def generate_input_files(cluster, n_seeds, run_file):
                 cmfd_out = cmfd_out.replace('{ref_d}', '{}'.format(ref_d))
                 cmfd_out = cmfd_out.replace('{sbeg}', str(comb[1]))
 
-                batch_out = batch_template
                 jobname = 'tb{}sb{}s{}'.format(comb[0], comb[1], seed)
+                tasks = nodes * ppn
+                nprocs = nodes*2
+                nthreads = int(ppn/2)
+
+                batch_out = batch_template
+                batch_out = batch_out.replace('{prob_type}', prob_type)
+                batch_out = batch_out.replace('{tasks}', str(tasks))
+                batch_out = batch_out.replace('{nodes}', str(nodes))
+                batch_out = batch_out.replace('{ppn}', str(ppn))
                 batch_out = batch_out.replace('{job_name}', jobname)
+                batch_out = batch_out.replace('{walltime}', walltime)
+                batch_out = batch_out.replace('{nprocs}', str(nprocs))
+                batch_out = batch_out.replace('{nthreads}', str(nthreads))
 
                 with open('run_openmc_cmfd.py', "w") as file:
                     file.write(cmfd_out)
                 with open(batch_file, "w") as file:
                     file.write(batch_out)
-                os.system("cp ../../../../base/*.xml ./")
+                for xml_file in xml_files:
+                    os.system('cp ./../../../../../base/{} ./{}'.format(xml_file, xml_file.split('-')[-1]))
 
+                print_str = os.getcwd().split('tally_solver_begin_sensitivity/')[-1]
                 if run_file:
-                    print('Running batch script in {}/{}/{}'.format(seed_dir, d_dir, comb_dir))
+                    print('Running batch script in {}'.format(print_str))
                     os.system(run_command+batch_file)
                 else:
-                    print('Created input files for {}/{}/{}'.format(seed_dir, d_dir, comb_dir))
+                    print('Created input files in {}'.format(print_str))
                 os.chdir('./..')
             os.chdir('./..')
         os.chdir('./..')
