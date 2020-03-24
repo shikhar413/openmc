@@ -90,7 +90,6 @@ if __name__ == "__main__":
     with capi.run_in_memory(args=args):
         capi.simulation_init()
         capi.settings.seed = {seed}
-        capi.settings.particles = {particles}
         for _ in capi.iter_batches():
             curr_gen = capi.current_batch()
             

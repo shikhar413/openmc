@@ -19,7 +19,7 @@ def get_params(prob_type):
 def generate_input_files(cluster, n_seeds, run_file):
     if cluster == "NSE Cluster":
         prob_type = "1d-homog"
-        batch_file = "job.qsub"
+        batch_file = "job-nse.qsub"
         run_command = "qsub "
         xml_files = ['1dh-offset-settings.xml', '1dh-geometry.xml', '1dh-materials.xml']
         ppn = 12

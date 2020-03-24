@@ -6,6 +6,46 @@ from mpi4py import MPI
 import openmc.lib as capi
 import numpy as np
 
+def init_cmfd_params(problem_type):
+    # Define CMFD parameters
+    cmfd_mesh = cmfd.CMFDMesh()
+    if problem_type == '1d-homog':
+        cmfd_mesh.lower_left = [-5., -5., -200.]
+        cmfd_mesh.upper_right = [5., 5., 200.]
+        cmfd_mesh.albedo = [1., 1., 1., 1., 0., 0.]
+    else:
+        cmfd_mesh.lower_left = [-182.78094, -182.78094, 220.0]
+        cmfd_mesh.upper_right = [182.78094, 182.78094, 240.0]
+        cmfd_mesh.albedo = [0., 0., 0., 0., 1., 1.]
+        cmfd_mesh.energy = [0.0, 0.625, 20000000]
+
+    cmfd_mesh.dimension = [{cmfd_dim}]       # VARIED PARAMETER
+    {map_str}
+
+    # Initialize CMFDRun object
+    cmfd_run = cmfd.CMFDRun()
+
+    # Set all runtime parameters (cmfd_mesh, tolerances, tally_resets, etc)
+    # All error checking done under the hood when setter function called
+    cmfd_run.mesh = cmfd_mesh
+    if problem_type == '1d-homog':
+        cmfd_run.ref_d = []
+        cmfd_run.tally_begin = 10
+        cmfd_run.solver_begin = 20
+    else:
+        cmfd_run.ref_d = [1.42669, 0.400433]
+        cmfd_run.tally_begin = 2
+        cmfd_run.solver_begin = 3
+    {solver_end}
+    cmfd_run.display = {'balance': True, 'dominance': True, 'entropy': True, 'source': True}
+    cmfd_run.feedback = True
+    cmfd_run.downscatter = True
+    cmfd_run.gauss_seidel_tolerance = [1.e-15, 1.e-20]
+    cmfd_run.window_type = '{window_type}'      # VARIED PARAMETER
+    {window_size}
+    {max_window_size}
+    return cmfd_run
+
 def init_prob_params(problem_type):
     if problem_type == '1d-homog':
         n_modes = 10
@@ -87,34 +127,10 @@ if __name__ == "__main__":
 
     statepoint_interval = 10
 
-    # Define CMFD parameters
-    cmfd_mesh = cmfd.CMFDMesh()
-    cmfd_mesh.lower_left = [-5., -5., -200.]
-    cmfd_mesh.upper_right = [5., 5., 200.]
-    cmfd_mesh.dimension = [{cmfd_dim}]       # VARIED PARAMETER
-    cmfd_mesh.albedo = [{albedo}]
-
-    # Initialize CMFDRun object
-    cmfd_run = cmfd.CMFDRun()
-
-    # Set all runtime parameters (cmfd_mesh, tolerances, tally_resets, etc)
-    # All error checking done under the hood when setter function called
-    cmfd_run.mesh = cmfd_mesh
-    cmfd_run.tally_begin = 10
-    cmfd_run.solver_begin = 20
-    {solver_end}
-    cmfd_run.ref_d = []
-    cmfd_run.display = {'balance': True, 'dominance': True, 'entropy': True, 'source': True}
-    cmfd_run.feedback = True
-    cmfd_run.downscatter = True
-    cmfd_run.gauss_seidel_tolerance = [1.e-15, 1.e-20]
-    cmfd_run.window_type = '{window_type}'      # VARIED PARAMETER
-    {window_size}
-    {max_window_size}
+    cmfd_run = init_cmfd_params(prob_type)
 
     with cmfd_run.run_in_memory(args=args):
         capi.settings.seed = {seed}           # VARIED PARAMETER
-        capi.settings.particles = {particles} # VARIED PARAMETER
         for _ in cmfd_run.iter_batches():
             curr_gen = capi.current_batch()
             
