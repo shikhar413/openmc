@@ -87,31 +87,10 @@ if __name__ == "__main__":
 
     statepoint_interval = 10
 
-    # Define CMFD parameters
-    cmfd_mesh = cmfd.CMFDMesh()
-    cmfd_mesh.lower_left = [-5., -5., -200.]
-    cmfd_mesh.upper_right = [5., 5., 200.]
-    cmfd_mesh.dimension = [1, 1, 400]
-    cmfd_mesh.albedo = [1., 1., 1., 1., 0., 0.]
-
-    # Initialize CMFDRun object
-    cmfd_run = cmfd.CMFDRun()
-
-    # Set all runtime parameters (cmfd_mesh, tolerances, tally_resets, etc)
-    # All error checking done under the hood when setter function called
-    cmfd_run.mesh = cmfd_mesh
-    cmfd_run.tally_begin = {tbeg}   # VARIED PARAMETER
-    cmfd_run.solver_begin = {sbeg}  # VARIED PARAMETER
-    cmfd_run.ref_d = [{ref_d}]      # VARIED PARAMETER
-    cmfd_run.display = {'balance': True, 'dominance': True, 'entropy': True, 'source': True}
-    cmfd_run.feedback = True
-    cmfd_run.downscatter = True
-    cmfd_run.gauss_seidel_tolerance = [1.e-15, 1.e-20]
-    cmfd_run.window_type = 'expanding'
-
-    with cmfd_run.run_in_memory(args=args):
-        capi.settings.seed = {seed} # VARIED PARAMETER
-        for _ in cmfd_run.iter_batches():
+    with capi.run_in_memory(args=args):
+        capi.simulation_init()
+        capi.settings.seed = {seed}
+        for _ in capi.iter_batches():
             curr_gen = capi.current_batch()
             
             if comm.Get_rank() == 0:
@@ -132,7 +111,7 @@ if __name__ == "__main__":
 
             # Create new statepoint, remove previous one and save numpy arrays
             if curr_gen % statepoint_interval == 0:
-                cmfd_run.statepoint_write()
+                capi.statepoint_write()
                 if comm.Get_rank() == 0:
                     np.save("entropy_data", entropy_data)
                     np.save("fet_data", fet_data)
@@ -141,6 +120,7 @@ if __name__ == "__main__":
                         os.system('rm {}'.format(prev_sp))
                     # Update previous statepoint
                     prev_sp = glob.glob(os.path.join("statepoint.*.h5"))[0]
+        capi.simulation_finalize()
 
     # End of simulation, save fet and entropy data
     if comm.Get_rank() == 0:
