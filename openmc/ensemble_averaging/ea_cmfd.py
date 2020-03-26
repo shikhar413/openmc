@@ -318,8 +318,7 @@ class EnsAvgCMFDRun(object):
         ea_params = ['n_seeds', 'n_procs_per_seed', 'seed_begin', 'verbosity',
                      'openmc_verbosity', 'n_particles', 'n_inactive',
                      'n_batches', 'tally_begin', 'solver_begin', 'display']
-        # TODO
-        openmc_params = ['']
+        openmc_params = ['n_threads', 'window_type', 'window_size']
         cmfd_params = ['ref_d', 'downscatter', 'cmfd_ktol', 'norm', 'w_shift',
                        'stol', 'spectral', 'gauss_seidel_tolerance',
                        'n_threads']

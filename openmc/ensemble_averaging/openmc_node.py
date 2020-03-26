@@ -60,6 +60,8 @@ class OpenMCNode(object):
     window_size : int
         Size of window to use for tally window scheme. Only relevant when
         window_type is set to "rolling"
+    n_threads : int
+        Number of threads per process allocated to run OpenMC
     indices : numpy.ndarray
         Stores spatial and group dimensions as [nx, ny, nz, ng]
     intracomm : mpi4py.MPI.Intracomm or None
@@ -73,12 +75,24 @@ class OpenMCNode(object):
 
         """
         # Variables that users can modify
-        self._tally_begin = 1
-        self._solver_begin = 1
-        self._mesh = None
         self._window_type = 'none'
         self._window_size = 10
-        self._intracomm = None
+        self._n_threads = 1
+
+        # Variables defined by EnsAvgCMFDRun class
+        self._tally_begin = None
+        self._seed_begin = None
+        self._solver_begin = None
+        self._mesh = None
+        self._n_procs_per_seed = None
+        self._n_seeds = None
+        self._openmc_verbosty = None
+        self._verbosity = None
+        self._n_inactive = None
+        self._n_particles = None
+        self._n_batches = None
+        self._global_comm = None
+        self._local_comm = None
 
         # External variables used during runtime but users cannot control
         self._indices = np.zeros(4, dtype=np.int32)
@@ -118,68 +132,52 @@ class OpenMCNode(object):
         return self._window_size
 
     @property
+    def n_threads(self):
+        return self._n_threads
+
+    @property
     def indices(self):
         return self._indices
 
-    @tally_begin.setter
-    def tally_begin(self, begin):
-        check_type('CMFD tally begin batch', begin, Integral)
-        check_greater_than('CMFD tally begin batch', begin, 0)
-        self._tally_begin = begin
+    @property
+    def global_comm(self):
+        return self._global_comm
 
-    @solver_begin.setter
-    def solver_begin(self, begin):
-        check_type('CMFD feedback begin batch', begin, Integral)
-        check_greater_than('CMFD feedback begin batch', begin, 0)
-        self._solver_begin = begin
+    @property
+    def local_comm(self):
+        return self._local_comm
 
-    @mesh.setter
-    def mesh(self, cmfd_mesh):
-        check_type('CMFD mesh', cmfd_mesh, CMFDMesh)
+    @property
+    def n_seeds(self):
+        return self._n_seeds
 
-        # Check dimension defined
-        if cmfd_mesh.dimension is None:
-            raise ValueError('CMFD mesh requires spatial '
-                             'dimensions to be specified')
+    @property
+    def verbosity(self):
+        return self._verbosity
 
-        # Check lower left defined
-        if cmfd_mesh.lower_left is None:
-            raise ValueError('CMFD mesh requires lower left coordinates '
-                             'to be specified')
+    @property
+    def openmc_verbosity(self):
+        return self._openmc_verbosity
 
-        # Check that both upper right and width both not defined
-        if cmfd_mesh.upper_right is not None and cmfd_mesh.width is not None:
-            raise ValueError('Both upper right coordinates and width '
-                             'cannot be specified for CMFD mesh')
+    @property
+    def n_procs_per_seed(self):
+        return self._n_procs_per_seed
 
-        # Check that at least one of width or upper right is defined
-        if cmfd_mesh.upper_right is None and cmfd_mesh.width is None:
-            raise ValueError('CMFD mesh requires either upper right '
-                             'coordinates or width to be specified')
+    @property
+    def n_batches(self):
+        return self._n_batches
 
-        # Check width and lower length are same dimension and define
-        # upper_right
-        if cmfd_mesh.width is not None:
-            check_length('CMFD mesh width', cmfd_mesh.width,
-                         len(cmfd_mesh.lower_left))
-            cmfd_mesh.upper_right = np.array(cmfd_mesh.lower_left) + \
-                np.array(cmfd_mesh.width) * np.array(cmfd_mesh.dimension)
+    @property
+    def seed_begin(self):
+        return self._seed_begin
 
-        # Check upper_right and lower length are same dimension and define
-        # width
-        elif cmfd_mesh.upper_right is not None:
-            check_length('CMFD mesh upper right', cmfd_mesh.upper_right,
-                         len(cmfd_mesh.lower_left))
-            # Check upper right coordinates are greater than lower left
-            if np.any(np.array(cmfd_mesh.upper_right) <=
-                      np.array(cmfd_mesh.lower_left)):
-                raise ValueError('CMFD mesh requires upper right '
-                                 'coordinates to be greater than lower '
-                                 'left coordinates')
-            cmfd_mesh.width = np.true_divide((np.array(cmfd_mesh.upper_right) -
-                                             np.array(cmfd_mesh.lower_left)),
-                                             np.array(cmfd_mesh.dimension))
-        self._mesh = cmfd_mesh
+    @property
+    def n_inactive(self):
+        return self._n_inactive
+
+    @property
+    def n_particles(self):
+        return self._n_particles
 
     @window_type.setter
     def window_type(self, window_type):
@@ -197,6 +195,65 @@ class OpenMCNode(object):
                        'unless window type is set to "rolling".'
             warnings.warn(warn_msg, RuntimeWarning)
         self._window_size = window_size
+
+    @n_threads.setter
+    def n_threads(self, threads):
+        check_type('OpenMC threads', threads, Integral)
+        check_greater_than('OpenMC threads', threads, 0)
+        self._n_threads = threads
+
+    # All error checking for following methods done in EnsAvgCMFDRun class
+    @tally_begin.setter
+    def tally_begin(self, begin):
+        self._tally_begin = begin
+
+    @solver_begin.setter
+    def solver_begin(self, begin):
+        self._solver_begin = begin
+
+    @mesh.setter
+    def mesh(self, cmfd_mesh):
+        self._mesh = cmfd_mesh
+
+    @global_comm.setter
+    def global_comm(self, comm):
+        self._global_comm = comm
+
+    @local_comm.setter
+    def local_comm(self, comm):
+        self._local_comm = comm
+
+    @n_seeds.setter
+    def n_seeds(self, n_seeds):
+        self._n_seeds = n_seeds
+
+    @verbosity.setter
+    def verbosity(self, verbosity):
+        self._verbosity = verbosity
+
+    @openmc_verbosity.setter
+    def openmc_verbosity(self, verbosity):
+        self._openmc_verbosity = verbosity
+
+    @n_procs_per_seed.setter
+    def n_procs_per_seed(self, procs):
+        self._n_procs_per_seed = procs
+
+    @n_batches.setter
+    def n_batches(self, batches):
+        self._n_batches = batches
+
+    @seed_begin.setter
+    def seed_begin(self, begin):
+        self._seed_begin = begin
+
+    @n_inactive.setter
+    def n_inactive(self, inactive):
+        self._n_inactive = inactive
+
+    @n_particles.setter
+    def n_particles(self, particles):
+        self._n_particles = particles
 
     @contextmanager
     def run_in_memory(self, **kwargs):
@@ -219,21 +276,27 @@ class OpenMCNode(object):
             All keyword arguments passed to :func:`openmc.lib.run_in_memory`.
 
         """
-        print(kwargs)
-        yield
-        '''
+        # Extract arguments passed from EnsAvgCMFDRun class
+        global_args = kwargs['global_args']
+        openmc_args = kwargs['openmc_args']
+
+        self._initialize_ea_params(global_args, openmc_args)
+
         # Run and pass arguments to C API run_in_memory function
-        with openmc.lib.run_in_memory(**kwargs):
+        args = ['-s', str(self._n_threads)]
+        with openmc.lib.run_in_memory(args=args, intracomm=self._local_comm):
             self.init()
             yield
-            self.finalize()
-        '''
+            #self.finalize()
 
     def init(self):
         """ Initialize OpenMC instance in memory and set up 
         necessary CMFD parameters.
 
         """
+        # Configure OpenMC parameters
+        self._configure_openmc()
+
         # Configure CMFD parameters
         self._configure_cmfd()
 
@@ -285,17 +348,32 @@ class OpenMCNode(object):
         # Finalize simuation
         openmc.lib.simulation_finalize()
 
+    def _initialize_ea_params(self, global_args, openmc_args):
+        # Initialize global parameters inherited from EnsAvgCMFDRun class
+        global_params = ['global_comm', 'local_comm', 'n_seeds', 'verbosity',
+                         'openmc_verbosity', 'n_procs_per_seed', 'mesh',
+                         'solver_begin', 'n_batches', 'seed_begin',
+                         'n_inactive', 'n_particles', 'tally_begin']
+
+        for param in global_params:
+            setattr(self, param, global_args[param])
+
+        # Initialize OpenMC parameters inherited from EnseAvgCMFDRun class
+        for param in openmc_args:
+            setattr(self, param, openmc_args[param])
+
+    def _configure_openmc(self):
+        """Configure OpenMC parameters through OpenMC lib"""
+        seed_num = int((self._global_comm.Get_rank()-self._n_procs_per_seed) /
+                       self._n_procs_per_seed)
+        openmc.lib.settings.seed = seed_num
+        openmc.lib.settings.verbosity = self._openmc_verbosity
+        openmc.lib.settings.inactive = self._n_inactive
+        openmc.lib.settings.batches = self._n_batches
+        openmc.lib.settings.particles = self._n_particles
+
     def _configure_cmfd(self):
-        """Initialize CMFD parameters and set CMFD input variables"""
-        # Define all variables necessary for running CMFD
-        self._initialize_cmfd()
-
-    def _initialize_cmfd(self):
-        """Sets values of CMFD instance variables based on user input,
-           separating between variables that only exist on all processes
-           and those that only exist on the master process
-
-        """
+        """Configure CMFD parameters and set CMFD input variables"""
         # Check if CMFD mesh is defined
         if self._mesh is None:
             raise ValueError('No CMFD mesh has been specified for '
@@ -734,5 +812,3 @@ class OpenMCNode(object):
 
             # Set all tallies to be active from beginning
             cmfd_tally.active = True
-
-

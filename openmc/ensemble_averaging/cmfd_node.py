@@ -126,7 +126,7 @@ class CMFDNode(object):
         Time for building CMFD matrices, in seconds
     time_cmfdsolve : float
         Time for solving CMFD matrix equations, in seconds
-    n_threads : bool
+    n_threads : int
         Number of threads allocated to OpenMC for CMFD solver
 
     """
@@ -157,7 +157,6 @@ class CMFDNode(object):
         self._n_batches = None
         self._global_comm = None
         self._local_comm = None
-        # TODO determine which variables redundant
 
         # External variables used during runtime but users cannot control
         self._set_reference_params = False
@@ -374,6 +373,12 @@ class CMFDNode(object):
         check_length('Gauss-Seidel tolerance', gauss_seidel_tolerance, 2)
         self._gauss_seidel_tolerance = gauss_seidel_tolerance
         
+    @n_threads.setter
+    def n_threads(self, threads):
+        check_type('CMFD threads', threads, Integral)
+        check_greater_than('CMFD threads', threads, 0)
+        self._n_threads = threads
+
     # All error checking for following methods done in EnsAvgCMFDRun class
     @global_comm.setter
     def global_comm(self, comm):
@@ -449,7 +454,7 @@ class CMFDNode(object):
                 self.finalize()
             else:
                 # TODO print statement saying that resources not being utilized
-                #print('***********Stalling!************')
+                print('***********Stalling!************')
                 yield
 
     def init(self):
@@ -457,6 +462,9 @@ class CMFDNode(object):
         calling :func:`openmc.lib.simulation_init`
 
         """
+        # Configure OpenMC parameters
+        self._configure_openmc()
+
         # Configure CMFD parameters
         self._configure_cmfd()
 
@@ -544,6 +552,11 @@ class CMFDNode(object):
             temp_loss.indices, len(temp_loss.indices), n, \
             self._spectral, self._indices, coremap, use_all_threads
         return openmc.lib._dll.openmc_initialize_linsolver(*args)
+
+    def _configure_openmc(self):
+        """Configure OpenMC parameters through OpenMC lib"""
+        # Define all variables necessary for running CMFD
+        openmc.lib.verbosity = self._openmc_verbosity
 
     def _configure_cmfd(self):
         """Initialize CMFD parameters and set CMFD input variables"""

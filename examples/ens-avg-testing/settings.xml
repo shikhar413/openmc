@@ -22,5 +22,9 @@
     <upper_right> 10.0  1.0  1.0 </upper_right>
   </mesh>
   <entropy_mesh>10</entropy_mesh>
+  <output>
+    <summary>false</summary>
+    <tallies>false</tallies>
+  </output>
 
 </settings>
