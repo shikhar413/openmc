@@ -62,6 +62,7 @@ class EnsAvgCMFDRun(object):
         self._n_inactive = 10
         self._n_batches = 20
         self._tally_begin = 1
+        self._window_type = 'none'
         self._solver_begin = 1
         self._display = {'balance': False, 'dominance': False,
                          'entropy': False, 'source': False}
@@ -118,6 +119,10 @@ class EnsAvgCMFDRun(object):
     @property
     def solver_begin(self):
         return self._solver_begin
+
+    @property
+    def window_type(self):
+        return self._window_type
 
     @property
     def display(self):
@@ -204,6 +209,13 @@ class EnsAvgCMFDRun(object):
         check_greater_than('CMFD solver begin batch', begin, 0)
         self._solver_begin = begin
 
+    @window_type.setter
+    def window_type(self, window_type):
+        check_type('CMFD window type', window_type, str)
+        check_value('CMFD window type', window_type,
+                    ['none', 'rolling', 'expanding'])
+        self._window_type = window_type
+
     @display.setter
     def display(self, display):
         check_type('display', display, Mapping)
@@ -278,7 +290,6 @@ class EnsAvgCMFDRun(object):
         }
         with self._node.run_in_memory(**kwargs):
             yield
-        sys.exit()
         self.finalize()
 
     def init(self):
@@ -317,11 +328,12 @@ class EnsAvgCMFDRun(object):
                        'energy', 'albedo', 'map']
         ea_params = ['n_seeds', 'n_procs_per_seed', 'seed_begin', 'verbosity',
                      'openmc_verbosity', 'n_particles', 'n_inactive',
-                     'n_batches', 'tally_begin', 'solver_begin', 'display']
-        openmc_params = ['n_threads', 'window_type', 'window_size']
+                     'n_batches', 'tally_begin', 'solver_begin', 'display',
+                     'window_type']
+        openmc_params = ['n_threads']
         cmfd_params = ['ref_d', 'downscatter', 'cmfd_ktol', 'norm', 'w_shift',
                        'stol', 'spectral', 'gauss_seidel_tolerance',
-                       'n_threads']
+                       'n_threads', 'window_size']
 
         config = configparser.ConfigParser()
         config.read(self._cfg_file)
@@ -344,7 +356,7 @@ class EnsAvgCMFDRun(object):
 
         section = 'OpenMC Node'
         if section in config.sections():
-            for param in cmfd_params:
+            for param in openmc_params:
                 if param in config[section]:
                     value = json.loads(config.get(section, param))
                     self._openmc_args[param] = value
@@ -384,7 +396,8 @@ class EnsAvgCMFDRun(object):
         global_params = ['local_comm', 'global_comm', 'n_seeds', 'verbosity',
                          'openmc_verbosity', 'n_procs_per_seed', 'mesh',
                          'tally_begin', 'seed_begin', 'solver_begin',
-                         'n_particles', 'n_inactive', 'n_batches']
+                         'n_particles', 'n_inactive', 'n_batches', 'window_type',
+                         'display']
 
         for param in global_params:
             self._global_args[param] = getattr(self, param)
