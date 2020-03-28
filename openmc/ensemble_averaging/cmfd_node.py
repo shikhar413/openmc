@@ -689,17 +689,33 @@ class CMFDNode(object):
         self._time_cmfdbuild = 0.0
         self._time_cmfdsolve = 0.0
 
-    def _recv_tallies_from_openmc_node(self):
+    def _recv_tallies_from_openmc(self):
         all_tally_data = np.empty([self._n_seeds, self._tally_data_size],
                                   dtype=np.float64)
         for i in range(self._n_seeds):
             tally_data = np.empty(self._tally_data_size,dtype=np.float64)
             status = MPI.Status()
-            self._global_comm.Recv(tally_data, source=MPI.ANY_SOURCE, status=status)
+            self._global_comm.Recv(tally_data, source=MPI.ANY_SOURCE, status=status, tag=0)
             source = status.Get_source()
             seed_idx = int((source-self._n_procs_per_seed)/self._n_procs_per_seed)
             all_tally_data[seed_idx,:] = tally_data
         self._compute_xs(np.sum(all_tally_data, axis=0)/self._n_seeds)
+
+    def _recv_sourcecounts_from_openmc(self):
+        source_data_shape = np.prod(self._indices[0:3]), self._indices[3]
+        all_sourcecount_data = np.empty((self._n_seeds,) + source_data_shape,
+                                  dtype=np.float64)
+        for i in range(self._n_seeds):
+            source_data = np.empty(source_data_shape, dtype=np.float64)
+            status = MPI.Status()
+            self._global_comm.Recv(source_data, source=MPI.ANY_SOURCE, status=status, tag=1)
+            source = status.Get_source()
+            seed_idx = int((source-self._n_procs_per_seed)/self._n_procs_per_seed)
+            all_sourcecount_data[seed_idx,:] = source_data
+
+        # Compute seed-averaged sourcecounts
+        self._sourcecounts = np.sum(all_sourcecount_data, axis=0)/self._n_seeds
+        self._update_weightfactors()
 
     def _compute_xs(self, seed_avg_tally_data):
         """Takes seed-averaged CMFD tallies from OpenMC node and computes
@@ -930,7 +946,7 @@ class CMFDNode(object):
         time_start_cmfd = time.time()
 
         if self._current_batch >= self._tally_begin:
-            self._recv_tallies_from_openmc_node()
+            self._recv_tallies_from_openmc()
 
         if self._current_batch >= self._solver_begin:
             # Create CMFD data based on OpenMC tallies
@@ -943,10 +959,11 @@ class CMFDNode(object):
             self._k_cmfd.append(self._keff)
 
             # Calculate fission source
-            #self._calc_fission_source()
+            self._calc_fission_source()
 
-            # Calculate weight factors
-            #self._cmfd_reweight()
+            # Receive sourcecounts from OpenMC
+            # TODO rename to cmfd_reweight and separate recv from update_weightfactors
+            self._recv_sourcecounts_from_openmc()
 
         # Stop CMFD timer
         time_stop_cmfd = time.time()
@@ -1069,7 +1086,7 @@ class CMFDNode(object):
         self._src_cmp.append(np.sqrt(1.0 / self._norm
                              * np.sum((self._cmfd_src - self._openmc_src)**2)))
 
-    def _cmfd_reweight(self):
+    def _update_weightfactors(self):
         """Performs weighting of particles in source bank"""
         # Get spatial dimensions and energy groups
         nx, ny, nz, ng = self._indices
@@ -1098,8 +1115,9 @@ class CMFDNode(object):
                                dtype=np.float32))
 
         # Broadcast weight factors to all procs
-        self._weightfactors = self._intracomm.bcast(
-                              self._weightfactors)
+        for i in range(self._n_seeds*self._n_procs_per_seed):
+            dest = i + self._n_procs_per_seed
+            self._global_comm.Send(self._weightfactors, dest=dest)
 
     def _build_loss_matrix(self):
         # Extract spatial and energy indices and define matrix dimension
