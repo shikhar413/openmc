@@ -552,8 +552,8 @@ class CMFDNode(object):
         """
         # Add 1 to current batch
         self._current_batch += 1
-        if openmc.lib.master():
-            print("Current batch", self._current_batch)
+        print("Current batch", self._current_batch)
+        sys.stdout.flush()
 
         # Receive tally data from all OpenMCNode objects before CMFD execution
         if openmc.lib.master():
@@ -561,7 +561,6 @@ class CMFDNode(object):
             # TODO broadcast weightfactors to all other procs
 
         status = 1 if self._current_batch == self._n_batches else 0
-        print(self._k_cmfd)
 
         return status
 

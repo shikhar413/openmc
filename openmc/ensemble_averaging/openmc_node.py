@@ -19,6 +19,7 @@ import warnings
 
 import numpy as np
 import h5py
+from mpi4py import MPI
 
 import openmc.lib
 from openmc.checkvalue import (check_type, check_length, check_value,
@@ -303,6 +304,23 @@ class OpenMCNode(object):
             if openmc.lib.current_batch() >= self._tally_begin:
                 self._send_tallies_to_cmfd_node()
 
+        if openmc.lib.current_batch() >= self._solver_begin:
+            # TODO put all of below into cmfd_reweight
+            outside = self._count_bank_sites()
+
+            # Check and raise error if source sites exist outside of CMFD mesh
+            if openmc.lib.master() and outside:
+                raise OpenMCError('Source sites outside of the CMFD mesh')
+
+            # Send sourcecounts to CMFD node and wait for CMFD node to send
+            # updated weight factors
+            if openmc.lib.master():
+                self._send_sourcecounts_to_cmfd_node()
+
+            # Receive updated weight factors from CMFD node and update source
+            self._recv_weightfactors_from_cmfd_node()
+
+
         '''
         # TODO if current_batch >= self._solver_begin:
         #    compute sourcecounts
@@ -397,55 +415,6 @@ class OpenMCNode(object):
         for tally_id in self._tally_ids:
             tallies[tally_id].reset()
 
-    def _cmfd_reweight(self):
-        """Performs weighting of particles in source bank"""
-        # Get spatial dimensions and energy groups
-        nx, ny, nz, ng = self._indices
-
-        # Count bank site in mesh and reverse due to egrid structured
-        outside = self._count_bank_sites()
-
-        # Check and raise error if source sites exist outside of CMFD mesh
-        if openmc.lib.master() and outside:
-            raise OpenMCError('Source sites outside of the CMFD mesh')
-
-        # TODO broadcast sourcecounts to CMFDNode
-        # TODO get weightfactors from CMFDNode
-
-        m = openmc.lib.meshes[self._mesh_id]
-        energy = self._egrid
-        ng = self._indices[3]
-
-        # Get locations and energies of all particles in source bank
-        source_xyz = openmc.lib.source_bank()['r']
-        source_energies = openmc.lib.source_bank()['E']
-
-        # Convert xyz location to the CMFD mesh index
-        mesh_ijk = np.floor((source_xyz - m.lower_left)/m.width).astype(int)
-
-        # Determine which energy bin each particle's energy belongs to
-        # Separate into cases bases on where source energies lies on egrid
-        energy_bins = np.zeros(len(source_energies), dtype=int)
-        idx = np.where(source_energies < energy[0])
-        energy_bins[idx] = ng - 1
-        idx = np.where(source_energies > energy[-1])
-        energy_bins[idx] = 0
-        idx = np.where((source_energies >= energy[0]) &
-                       (source_energies <= energy[-1]))
-        energy_bins[idx] = ng - np.digitize(source_energies[idx], energy)
-
-        # Determine weight factor of each particle based on its mesh index
-        # and energy bin and updates its weight
-        openmc.lib.source_bank()['wgt'] *= self._weightfactors[
-                mesh_ijk[:,0], mesh_ijk[:,1], mesh_ijk[:,2], energy_bins]
-
-        if openmc.lib.master() and np.any(source_energies < energy[0]):
-            print(' WARNING: Source point below energy grid')
-            sys.stdout.flush()
-        if openmc.lib.master() and np.any(source_energies > energy[-1]):
-            print(' WARNING: Source point above energy grid')
-            sys.stdout.flush()
-
     def _count_bank_sites(self):
         """Determines the number of fission bank sites in each cell of a given
         mesh and energy group structure.
@@ -499,15 +468,10 @@ class OpenMCNode(object):
         # Store counts to appropriate mesh-energy combination
         count[idx[0].astype(int), idx[1].astype(int)] = counts
 
-        if have_mpi:
-            # Collect values of count from all processors
-            self._intracomm.Reduce(count, self._sourcecounts, MPI.SUM)
-            # Check if there were sites outside the mesh for any processor
-            self._intracomm.Reduce(outside, sites_outside, MPI.LOR)
-        # Deal with case if MPI not defined (only one proc)
-        else:
-            sites_outside = outside
-            self._sourcecounts = count
+        # Collect values of count from all processors
+        self._local_comm.Reduce(count, self._sourcecounts, MPI.SUM)
+        # Check if there were sites outside the mesh for any processor
+        self._local_comm.Reduce(outside, sites_outside, MPI.LOR)
 
         return sites_outside[0]
 
@@ -544,7 +508,50 @@ class OpenMCNode(object):
 
         tally_data = np.concatenate((flux, totalrr, scattrr, nfissrr, current,
                                      p1scattrr, [num_realizations, keff]))
-        self._global_comm.Send(tally_data, dest=0)
+        self._global_comm.Send(tally_data, dest=0, tag=0)
+
+    def _send_sourcecounts_to_cmfd_node(self):
+        """Transfer sourcecounts to CMFD node for reweight calculation"""
+        self._global_comm.Send(self._sourcecounts, dest=0, tag=1)
+
+    def _recv_weightfactors_from_cmfd_node(self):
+        """Receive weightfactos from CMFD node and update source"""
+        self._weightfactors = np.empty(self._indices, dtype=np.float64)
+        self._global_comm.Recv(self._weightfactors, source=0)
+
+        m = openmc.lib.meshes[self._mesh_id]
+        energy = self._egrid
+        ng = self._indices[3]
+
+        # Get locations and energies of all particles in source bank
+        source_xyz = openmc.lib.source_bank()['r']
+        source_energies = openmc.lib.source_bank()['E']
+
+        # Convert xyz location to the CMFD mesh index
+        mesh_ijk = np.floor((source_xyz - m.lower_left)/m.width).astype(int)
+
+        # Determine which energy bin each particle's energy belongs to
+        # Separate into cases bases on where source energies lies on egrid
+        energy_bins = np.zeros(len(source_energies), dtype=int)
+        idx = np.where(source_energies < energy[0])
+        energy_bins[idx] = ng - 1
+        idx = np.where(source_energies > energy[-1])
+        energy_bins[idx] = 0
+        idx = np.where((source_energies >= energy[0]) &
+                       (source_energies <= energy[-1]))
+        energy_bins[idx] = ng - np.digitize(source_energies[idx], energy)
+
+        # Determine weight factor of each particle based on its mesh index
+        # and energy bin and updates its weight
+        openmc.lib.source_bank()['wgt'] *= self._weightfactors[
+                mesh_ijk[:,0], mesh_ijk[:,1], mesh_ijk[:,2], energy_bins]
+
+        if openmc.lib.master() and np.any(source_energies < energy[0]):
+            print(' WARNING: Source point below energy grid')
+            sys.stdout.flush()
+        if openmc.lib.master() and np.any(source_energies > energy[-1]):
+            print(' WARNING: Source point above energy grid')
+            sys.stdout.flush()
 
     def _create_cmfd_tally(self):
         """Creates all tallies in-memory that are used to solve CMFD problem"""

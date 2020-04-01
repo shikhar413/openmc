@@ -317,10 +317,8 @@ class EnsAvgCMFDRun(object):
         status = 0
         while status == 0:
             status = self._node.next_batch()
-            # TODO comm barrier
-            # TODO comm bcast weightfactors
-            # TODO reweight source
-            # TODO broadcast node status to master
+            # Put barrier to synchronize processes
+            self._node.global_comm.Barrier()
             yield
 
     def _read_cfg_file(self):
