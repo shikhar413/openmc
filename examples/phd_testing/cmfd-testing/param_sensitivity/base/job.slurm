@@ -8,5 +8,5 @@
 #SBATCH -o %x-%j.out
 #SBATCH -e %x-%j.out
 
-control show hostnames $SLURM_JOB_NODELIST | sort | uniq > hostfile
+scontrol show hostnames $SLURM_JOB_NODELIST | sort | uniq > hostfile
 mpiexec -machinefile hostfile -n {nprocs} python3 run_openmc.py {nthreads} {prob_type}
