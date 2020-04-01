@@ -610,6 +610,28 @@ class CMFDNode(object):
             self._spectral, self._indices, coremap, use_all_threads
         return openmc.lib._dll.openmc_initialize_linsolver(*args)
 
+    def _write_cmfd_output(self):
+        """Write CMFD output to buffer at the end of each batch"""
+        # Display CMFD k-effective
+        outstr = '{:>11s}CMFD k:    {:0.5f}'.format('', self._k_cmfd[-1])
+        # Display value of additional fields based on display dict
+        outstr += '\n'
+        if self._display['dominance']:
+            outstr += ('{:>11s}Dom Rat:   {:0.5f}\n'
+                       .format('', self._dom[-1]))
+        if self._display['entropy']:
+            outstr += ('{:>11s}CMFD Ent:  {:0.5f}\n'
+                       .format('', self._entropy[-1]))
+        if self._display['source']:
+            outstr += ('{:>11s}RMS Src:   {:0.5f}\n'
+                       .format('', self._src_cmp[-1]))
+        if self._display['balance']:
+            outstr += ('{:>11s}RMS Bal:   {:0.5f}\n'
+                       .format('', self._balance[-1]))
+
+        print(outstr)
+        sys.stdout.flush()
+
     def _configure_openmc(self):
         """Configure OpenMC parameters through OpenMC lib"""
         # Define all variables necessary for running CMFD
@@ -969,9 +991,7 @@ class CMFDNode(object):
         self._time_cmfd += time_stop_cmfd - time_start_cmfd
         if self._current_batch >= self._solver_begin:
             # Write CMFD output if CMFD on for current batch
-            # TODO WRITE OUTPUT!
-            pass
-            #self._write_cmfd_output()
+            self._write_cmfd_output()
 
 
     def _cmfd_tally_reset(self):
