@@ -72,6 +72,7 @@ class EnsAvgCMFDRun(object):
         self._local_comm = None
         self._global_comm = None
         self._node = None
+        self._node_type = None
         self._global_args = {}
         self._openmc_args = {}
         self._cmfd_args = {}
@@ -139,6 +140,10 @@ class EnsAvgCMFDRun(object):
     @property
     def global_comm(self):
         return self._global_comm
+
+    @property
+    def node_type(self):
+        return self._node_type
 
     @cfg_file.setter
     def cfg_file(self, cfg_file):
@@ -387,8 +392,10 @@ class EnsAvgCMFDRun(object):
         # Define node type
         if self._global_comm.Get_rank() < self._n_procs_per_seed:
             self._node = CMFDNode()
+            self._node_type = "CMFD"
         else:
             self._node = OpenMCNode()
+            self._node_type = "OpenMC"
 
         # Define global args to pass to node
         global_params = ['local_comm', 'global_comm', 'n_seeds', 'verbosity',
