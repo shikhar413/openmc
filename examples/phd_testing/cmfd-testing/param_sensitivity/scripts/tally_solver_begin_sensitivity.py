@@ -49,7 +49,7 @@ def generate_input_files(cluster, n_seeds, run_file):
     os.system('mkdir -p {}'.format(prob_type))
     os.chdir(prob_type)
 
-    for seed in n_seeds:
+    for seed in range(1, n_seeds+1):
         seed_dir = 'seed{}'.format(str(seed))
         os.system('mkdir -p {}'.format(seed_dir))
         os.chdir(seed_dir)
@@ -126,7 +126,7 @@ if __name__ == "__main__":
         sys.exit()
 
     # Get command line arguments
-    n_seeds = sys.argv[1]
+    n_seeds = int(sys.argv[1])
     run_file = len(sys.argv) == 3 and sys.argv[2] == '-r'
 
     # Get cluster where script is running on
