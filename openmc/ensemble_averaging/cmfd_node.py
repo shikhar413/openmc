@@ -154,6 +154,8 @@ class CMFDNode(object):
 
         """
         # Variables that users can modify
+        self._display = {'balance': False, 'dominance': False,
+                         'entropy': False, 'source': False}
         self._ref_d = np.array([])
         self._downscatter = False
         self._cmfd_ktol = 1.e-8
@@ -265,6 +267,10 @@ class CMFDNode(object):
     @property
     def ref_d(self):
         return self._ref_d
+
+    @property
+    def display(self):
+        return self._display
 
     @property
     def downscatter(self):
@@ -379,6 +385,15 @@ class CMFDNode(object):
         check_type('Reference diffusion params', diff_params,
                    Iterable, Real)
         self._ref_d = np.array(diff_params)
+
+    @display.setter
+    def display(self, display):
+        check_type('display', display, Mapping)
+        for key, value in display.items():
+            check_value('display key', key,
+                        ('balance', 'entropy', 'dominance', 'source'))
+            check_type("display['{}']".format(key), value, bool)
+            self._display[key] = value
 
     @downscatter.setter
     def downscatter(self, downscatter):
