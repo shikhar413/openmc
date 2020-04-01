@@ -12,7 +12,7 @@ References
 """
 
 from contextlib import contextmanager
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from numbers import Real, Integral
 import sys
 import time
