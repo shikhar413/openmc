@@ -109,6 +109,21 @@ class CMFDMesh(object):
         self._albedo = None
         self._map = None
 
+    def __repr__(self):
+        outstr = type(self).__name__ + '\n'
+        outstr += (self._get_repr(self._lower_left, "Lower left") + "\n" +
+                   self._get_repr(self._upper_right, "Upper right") + "\n" +
+                   self._get_repr(self._dimension, "Dimension") + "\n" +
+                   self._get_repr(self._width, "Width") + "\n" +
+                   self._get_repr(self._albedo, "Albedo"))
+        return outstr
+
+    def _get_repr(self, list_var, label):
+        outstr = "\t{:<11} = ".format(label)
+        if list(list_var):
+            outstr += ", ".join(str(i) for i in list_var)
+        return outstr
+
     @property
     def lower_left(self):
         return self._lower_left
