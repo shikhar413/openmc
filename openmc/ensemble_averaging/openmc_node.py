@@ -1,7 +1,8 @@
-"""TODO update
-This module can be used to specify parameters used for coarse mesh finite
-difference (CMFD) acceleration in OpenMC. CMFD was first proposed by [Smith]_
-and is widely used in accelerating neutron transport problems.
+"""
+This module runs all OpenMC-related functions when running ensemble averaging.
+Specifically, it creates and sends all CMFD tallies to the CMFD node
+and receives updated source weights to update the particle weights in
+the OpenMC source bank.
 
 References
 ----------
@@ -14,16 +15,13 @@ References
 from contextlib import contextmanager
 from numbers import Integral
 import sys
-import time
-import warnings
 
 import numpy as np
 import h5py
 from mpi4py import MPI
 
 import openmc.lib
-from openmc.checkvalue import (check_type, check_length, check_value,
-                               check_greater_than)
+from openmc.checkvalue import check_type, check_greater_than
 from openmc.exceptions import OpenMCError
 
 # Maximum/minimum neutron energies
@@ -32,10 +30,6 @@ _ENERGY_MIN_NEUTRON = 0.
 
 
 class OpenMCNode(object):
-    # TODO broadcast sourcecounts to CMFDNode
-    # TODO how to deal with freeing CMFD memory?
-    # TODO deal with cmfd_reweight
-    # TODO Add parameter for OpenMC verbosity
     r"""Class for running OpenMC node when running CMFD with ensemble averaging.
 
     Attributes
@@ -62,31 +56,48 @@ class OpenMCNode(object):
         Number of threads per process allocated to run OpenMC
     indices : numpy.ndarray
         Stores spatial and group dimensions as [nx, ny, nz, ng]
-    intracomm : mpi4py.MPI.Intracomm or None
-        MPI intercommunicator for running MPI commands
-
+    n_procs_per_seed : int
+        Number of MPI processes used for each seed
+    n_seeds : int
+        Total number of seeds used for ensemble averaging
+    openmc_verbosity : int
+        Verbosity to set OpenMC instance to
+    verbosity : int
+        Verbosity for CMFDNode class
+    n_batches : int
+        Total number of batches simulated
+    seed_begin : int
+        Seed number at which to start independent OpenMC runs
+    n_inactive : int
+        Number of inactive batches to run for each independent seed
+    n_particles : int
+        Number of particles to run for each independent seed
+    global_comm : mpi4py.MPI.Intracomm
+        MPI intercommunicator to comunicate between CMFD and OpenMC nodes
+    local_comm : mpi4py.MPI.Intracomm
+        MPI intercommunicator to communicate locally between CMFD nodes
     """
 
     def __init__(self):
-        """Constructor for CMFDRun class. Default values for instance variables
+        """ Constructor for OpenMCNode class. Default values for instance variables
         set in this method.
 
         """
         # Variables that users can modify
         self._n_threads = 1
+        self._n_particles = 1000
+        self._n_inactive = 10
+        self._seed_begin = 1
 
         # Variables defined by EnsAvgCMFDRun class
         self._tally_begin = None
-        self._seed_begin = None
         self._solver_begin = None
         self._window_type = None
         self._mesh = None
         self._n_procs_per_seed = None
         self._n_seeds = None
-        self._openmc_verbosty = None
+        self._openmc_verbosity = None
         self._verbosity = None
-        self._n_inactive = None
-        self._n_particles = None
         self._n_batches = None
         self._global_comm = None
         self._local_comm = None
@@ -171,6 +182,24 @@ class OpenMCNode(object):
         check_greater_than('OpenMC threads', threads, 0)
         self._n_threads = threads
 
+    @n_particles.setter
+    def n_particles(self, n_particles):
+        check_type('Number of particles', n_particles, Integral)
+        check_greater_than('Number of particles', n_particles, 0)
+        self._n_particles = n_particles
+
+    @n_inactive.setter
+    def n_inactive(self, n_inactive):
+        check_type('Number of inactive batches', n_inactive, Integral)
+        check_greater_than('Number of inactive batches', n_inactive, 0)
+        self._n_inactive = n_inactive
+
+    @seed_begin.setter
+    def seed_begin(self, begin):
+        check_type('Seed begin', begin, Integral)
+        check_greater_than('Seed begin', begin, 0)
+        self._seed_begin = begin
+
     # All error checking for following methods done in EnsAvgCMFDRun class
     @tally_begin.setter
     def tally_begin(self, begin):
@@ -220,33 +249,26 @@ class OpenMCNode(object):
     def seed_begin(self, begin):
         self._seed_begin = begin
 
-    @n_inactive.setter
-    def n_inactive(self, inactive):
-        self._n_inactive = inactive
-
-    @n_particles.setter
-    def n_particles(self, particles):
-        self._n_particles = particles
-
     @contextmanager
     def run_in_memory(self, **kwargs):
-        """ Context manager for running CMFD functions with OpenMC shared
-        library functions.
+        """ Context manager for running OpenMCNode functions.
 
         This function can be used with a 'with' statement to ensure the
-        CMFDRun class is properly initialized/finalized. For example::
+        OpenMCNode class is properly initialized/finalized. For example::
 
-            from openmc import cmfd
-            cmfd_run = cmfd.CMFDRun()
-            with cmfd_run.run_in_memory():
+            from openmc.ensemble_averaging.openmc_node import OpenMCNode
+            node = OpenMCNode()
+            with node.run_in_memory():
+                status = 0
                 do_stuff_before_simulation_start()
-                for _ in cmfd_run.iter_batches():
+                while status == 0:
+                    status = node.next_batch()
                     do_stuff_between_batches()
 
         Parameters
         ----------
         **kwargs
-            All keyword arguments passed to :func:`openmc.lib.run_in_memory`.
+            All keyword arguments used to initialize OpenMCNode class.
 
         """
         # Extract arguments passed from EnsAvgCMFDRun class
@@ -254,6 +276,8 @@ class OpenMCNode(object):
         openmc_args = kwargs['openmc_args']
 
         self._initialize_ea_params(global_args, openmc_args)
+        if self._verbosity >= 1:
+            self._write_summary()
 
         # Run and pass arguments to C API run_in_memory function
         args = ['-s', str(self._n_threads)]
@@ -263,7 +287,7 @@ class OpenMCNode(object):
             self.finalize()
 
     def init(self):
-        """ Initialize OpenMC instance in memory and set up 
+        """ Initialize OpenMCNode instance in memory and set up
         necessary CMFD parameters.
 
         """
@@ -283,7 +307,7 @@ class OpenMCNode(object):
         openmc.lib.settings.cmfd_run = True
 
     def next_batch(self):
-        """ Run next batch for CMFDRun.
+        """ Run next batch for OpenMCNode.
 
         Returns
         -------
@@ -305,7 +329,7 @@ class OpenMCNode(object):
                 self._send_tallies_to_cmfd_node()
 
         if openmc.lib.current_batch() >= self._solver_begin:
-            # TODO put all of below into cmfd_reweight
+            # Count bank sites in CMFD mesh
             outside = self._count_bank_sites()
 
             # Check and raise error if source sites exist outside of CMFD mesh
@@ -320,54 +344,57 @@ class OpenMCNode(object):
             # Receive updated weight factors from CMFD node and update source
             self._recv_weightfactors_from_cmfd_node()
 
+            # Reweight source based on updated weight factors
+            self._cmfd_reweight()
 
-        '''
-        # TODO if current_batch >= self._solver_begin:
-        #    compute sourcecounts
-        #    if master:
-        #        broadcast tallies AND sourcecounts to CMFD node
-        '''
         return status
 
     def finalize(self):
         """ Finalize simulation by calling
-        :func:`openmc.lib.simulation_finalize` and print out CMFD timing
-        information.
+        :func:`openmc.lib.simulation_finalize`.
 
         """
         # Finalize simuation
         openmc.lib.simulation_finalize()
 
     def _initialize_ea_params(self, global_args, openmc_args):
+        """ Initialize global parameters inherited from EnsAvgCMFDRun class """
         # Initialize global parameters inherited from EnsAvgCMFDRun class
-        # TODO make so that global params don't need to be hardcoded
-        #      just set all of them as part of class or else split them
-        #      between OpenMC and CMFD nodes
-        global_params = ['global_comm', 'local_comm', 'n_seeds', 'verbosity',
-                         'openmc_verbosity', 'n_procs_per_seed', 'mesh',
-                         'solver_begin', 'n_batches', 'seed_begin',
-                         'n_inactive', 'n_particles', 'tally_begin',
-                         'window_type']
-
-        for param in global_params:
+        for param in global_args:
             setattr(self, param, global_args[param])
 
-        # Initialize OpenMC parameters inherited from EnseAvgCMFDRun class
+        # Initialize OpenMC parameters inherited from EnsAvgCMFDRun class
         for param in openmc_args:
             setattr(self, param, openmc_args[param])
 
+        rank = self._global_comm.Get_rank()
+        self._seed_num = int((rank-self._n_procs_per_seed) /
+                             self._n_procs_per_seed) + self._seed_begin
+
+    def _write_summary(self):
+        """ Write summary of OpenMC node parameters """
+        openmc_params = ['n_threads', 'seed_begin', 'n_particles',
+                         'n_inactive']
+        rank = self._global_comm.Get_rank()
+        outstr = "********* PROCESS {}: OPENMC NODE, SEED {} *********\n".format(rank,
+                                                                       self._seed_num)
+        for param in openmc_params:
+            param_repr = str(getattr(self, param))
+            outstr += "     {}: {}\n".format(param, param_repr)
+        outstr += "**************************************************\n"
+        print(outstr)
+        sys.stdout.flush()
+
     def _configure_openmc(self):
-        """Configure OpenMC parameters through OpenMC lib"""
-        seed_num = int((self._global_comm.Get_rank()-self._n_procs_per_seed) /
-                       self._n_procs_per_seed) + self._seed_begin
-        openmc.lib.settings.seed = seed_num
+        """ Configure OpenMC parameters through OpenMC lib """
+        openmc.lib.settings.seed = self._seed_num
         openmc.lib.settings.verbosity = self._openmc_verbosity
         openmc.lib.settings.inactive = self._n_inactive
         openmc.lib.settings.batches = self._n_batches
         openmc.lib.settings.particles = self._n_particles
 
     def _configure_cmfd(self):
-        """Configure CMFD parameters and set CMFD input variables"""
+        """ Configure CMFD parameters and set CMFD input variables """
         # Check if CMFD mesh is defined
         if self._mesh is None:
             raise ValueError('No CMFD mesh has been specified for '
@@ -397,16 +424,16 @@ class OpenMCNode(object):
         self._set_tally_window()
 
     def _set_tally_window(self):
-        """Sets parameters to handle different tally window options"""
+        """ Set parameters to handle different tally window options """
         # Set tallies to reset every batch if window_type is not none
         if self._window_type != 'none':
             self._reset_every = True
 
     def _cmfd_tally_reset(self):
-        """Resets all CMFD tallies in memory"""
+        """ Reset all CMFD tallies in memory """
         # Print message
-        if (openmc.lib.settings.verbosity >= 6 and openmc.lib.master() and
-                not self._reset_every):
+        if (self.verbosity >= 2 and openmc.lib.master() and
+            not self._reset_every):
             print(' CMFD tallies reset')
             sys.stdout.flush()
 
@@ -416,12 +443,13 @@ class OpenMCNode(object):
             tallies[tally_id].reset()
 
     def _count_bank_sites(self):
-        """Determines the number of fission bank sites in each cell of a given
+        """ Determine the number of fission bank sites in each cell of a given
         mesh and energy group structure.
+
         Returns
         -------
         bool
-            Wheter any source sites outside of CMFD mesh were found
+            Whether any source sites outside of CMFD mesh were found
 
         """
         # Initialize variables
@@ -476,7 +504,7 @@ class OpenMCNode(object):
         return sites_outside[0]
 
     def _send_tallies_to_cmfd_node(self):
-        """Aggregate CMFD tallies and transfer to CMFD node"""
+        """ Aggregate CMFD tallies and transfer to CMFD node """
         # Get tallies in-memory
         tallies = openmc.lib.tallies
 
@@ -509,16 +537,33 @@ class OpenMCNode(object):
         tally_data = np.concatenate((flux, totalrr, scattrr, nfissrr, current,
                                      p1scattrr, [num_realizations, keff]))
         self._global_comm.Send(tally_data, dest=0, tag=0)
+        if self._verbosity >= 2:
+            source = self._global_comm.Get_rank()
+            outstr = "{:>11s}Sending tally data from process {} to {}"
+            print(outstr.format('', source, 0))
+            sys.stdout.flush()
 
     def _send_sourcecounts_to_cmfd_node(self):
-        """Transfer sourcecounts to CMFD node for reweight calculation"""
+        """ Transfer sourcecounts to CMFD node for reweight calculation """
         self._global_comm.Send(self._sourcecounts, dest=0, tag=1)
+        if self._verbosity >= 2:
+            source = self._global_comm.Get_rank()
+            outstr = "{:>11s}Sending source data from process {} to {}"
+            print(outstr.format('', source, 0))
+            sys.stdout.flush()
 
     def _recv_weightfactors_from_cmfd_node(self):
-        """Receive weightfactos from CMFD node and update source"""
+        """ Receive weightfactors from CMFD node and update source """
         self._weightfactors = np.empty(self._indices, dtype=np.float64)
         self._global_comm.Recv(self._weightfactors, source=0)
+        if self._verbosity >= 2:
+            dest = self._global_comm.Get_rank()
+            outstr = "{:>11s}Process {} received weight factors from process {}"
+            print(outstr.format('', dest, 0))
+            sys.stdout.flush()
 
+    def _cmfd_reweight(self):
+        """ Perform weighting of particles in source bank """
         m = openmc.lib.meshes[self._mesh_id]
         energy = self._egrid
         ng = self._indices[3]
@@ -554,7 +599,7 @@ class OpenMCNode(object):
             sys.stdout.flush()
 
     def _create_cmfd_tally(self):
-        """Creates all tallies in-memory that are used to solve CMFD problem"""
+        """ Create all tallies in-memory used to solve CMFD problem """
         # Create Mesh object based on CMFDMesh, stored internally
         cmfd_mesh = openmc.lib.RegularMesh()
         # Store id of mesh object

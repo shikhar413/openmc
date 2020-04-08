@@ -1,13 +1,8 @@
-"""TODO update
-This module can be used to specify parameters used for coarse mesh finite
-difference (CMFD) acceleration in OpenMC. CMFD was first proposed by [Smith]_
-and is widely used in accelerating neutron transport problems.
-
-References
-----------
-
-.. [Smith] K. Smith, "Nodal method storage reduction by non-linear
-   iteration", *Trans. Am. Nucl. Soc.*, **44**, 265 (1983).
+"""
+This module runs all CMFD-related functions when running ensemble averaging.
+Specifically, it receives CMFD tallies from OpenMC, banks them to compute CMFD
+cross sections, runs the CMFD solver, and sends updated weightfactors
+to each OpenMC process
 
 """
 
@@ -50,16 +45,10 @@ _CURRENTS = {
 
 
 class CMFDNode(object):
-    # TODO do anything with openmc.settings.cmfd_run?
-    # TODO account for n_seeds in OpenMCNode.compute_xs
-    # TODO do dimensions of rate matrices need to be known a priori?
-    # TODO get tally data from OpenMCNode
-    # TODO get sourcecounts from OpenMCNode
-    # TODO get num_realizations from OpenMCNode
-
+    # TODO Will likely need to use openmc.settings.cmfd_run for statepoint stuff
     # TODO what is needed for statepoint write?
-    # TODO all documentation
-    # TODO cmfd timing variables
+    # TODO add timing stats for ensemble averaging communication
+    # TODO broadcast error to all procs if error happens
     r"""Class for running CMFD node when running CMFD with ensemble averaging.
 
     Attributes
@@ -145,11 +134,25 @@ class CMFDNode(object):
         Time for solving CMFD matrix equations, in seconds
     n_threads : int
         Number of threads allocated to OpenMC for CMFD solver
+    n_procs_per_seed : int
+        Number of MPI processes used for each seed
+    n_seeds : int
+        Total number of seeds used for ensemble averaging
+    openmc_verbosity : int
+        Verbosity to set OpenMC instance to
+    verbosity : int
+        Verbosity for CMFDNode class
+    n_batches : int
+        Total number of batches simulated
+    global_comm : mpi4py.MPI.Intracomm
+        MPI intercommunicator to comunicate between CMFD and OpenMC nodes
+    local_comm : mpi4py.MPI.Intracomm
+        MPI intercommunicator to communicate locally between CMFD nodes
 
     """
 
     def __init__(self):
-        """Constructor for CMFDRun class. Default values for instance variables
+        """ Constructor for CMFDNode class. Default values for instance variables
         set in this method.
 
         """
@@ -191,9 +194,7 @@ class CMFDNode(object):
         self._keff_bal = None
         self._keff = None
         self._openmc_keff = None
-        self._adj_keff = None
         self._phi = None
-        self._adj_phi = None
         self._openmc_src_rate = None
         self._flux_rate = None
         self._total_rate = None
@@ -420,6 +421,11 @@ class CMFDNode(object):
             warnings.warn(warn_msg, RuntimeWarning)
         self._window_size = window_size
 
+    @w_shift.setter
+    def w_shift(self, w_shift):
+        check_type('CMFD Wielandt shift', w_shift, Real)
+        self._w_shift = w_shift
+
     @stol.setter
     def stol(self, stol):
         check_type('CMFD fission source tolerance', stol, Real)
@@ -490,24 +496,24 @@ class CMFDNode(object):
 
     @contextmanager
     def run_in_memory(self, **kwargs):
-        # TODO documentation
-        """ Context manager for running CMFD functions with OpenMC shared
-        library functions.
+        """ Context manager for running CMFDNode functions.
 
         This function can be used with a 'with' statement to ensure the
-        CMFDRun class is properly initialized/finalized. For example::
+        CMFDNode class is properly initialized/finalized. For example::
 
-            from openmc import cmfd
-            cmfd_run = cmfd.CMFDRun()
-            with cmfd_run.run_in_memory():
+            from openmc.ensemble_averaging.cmfd_node import CMFDNode
+            node = CMFDNode()
+            with node.run_in_memory():
+                status = 0
                 do_stuff_before_simulation_start()
-                for _ in cmfd_run.iter_batches():
+                while status == 0:
+                    status = node.next_batch()
                     do_stuff_between_batches()
 
         Parameters
         ----------
         **kwargs
-            All keyword arguments passed to :func:`openmc.lib.run_in_memory`.
+            All keyword arguments used to initialize CMFDNode class.
 
         """
         # Extract arguments passed from EnsAvgCMFDRun class
@@ -516,6 +522,8 @@ class CMFDNode(object):
 
         # Initialize ensemble averaging parameters
         self._initialize_ea_params(global_args, cmfd_args)
+        if self._verbosity >= 1:
+            self._write_summary()
 
         # Run and pass arguments to C API run_in_memory function 
         args = ['-s', str(self._n_threads)]
@@ -525,15 +533,10 @@ class CMFDNode(object):
                 yield
                 self.finalize()
             else:
-                # TODO print statement saying that resources not being utilized
-                print('***********Stalling!************')
                 yield
 
     def init(self):
-        """ Initialize CMFDRun instance by setting up CMFD parameters and
-        calling :func:`openmc.lib.simulation_init`
-
-        """
+        """ Initialize CMFDNode instance by setting up CMFD parameters """
         # Configure OpenMC parameters
         self._configure_openmc()
 
@@ -552,59 +555,76 @@ class CMFDNode(object):
         self._initialize_linsolver()
 
         # Set cmfd_run variable to True through C API
-        # TODO is this necessary?
         openmc.lib.settings.cmfd_run = True
 
     def next_batch(self):
-        """ Run next batch for CMFDRun.
+        """ Run next batch for CMFDNode.
 
         Returns
         -------
         int
             Status after running a batch (0=normal, 1=reached maximum number of
-            batches, 2=tally triggers reached)
+            batches)
 
         """
         # Add 1 to current batch
         self._current_batch += 1
-        print("Current batch", self._current_batch)
-        sys.stdout.flush()
+        if openmc.lib.master():
+            print("Current batch", self._current_batch)
+            sys.stdout.flush()
 
         # Receive tally data from all OpenMCNode objects before CMFD execution
         if openmc.lib.master():
             self._execute_cmfd()
-            # TODO broadcast weightfactors to all other procs
 
         status = 1 if self._current_batch == self._n_batches else 0
 
         return status
 
     def finalize(self):
-        """ Finalize simulation by calling
-        :func:`openmc.lib.simulation_finalize` and print out CMFD timing
-        information.
-
-        """
+        """ Finalize simulation by printing CMFD timing stats. """
         if openmc.lib.master():
-            pass
             # Print out CMFD timing statistics
-            # TODO
-            #self._write_cmfd_timing_stats()
+            self._write_cmfd_timing_stats()
 
     def _initialize_ea_params(self, global_args, cmfd_args):
+        """ Initialize global parameters inherited from EnsAvgCMFDRun class """
         # Initialize global parameters inherited from EnsAvgCMFDRun class
-        global_params = ['global_comm', 'local_comm', 'n_seeds', 'verbosity',
-                         'openmc_verbosity', 'n_procs_per_seed', 'mesh',
-                         'tally_begin', 'solver_begin', 'n_batches',
-                         'window_type']
-        for param in global_params:
+        for param in global_args:
             setattr(self, param, global_args[param])
 
-        # Initialize CMFD parameters inherited from EnseAvgCMFDRun class
+        # Initialize CMFD parameters inherited from EnsAvgCMFDRun class
         for param in cmfd_args:
             setattr(self, param, cmfd_args[param])
 
+    def _write_summary(self):
+        """ Write summary of CMFD node parameters """
+        cmfd_params = ['ref_d', 'downscatter', 'cmfd_ktol', 'norm',
+                       'w_shift', 'stol', 'spectral', 'window_size',
+                       'gauss_seidel_tolerance', 'display', 'n_threads']
+        rank = self._global_comm.Get_rank()
+        if self._global_comm.Get_rank() == 0:
+            outstr = "********** PROCESS {}: CMFD NODE, ACTIVE **********\n"
+            outstr = outstr.format(rank)
+            for param in cmfd_params:
+                param_repr = str(getattr(self, param))
+                outstr += "     {}: {}\n".format(param, param_repr)
+        else:
+            outstr = "********** PROCESS {}: CMFD NODE, UNUSED **********\n"
+            outstr = outstr.format(rank)
+        outstr += "**************************************************\n"
+        print(outstr)
+        sys.stdout.flush()
+
     def _initialize_linsolver(self):
+        """ Initialize linear solver used to run CMFD
+
+        Returns
+        -------
+        int
+            Status from calling `openmc.lib._dll.openmc_initialize_linsolver`
+
+        """
         # Determine number of rows in CMFD matrix
         ng = self._indices[3]
         n = self._mat_dim*ng
@@ -626,9 +646,9 @@ class CMFDNode(object):
         return openmc.lib._dll.openmc_initialize_linsolver(*args)
 
     def _write_cmfd_output(self):
-        """Write CMFD output to buffer at the end of each batch"""
+        """ Write CMFD output to buffer at the end of each batch """
         # Display CMFD k-effective
-        outstr = '{:>11s}CMFD k:    {:0.5f}'.format('', self._k_cmfd[-1])
+        outstr = '\n{:>11s}CMFD k:    {:0.5f}'.format('', self._k_cmfd[-1])
         # Display value of additional fields based on display dict
         outstr += '\n'
         if self._display['dominance']:
@@ -648,23 +668,30 @@ class CMFDNode(object):
         sys.stdout.flush()
 
     def _configure_openmc(self):
-        """Configure OpenMC parameters through OpenMC lib"""
+        """ Configure OpenMC parameters through OpenMC lib """
         # Define all variables necessary for running CMFD
         openmc.lib.verbosity = self._openmc_verbosity
 
     def _configure_cmfd(self):
-        """Initialize CMFD parameters and set CMFD input variables"""
+        """ Initialize CMFD parameters and set CMFD input variables """
         # Define all variables necessary for running CMFD
         self._initialize_cmfd()
 
-    def _initialize_cmfd(self):
-        """Sets values of CMFD instance variables based on user input,
-           separating between variables that only exist on all processes
-           and those that only exist on the master process
+    def _write_cmfd_timing_stats(self):
+        """ Write CMFD timing stats to buffer after finalizing simulation """
+        outstr = ("=====================>     "
+                  "CMFD TIMING STATISTICS     <====================\n\n"
+                  "   Time in CMFD                    =  {:.5e} seconds\n"
+                  "     Building matrices             =  {:.5e} seconds\n"
+                  "     Solving matrices              =  {:.5e} seconds\n")
+        print(outstr.format(self._time_cmfd, self._time_cmfdbuild,
+                            self._time_cmfdsolve))
+        sys.stdout.flush()
 
-        """
+    def _initialize_cmfd(self):
+        """ Sets values of CMFD instance variables based on user input """
         # Print message to user and flush output to stdout
-        if self._verbosity >= 7 and self.is_master():
+        if self._verbosity >= 7 and openmc.lib.master():
             print(' Configuring CMFD parameters for simulation')
             sys.stdout.flush()
 
@@ -726,6 +753,14 @@ class CMFDNode(object):
         self._time_cmfdsolve = 0.0
 
     def _recv_tallies_from_openmc(self):
+        """ Receive tally data from all OpenMC seeds
+
+        Returns
+        -------
+        numpy.ndarray
+            Seed-averaged tally data
+
+        """
         all_tally_data = np.empty([self._n_seeds, self._tally_data_size],
                                   dtype=np.float64)
         for i in range(self._n_seeds):
@@ -733,11 +768,20 @@ class CMFDNode(object):
             status = MPI.Status()
             self._global_comm.Recv(tally_data, source=MPI.ANY_SOURCE, status=status, tag=0)
             source = status.Get_source()
+            if self._verbosity >= 2:
+                dest = self._global_comm.Get_rank()
+                outstr = "{:>11s}Process {} received tally data from process {}"
+                print(outstr.format('', dest, source))
+                sys.stdout.flush()
             seed_idx = int((source-self._n_procs_per_seed)/self._n_procs_per_seed)
             all_tally_data[seed_idx,:] = tally_data
-        self._compute_xs(np.sum(all_tally_data, axis=0)/self._n_seeds)
+        return np.sum(all_tally_data, axis=0)/self._n_seeds
 
     def _recv_sourcecounts_from_openmc(self):
+        """ Receive sourcecounts from all OpenMC seeds and bank seed-averaged
+        data to `self._sourcecounts`
+
+        """
         source_data_shape = np.prod(self._indices[0:3]), self._indices[3]
         all_sourcecount_data = np.empty((self._n_seeds,) + source_data_shape,
                                   dtype=np.float64)
@@ -746,17 +790,22 @@ class CMFDNode(object):
             status = MPI.Status()
             self._global_comm.Recv(source_data, source=MPI.ANY_SOURCE, status=status, tag=1)
             source = status.Get_source()
+            if self._verbosity >= 2:
+                dest = self._global_comm.Get_rank()
+                outstr = "{:>11s}Process {} received source data from process {}"
+                print(outstr.format('', dest, source))
+                sys.stdout.flush()
             seed_idx = int((source-self._n_procs_per_seed)/self._n_procs_per_seed)
             all_sourcecount_data[seed_idx,:] = source_data
 
         # Compute seed-averaged sourcecounts
         self._sourcecounts = np.sum(all_sourcecount_data, axis=0)/self._n_seeds
-        self._update_weightfactors()
 
     def _compute_xs(self, seed_avg_tally_data):
         """Takes seed-averaged CMFD tallies from OpenMC node and computes
         macroscopic cross sections, flux, and diffusion coefficients for each
         mesh cell using a tally window scheme
+
         """
         # Update window size for expanding window if necessary
         num_cmfd_batches = self._current_batch - self._tally_begin + 1
@@ -977,12 +1026,13 @@ class CMFDNode(object):
         self._openmc_keff = seed_avg_tally_data[-1]
 
     def _execute_cmfd(self):
-        """Runs CMFD calculation on master node"""
+        """ Runs CMFD calculation on master node """
         # Start CMFD timer
         time_start_cmfd = time.time()
 
         if self._current_batch >= self._tally_begin:
-            self._recv_tallies_from_openmc()
+            openmc_tallies = self._recv_tallies_from_openmc()
+            self._compute_xs(openmc_tallies)
 
         if self._current_batch >= self._solver_begin:
             # Create CMFD data based on OpenMC tallies
@@ -998,8 +1048,10 @@ class CMFDNode(object):
             self._calc_fission_source()
 
             # Receive sourcecounts from OpenMC
-            # TODO rename to cmfd_reweight and separate recv from update_weightfactors
             self._recv_sourcecounts_from_openmc()
+
+            # Update source weightfactors and broadcast to all OpenMC processes
+            self._update_weightfactors()
 
         # Stop CMFD timer
         time_stop_cmfd = time.time()
@@ -1008,19 +1060,8 @@ class CMFDNode(object):
             # Write CMFD output if CMFD on for current batch
             self._write_cmfd_output()
 
-
-    def _cmfd_tally_reset(self):
-        """Resets all CMFD tallies in memory"""
-        # Print message
-        if (openmc.lib.settings.verbosity >= 6 and openmc.lib.master() and
-                not self._reset_every):
-            print(' CMFD tallies reset')
-            sys.stdout.flush()
-
     def _set_up_cmfd(self):
-        """Configures CMFD object for a CMFD eigenvalue calculation
-
-        """
+        """Configures CMFD object for a CMFD eigenvalue calculation """
         # Compute effective downscatter cross section
         if self._downscatter:
             self._compute_effective_downscatter()
@@ -1035,9 +1076,7 @@ class CMFDNode(object):
         self._compute_dhat()
 
     def _cmfd_solver_execute(self):
-        """Sets up and runs power iteration solver for CMFD
-
-        """
+        """ Sets up and runs power iteration solver for CMFD """
         # Start timer for build
         time_start_buildcmfd = time.time()
 
@@ -1062,7 +1101,7 @@ class CMFDNode(object):
         self._dom.append(dom)
 
     def _calc_fission_source(self):
-        """Calculates CMFD fission source from CMFD flux. If a coremap is
+        """ Calculates CMFD fission source from CMFD flux. If a coremap is
         defined, there will be a discrepancy between the spatial indices in the
         variables ``phi`` and ``nfissxs``, so ``phi`` needs to be mapped to the
         spatial indices of the cross sections. This can be done in a vectorized
@@ -1121,7 +1160,10 @@ class CMFDNode(object):
                              * np.sum((self._cmfd_src - self._openmc_src)**2)))
 
     def _update_weightfactors(self):
-        """Performs weighting of particles in source bank"""
+        """ Performs weighting of particles in source bank
+        and broadcasts weights to all OpenMC processes
+
+        """
         # Get spatial dimensions and energy groups
         nx, ny, nz, ng = self._indices
 
@@ -1152,8 +1194,21 @@ class CMFDNode(object):
         for i in range(self._n_seeds*self._n_procs_per_seed):
             dest = i + self._n_procs_per_seed
             self._global_comm.Send(self._weightfactors, dest=dest)
+            if self._verbosity >= 2:
+                source = self._global_comm.Get_rank()
+                outstr = "{:>11s}Sending weight factors from process {} to {}"
+                print(outstr.format('', source, dest))
+                sys.stdout.flush()
 
     def _build_loss_matrix(self):
+        """ Builds loss matrix in CMFD calculation
+
+        Returns
+        -------
+        loss : numpy.ndarray
+            Loss matrix
+
+        """
         # Extract spatial and energy indices and define matrix dimension
         ng = self._indices[3]
         n = self._mat_dim*ng
@@ -1268,6 +1323,14 @@ class CMFDNode(object):
         return loss
 
     def _build_prod_matrix(self):
+        """ Builds production matrix in CMFD calculation
+
+        Returns
+        -------
+        prod : numpy.ndarray
+            Production matrix
+
+        """
         # Extract spatial and energy indices and define matrix dimension
         ng = self._indices[3]
         n = self._mat_dim*ng
@@ -1290,7 +1353,7 @@ class CMFDNode(object):
         return prod
 
     def _execute_power_iter(self, loss, prod):
-        """Main power iteration routine for the CMFD calculation
+        """ Main power iteration routine for the CMFD calculation
 
         Parameters
         ----------
@@ -1326,7 +1389,6 @@ class CMFDNode(object):
         s_o = np.zeros((n,))
 
         # Set initial guess
-        # TODO fix
         k_n = self._openmc_keff
         k_o = k_n
         dw = self._w_shift
@@ -1392,7 +1454,7 @@ class CMFDNode(object):
             toli = max(atoli, rtoli*norm_n)
 
     def _check_convergence(self, s_n, s_o, k_n, k_o, iter, innerits):
-        """Checks the convergence of the CMFD problem
+        """ Checks the convergence of the CMFD problem
 
         Parameters
         ----------
@@ -1432,13 +1494,13 @@ class CMFDNode(object):
         return iconv, serr
 
     def _set_tally_window(self):
-        """Sets parameters to handle different tally window options"""
+        """ Set parameters to handle different tally window options """
         # Set parameters for window_type equal to "expanding" or "none"
         if self._window_type != 'rolling':
             self._window_size = 1
 
     def _set_coremap(self):
-        """Sets the core mapping information. All regions marked with zero
+        """ Sets the core mapping information. All regions marked with zero
         are set to CMFD_NOACCEL, while all regions marked with 1 are set to a
         unique index that maps each fuel region to a row number when building
         CMFD matrices
@@ -1460,7 +1522,7 @@ class CMFDNode(object):
         self._coremap = np.swapaxes(self._coremap, 0, 2)
 
     def _compute_effective_downscatter(self):
-        """Changes downscatter rate for zero upscatter"""
+        """ Changes downscatter rate for zero upscatter """
         # Extract energy index
         ng = self._indices[3]
 
@@ -1500,7 +1562,7 @@ class CMFDNode(object):
         self._scattxs[:,:,:,1,0] = 0.0
 
     def _neutron_balance(self):
-        """Computes the RMS neutron balance over the CMFD mesh"""
+        """ Computes the RMS neutron balance over the CMFD mesh """
         # Extract energy indices
         ng = self._indices[3]
 
@@ -1508,7 +1570,6 @@ class CMFDNode(object):
         num_accel = self._mat_dim
 
         # Get openmc k-effective
-        # TODO fix
         keff = self._openmc_keff
 
         # Define leakage in each mesh cell and energy group
@@ -1551,7 +1612,7 @@ class CMFDNode(object):
             (ng * num_accel)))
 
     def _precompute_array_indices(self):
-        """Initializes cross section arrays and computes the indices
+        """ Initializes cross section arrays and computes the indices
         used to populate dtilde and dhat
 
         """
@@ -1746,7 +1807,7 @@ class CMFDNode(object):
         self._tally_data_size = tally_idx + total_tallies + 2
 
     def _precompute_matrix_indices(self):
-        """Computes the indices and row/column data used to populate CMFD CSR
+        """ Computes the indices and row/column data used to populate CMFD CSR
         matrices. These indices are used in _build_loss_matrix and
         _build_prod_matrix.
 
@@ -1880,10 +1941,10 @@ class CMFDNode(object):
         self._prod_col = col
 
     def _compute_dtilde(self):
-        """Computes the diffusion coupling coefficient using a vectorized numpy
-        approach. Aggregate values for the dtilde multidimensional array are
-        populated by first defining values on the problem boundary, and then
-        for all other regions. For indices not lying on a boundary, dtilde
+        """ Computes the diffusion coupling coefficient using a vectorized
+        numpy approach. Aggregate values for the dtilde multidimensional array
+        are populated by first defining values on the problem boundary, and
+        then for all other regions. For indices not lying on a boundary, dtilde
         values are distinguished between regions that neighbor a reflector
         region and regions that don't neighbor a reflector
 
@@ -2152,9 +2213,9 @@ class CMFDNode(object):
         self._dtilde[boundary_grps + (5,)] = dtilde
 
     def _compute_dhat(self):
-        """Computes the nonlinear coupling coefficient using a vectorized numpy
-        approach. Aggregate values for the dhat multidimensional array are
-        populated by first defining values on the problem boundary, and then
+        """ Computes the nonlinear coupling coefficient using a vectorized
+        numpy approach. Aggregate values for the dhat multidimensional array
+        are populated by first defining values on the problem boundary, and then
         for all other regions. For indices not lying by a boundary, dhat values
         are distinguished between regions that neighbor a reflector region and
         regions that don't neighbor a reflector
