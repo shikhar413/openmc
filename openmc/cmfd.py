@@ -213,6 +213,10 @@ class CMFDRun(object):
         Batch number at which CMFD tallies should begin accummulating
     solver_begin: int
         Batch number at which CMFD solver should start executing
+    solver_end: int
+        Batch number at which CMFD solver should stop executing
+        TODO add functionality to check if < solver_begin
+        TODO stop cmfd tallies as well
     ref_d : list of floats
         List of reference diffusion coefficients to fix CMFD parameters to
     display : dict
@@ -327,6 +331,7 @@ class CMFDRun(object):
         # Variables that users can modify
         self._tally_begin = 1
         self._solver_begin = 1
+        self._solver_end = -1
         self._ref_d = np.array([])
         self._display = {'balance': False, 'dominance': False,
                          'entropy': False, 'source': False}
@@ -436,6 +441,10 @@ class CMFDRun(object):
     @property
     def solver_begin(self):
         return self._solver_begin
+
+    @property
+    def solver_end(self):
+        return self._solver_end
 
     @property
     def ref_d(self):
@@ -557,6 +566,11 @@ class CMFDRun(object):
         check_greater_than('CMFD feedback begin batch', begin, 0)
         self._solver_begin = begin
 
+    @solver_end.setter
+    def solver_end(self, end):
+        check_type('CMFD feedback end batch', end, Integral)
+        check_greater_than('CMFD feedback end batch', end, 0)
+        self._solver_end = end
 
     @ref_d.setter
     def ref_d(self, diff_params):
@@ -1169,6 +1183,9 @@ class CMFDRun(object):
         # Check to activate CMFD solver and possible feedback
         if self._solver_begin == current_batch:
             self._cmfd_on = True
+
+        if self._solver_end == current_batch:
+            self._cmfd_on = False
 
         # Check to reset tallies
         if ((len(self._reset) > 0 and current_batch in self._reset)
