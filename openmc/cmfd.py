@@ -332,6 +332,7 @@ class CMFDRun(object):
         self._reset = []
         self._write_matrices = False
         self._spectral = 0.0
+        self._damping_factor = 1.0
         self._gauss_seidel_tolerance = [1.e-10, 1.e-5]
         self._adjoint_type = 'physical'
         self._window_type = 'none'
@@ -494,6 +495,10 @@ class CMFDRun(object):
     @property
     def spectral(self):
         return self._spectral
+
+    @property
+    def damping_factor(self):
+        return self._damping_factor
 
     @property
     def reset(self):
@@ -698,6 +703,13 @@ class CMFDRun(object):
     def spectral(self, spectral):
         check_type('CMFD spectral radius', spectral, Real)
         self._spectral = spectral
+
+    @damping_factor.setter
+    def damping_factor(self, damping_factor):
+        check_type('CMFD damping factor', damping_factor, Real)
+        check_greater_than('CMFD damping factor', damping_factor, 0, True)
+        check_less_than('CMFD damping factor', damping_factor, 1, True)
+        self._damping_factor = damping_factor
 
     @reset.setter
     def reset(self, reset):
@@ -1465,6 +1477,8 @@ class CMFDRun(object):
                                    sourcecounts, where=div_condition,
                                    out=np.ones_like(self._cmfd_src),
                                    dtype=np.float32))
+            self._weightfactors = (1.0 - (1.0 - self._weightfactors) *
+                                   self._damping_factor)
 
         if not self._feedback:
             return
