@@ -6,6 +6,7 @@
 #PBS -q general
 #PBS -N {job_name}
 
+source $HOME/.bashrc
 cd $PBS_O_WORKDIR
 cat $PBS_NODEFILE | sort | uniq > hostfile
 

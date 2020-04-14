@@ -6,6 +6,8 @@ def generate_input_files(cluster, n_seeds, run_file):
     cmfd_probs = ['expwindow-16limit-activeon', 'expwindow-64limit-activeon',
                   'fixwindow-16limit-activeon', 'expwindow-64limit-activeoff',
                   'expwindow-nolimit-activeon', 'fixwindow-64limit-activeon']
+    df_cmfd_probs = ['expwindow-16limit-activeon', 'expwindow-64limit-activeon',
+                  'fixwindow-16limit-activeon', 'fixwindow-64limit-activeon']
     if cluster == "Green Cluster":
         cluster_params = {
             'prob_type': "1d-homog",
@@ -64,6 +66,7 @@ def generate_input_files(cluster, n_seeds, run_file):
                 os.system('cp ./../../../../../base/{} ./{}'.format(xml_file, xml_file.split('-')[-1]))
             create_files(nocmfd_template, batch_template, particle, cluster_params, seed, 'nocmfd', run_file)
             os.chdir('./..')
+            # Create files for cmfd case
             for mesh in cluster_params['mesh_types']:
                 mesh_dir = 'cmfd-{}-mesh'.format(mesh)
                 os.system('mkdir -p {}'.format(mesh_dir))
@@ -76,12 +79,25 @@ def generate_input_files(cluster, n_seeds, run_file):
                     create_files(cmfd_template, batch_template, particle, cluster_params, seed, cmfd_prob, run_file, mesh=mesh)
                     os.chdir('./..')
                 os.chdir('./..')
+            # Create files for df-cmfd case
+            for mesh in cluster_params['mesh_types']:
+                mesh_dir = 'df-cmfd-{}-mesh'.format(mesh)
+                os.system('mkdir -p {}'.format(mesh_dir))
+                os.chdir(mesh_dir)
+                for cmfd_prob in df_cmfd_probs:
+                    os.system('mkdir -p {}'.format(cmfd_prob))
+                    os.chdir(cmfd_prob)
+                    for xml_file in cluster_params['xml_files']:
+                        os.system('cp ./../../../../../../base/{} ./{}'.format(xml_file, xml_file.split('-')[-1]))
+                    create_files(cmfd_template, batch_template, particle, cluster_params, seed, cmfd_prob, run_file, mesh=mesh, df=True)
+                    os.chdir('./..')
+                os.chdir('./..')
             os.chdir('./..')
         os.chdir('./..')
     os.chdir('./..')
 
 
-def create_files(py_template, batch_template, nparticles, cluster_params, seed, prob_name, run_file, mesh=None):
+def create_files(py_template, batch_template, nparticles, cluster_params, seed, prob_name, run_file, mesh=None, df=False):
     all_prob_params = {
         'nocmfd': {
             'solver_end': '',
@@ -128,6 +144,7 @@ def create_files(py_template, batch_template, nparticles, cluster_params, seed, 
     }
 
     os.system("sed -i 's-<particles>1000000</particles>-<particles>{}</particles>-g' settings.xml".format(nparticles))
+    os.system("sed -i 's-<seed>1</seed>-<seed>{}</seed>-g' settings.xml".format(seed))
     jobname = 's{}{}'.format(seed,prob_name)
     nodes = cluster_params['nodes']
     if nparticles > 10000000:
@@ -148,7 +165,9 @@ def create_files(py_template, batch_template, nparticles, cluster_params, seed, 
         f.write(batch_template)
 
     prob_params = all_prob_params[prob_name]
-    py_template = py_template.replace('{seed}', str(seed))
+    if df:
+        prob_params['max_window_size'] += "\n    cmfd_run.damping_factor = 0.5"
+
     py_template = py_template.replace('{solver_end}', prob_params['solver_end'])
     py_template = py_template.replace('{window_type}', prob_params['window_type'])
     py_template = py_template.replace('{window_size}', prob_params['window_size'])

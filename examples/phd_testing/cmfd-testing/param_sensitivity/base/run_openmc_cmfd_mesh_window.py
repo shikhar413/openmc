@@ -130,7 +130,6 @@ if __name__ == "__main__":
     cmfd_run = init_cmfd_params(prob_type)
 
     with cmfd_run.run_in_memory(args=args):
-        capi.settings.seed = {seed}           # VARIED PARAMETER
         for _ in cmfd_run.iter_batches():
             curr_gen = capi.current_batch()
             
