@@ -6,6 +6,7 @@ import glob
 import os
 import sys
 import numpy as np
+from mpi4py import MPI
 
 def init_prob_params(problem_type):
     if problem_type == '1d-homog':
@@ -89,32 +90,62 @@ if __name__ == "__main__":
     ea_cmfd_run.cfg_file = "params.cfg"
     with ea_cmfd_run.run_in_memory():
         seed_num = capi.settings.seed
+        n_seeds = ea_cmfd_run.n_seeds
+        n_procs_per_seed = ea_cmfd_run.n_procs_per_seed
+        # Get entropy mesh id and dimension size from settings.xml and CAPI
+        with open('settings.xml', 'r') as f:
+            settings_out = f.read()
+        entropy_mesh_id = int(settings_out.split('<entropy_mesh>')[-1].split('</entropy_mesh>')[0])
+        ent_dim = np.prod(capi.meshes[entropy_mesh_id].dimension)
         for _ in ea_cmfd_run.iter_batches():
+            curr_gen = ea_cmfd_run.current_batch
             if ea_cmfd_run.node_type == "OpenMC":
-                curr_gen = capi.current_batch()
                 if capi.master():
                     entropy_p = capi.entropy_p()
                     entropy = np.sum(np.log(entropy_p[entropy_p>0])/(np.log(2)) * entropy_p[entropy_p>0])*-1
                     fet_tallies = capi.convergence_tally()
 
-                    if curr_gen == 1:
-                        fet_data = np.empty((0,1+len(labels)), float)
-                        entropy_data = np.empty((0,2+len(entropy_p)), float)
-
                     # Compute scaled FET coefficients
                     a_n = np.product(coeffs, axis=1) * fet_tallies
 
                     # Store a_n, curr_gen, and entropy to numpy array
-                    fet_data = np.vstack((fet_data, [curr_gen] + list(a_n)))
-                    entropy_data = np.vstack((entropy_data, [curr_gen] + [entropy] + list(entropy_p.flatten())))
+                    fet = [curr_gen] + list(a_n)
+                    ent = [curr_gen] + [entropy] + list(entropy_p.flatten())
 
-                # Create new statepoint, remove previous one and save numpy arrays
-                if curr_gen % statepoint_interval == 0:
-                    #cmfd_run.statepoint_write()
-                    if capi.master():
-                        # TODO communicate FET, Entropy data to CMFD node, aggregate data across all seeds 
-                        np.save("entropy_data_seed{}".format(seed_num), entropy_data)
-                        np.save("fet_data_seed{}".format(seed_num), fet_data)
+                    # Send data to CMFD node
+                    ea_cmfd_run.global_comm.send(fet, dest=0, tag=0)
+                    ea_cmfd_run.global_comm.send(ent, dest=0, tag=1)
+
+            else:
+                if capi.master():
+                    # Define master FET / entropy data arrays
+                    if curr_gen == 1:
+                        fet_data = np.empty((0,n_seeds,1+len(labels)), float)
+                        entropy_data = np.empty((0, n_seeds, 2+ent_dim), float)
+
+                    # Define data received from OpenMC node at each batch
+                    recv_fet_data = np.empty([n_seeds, 1+len(labels)], dtype=np.float64)
+                    recv_ent_data = np.empty([n_seeds, 2+ent_dim], dtype=np.float64)
+                    # Receive data from OpenMC node
+                    for i in range(n_seeds):
+                        status = MPI.Status()
+                        fet = ea_cmfd_run.global_comm.recv(source=MPI.ANY_SOURCE, status=status, tag=0)
+                        source = status.Get_source()
+                        seed_idx = int((source-n_procs_per_seed)/n_procs_per_seed)
+                        recv_fet_data[seed_idx,:] = fet
+                        status = MPI.Status()
+                        ent = ea_cmfd_run.global_comm.recv(source=MPI.ANY_SOURCE, status=status, tag=1)
+                        source = status.Get_source()
+                        seed_idx = int((source-n_procs_per_seed)/n_procs_per_seed)
+                        recv_ent_data[seed_idx,:] = ent
+                    # Store received data to numpy array
+                    fet_data = np.vstack((fet_data, recv_fet_data[None,...]))
+                    entropy_data = np.vstack((entropy_data, recv_ent_data[None,...]))
+                    # Create new statepoint, remove previous one and save numpy arrays
+                    if curr_gen % statepoint_interval == 0:
+                        #cmfd_run.statepoint_write()
+                        np.save("entropy_data", entropy_data)
+                        np.save("fet_data", fet_data)
                         '''
                         # Remove previous statepoint if more than one exists
                         if curr_gen != statepoint_interval:
@@ -124,8 +155,6 @@ if __name__ == "__main__":
                         '''
 
         # End of simulation, save fet and entropy data
-        if capi.master() and ea_cmfd_run.node_type == "OpenMC":
-            np.save("entropy_data_seed{}".format(seed_num), entropy_data)
-            np.save("fet_data_seed{}".format(seed_num), fet_data)
-
-
+        if capi.master() and ea_cmfd_run.node_type == "CMFD":
+            np.save("entropy_data", entropy_data)
+            np.save("fet_data", fet_data)
