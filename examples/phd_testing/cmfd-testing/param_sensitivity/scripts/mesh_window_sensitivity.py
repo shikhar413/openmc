@@ -11,8 +11,8 @@ def generate_input_files(cluster, n_seeds, run_file):
     if cluster == "Green Cluster":
         cluster_params = {
             'prob_type': "1d-homog",
-            'particles': [100000, 1000000, 10000000],
-            'mesh_types': ['4cm', '1cm', '0p1cm'],
+            'particles': [1000000, 10000000], # 100000
+            'mesh_types': ['20cm', '0p4cm'],  #'4cm', '1cm'
             'batch_file': "job.slurm",
             'run_command': "sbatch ",
             'xml_files': ['1dh-unif-settings.xml', '1dh-geometry.xml', '1dh-materials.xml'],
@@ -192,7 +192,8 @@ def get_mesh_strings(mesh_type, is_1d):
     mesh_dims = {
         '4cm': '1, 1, 100',
         '1cm': '1, 1, 400',
-        '0p1cm': '1, 1, 4000',
+        '20cm': '1, 1, 20',
+        '0p4cm': '1, 1, 1000',
         'assembly': '17, 17, 1',
         'qassembly': '34, 34, 1'
 }
