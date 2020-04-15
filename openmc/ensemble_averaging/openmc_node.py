@@ -111,6 +111,7 @@ class OpenMCNode(object):
         self._sourcecounts = None
         self._weightfactors = None
         self._reset_every = None
+        self._current_batch = 0
 
     @property
     def tally_begin(self):
@@ -322,13 +323,14 @@ class OpenMCNode(object):
 
         # Aggregate CMFD tallies and broadcast to CMFDNode
         status = openmc.lib.next_batch()
+        self._current_batch = openmc.lib.current_batch()
 
         # Broadcast CMFD tallies to CMFD node
         if openmc.lib.master():
-            if openmc.lib.current_batch() >= self._tally_begin:
+            if self._current_batch >= self._tally_begin:
                 self._send_tallies_to_cmfd_node()
 
-        if openmc.lib.current_batch() >= self._solver_begin:
+        if self._current_batch >= self._solver_begin:
             # Count bank sites in CMFD mesh
             outside = self._count_bank_sites()
 

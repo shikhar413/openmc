@@ -46,6 +46,8 @@ class EnsAvgCMFDRun(object):
 
     Attributes
     ----------
+    current_batch: int
+        Current batch of the simulation
     cfg_file : str
         Config file to set ensemble-averaging parameters
     node_type: {'openmc', 'cmfd'}
@@ -108,9 +110,14 @@ class EnsAvgCMFDRun(object):
         self._node = None
         self._node_type = None
         self._global_params = None
+        self._current_batch = None
         self._global_args = {}
         self._openmc_args = {}
         self._cmfd_args = {}
+
+    @property
+    def current_batch(self):
+        return self._node._current_batch
 
     @property
     def cfg_file(self):
