@@ -85,6 +85,8 @@ if __name__ == "__main__":
     labels, coeffs = init_prob_params(prob_type)
     statepoint_interval = 10
 
+    
+
     # Initialize and run CMFDRun object
     ea_cmfd_run = EnsAvgCMFDRun()
     ea_cmfd_run.cfg_file = "params.cfg"
@@ -144,8 +146,8 @@ if __name__ == "__main__":
                     # Create new statepoint, remove previous one and save numpy arrays
                     if curr_gen % statepoint_interval == 0:
                         #cmfd_run.statepoint_write()
-                        np.save("entropy_data", entropy_data)
-                        np.save("fet_data", fet_data)
+                        np.save("entropy_data".format(seed_num), entropy_data)
+                        np.save("fet_data".format(seed_num), fet_data)
                         '''
                         # Remove previous statepoint if more than one exists
                         if curr_gen != statepoint_interval:
@@ -155,6 +157,6 @@ if __name__ == "__main__":
                         '''
 
         # End of simulation, save fet and entropy data
-        if capi.master() and ea_cmfd_run.node_type == "CMFD":
-            np.save("entropy_data", entropy_data)
-            np.save("fet_data", fet_data)
+        if capi.master() and ea_cmfd_run.node_type == "OpenMC":
+            np.save("entropy_data_seed{}".format(seed_num), entropy_data)
+            np.save("fet_data_seed{}".format(seed_num), fet_data)
