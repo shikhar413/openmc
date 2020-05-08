@@ -109,6 +109,21 @@ class CMFDMesh(object):
         self._albedo = None
         self._map = None
 
+    def __repr__(self):
+        outstr = type(self).__name__ + '\n'
+        outstr += (self._get_repr(self._lower_left, "Lower left") + "\n" +
+                   self._get_repr(self._upper_right, "Upper right") + "\n" +
+                   self._get_repr(self._dimension, "Dimension") + "\n" +
+                   self._get_repr(self._width, "Width") + "\n" +
+                   self._get_repr(self._albedo, "Albedo"))
+        return outstr
+
+    def _get_repr(self, list_var, label):
+        outstr = "\t{:<11} = ".format(label)
+        if list(list_var):
+            outstr += ", ".join(str(i) for i in list_var)
+        return outstr
+
     @property
     def lower_left(self):
         return self._lower_left
@@ -198,6 +213,10 @@ class CMFDRun(object):
         Batch number at which CMFD tallies should begin accummulating
     solver_begin: int
         Batch number at which CMFD solver should start executing
+    solver_end: int
+        Batch number at which CMFD solver should stop executing
+        TODO add functionality to check if < solver_begin
+        TODO stop cmfd tallies as well
     ref_d : list of floats
         List of reference diffusion coefficients to fix CMFD parameters to
     display : dict
@@ -270,6 +289,8 @@ class CMFDRun(object):
     window_size : int
         Size of window to use for tally window scheme. Only relevant when
         window_type is set to "rolling"
+    max_window_size: int
+        TODO
     indices : numpy.ndarray
         Stores spatial and group dimensions as [nx, ny, nz, ng]
     cmfd_src : numpy.ndarray
@@ -310,6 +331,7 @@ class CMFDRun(object):
         # Variables that users can modify
         self._tally_begin = 1
         self._solver_begin = 1
+        self._solver_end = -1
         self._ref_d = np.array([])
         self._display = {'balance': False, 'dominance': False,
                          'entropy': False, 'source': False}
@@ -329,6 +351,7 @@ class CMFDRun(object):
         self._adjoint_type = 'physical'
         self._window_type = 'none'
         self._window_size = 10
+        self._max_window_size = sys.maxsize
         self._intracomm = None
         self._use_all_threads = False
 
@@ -420,6 +443,10 @@ class CMFDRun(object):
         return self._solver_begin
 
     @property
+    def solver_end(self):
+        return self._solver_end
+
+    @property
     def ref_d(self):
         return self._ref_d
 
@@ -458,6 +485,10 @@ class CMFDRun(object):
     @property
     def window_size(self):
         return self._window_size
+
+    @property
+    def max_window_size(self):
+        return self._max_window_size
 
     @property
     def power_monitor(self):
@@ -535,6 +566,11 @@ class CMFDRun(object):
         check_greater_than('CMFD feedback begin batch', begin, 0)
         self._solver_begin = begin
 
+    @solver_end.setter
+    def solver_end(self, end):
+        check_type('CMFD feedback end batch', end, Integral)
+        check_greater_than('CMFD feedback end batch', end, 0)
+        self._solver_end = end
 
     @ref_d.setter
     def ref_d(self, diff_params):
@@ -642,6 +678,16 @@ class CMFDRun(object):
                        'unless window type is set to "rolling".'
             warnings.warn(warn_msg, RuntimeWarning)
         self._window_size = window_size
+
+    @max_window_size.setter
+    def max_window_size(self, window_size):
+        check_type('CMFD max window size', window_size, Integral)
+        check_greater_than('CMFD max window size', window_size, 0)
+        if self._window_type != 'expanding':
+            warn_msg = 'Window size will have no effect on CMFD simulation ' \
+                       'unless window type is set to "expanding".'
+            warnings.warn(warn_msg, RuntimeWarning)
+        self._max_window_size = window_size
 
     @power_monitor.setter
     def power_monitor(self, power_monitor):
@@ -1137,6 +1183,9 @@ class CMFDRun(object):
         # Check to activate CMFD solver and possible feedback
         if self._solver_begin == current_batch:
             self._cmfd_on = True
+
+        if self._solver_end == current_batch:
+            self._cmfd_on = False
 
         # Check to reset tallies
         if ((len(self._reset) > 0 and current_batch in self._reset)
@@ -1867,7 +1916,8 @@ class CMFDRun(object):
         # Update window size for expanding window if necessary
         num_cmfd_batches = openmc.lib.current_batch() - self._tally_begin + 1
         if (self._window_type == 'expanding' and
-                num_cmfd_batches == self._window_size * 2):
+                num_cmfd_batches == self._window_size * 2 and
+                self._window_size * 2 <= self._max_window_size):
             self._window_size *= 2
 
         # Discard tallies from oldest batch if window limit reached

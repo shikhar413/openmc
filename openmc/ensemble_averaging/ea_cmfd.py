@@ -1,31 +1,31 @@
-"""TODO update
-This module can be used to specify parameters used for coarse mesh finite
-difference (CMFD) acceleration in OpenMC. CMFD was first proposed by [Smith]_
-and is widely used in accelerating neutron transport problems.
+"""
+This module can be used to specify parameters used for ensemble-avegaging of
+coarse mesh finite difference (CMFD) acceleration in OpenMC. CMFD was first
+proposed by [Smith]_ and is widely used in accelerating neutron transport
+problems. Ensemble averaging is the method of aggregating CMFD tallies
+over multiple independent seeds and using a global CMFD operator to update
+particle weights for each of these seeds
 
 References
 ----------
 
 .. [Smith] K. Smith, "Nodal method storage reduction by non-linear
    iteration", *Trans. Am. Nucl. Soc.*, **44**, 265 (1983).
+TODO Put my paper
 
 """
 
 from contextlib import contextmanager
-from collections.abc import Mapping
 from numbers import Integral
-import sys
-import time
 import configparser
 import json
+import sys
 
 import numpy as np
-import h5py
 
-import openmc.lib
 from openmc import cmfd
 from openmc.checkvalue import (check_type, check_length, check_value,
-                               check_greater_than, check_less_than)
+                               check_greater_than)
 from openmc.exceptions import OpenMCError
 from openmc.ensemble_averaging.openmc_node import OpenMCNode
 from openmc.ensemble_averaging.cmfd_node import CMFDNode
@@ -39,10 +39,51 @@ except ImportError:
 
 
 class EnsAvgCMFDRun(object):
-    # TODO add documentation for all methods
     # TODO display output
     # TODO error checking so program will exit if parameters not configured properly in self._node.run_in_memory()
+    # TODO add any relevant timing stats
     r"""Class for running CMFD with ensemble averaging.
+
+    Attributes
+    ----------
+    current_batch: int
+        Current batch of the simulation
+    cfg_file : str
+        Config file to set ensemble-averaging parameters
+    node_type: {'openmc', 'cmfd'}
+        Specifies the type of node running on MPI process
+    tally_begin : int
+        Batch number at which CMFD tallies should begin accummulating
+    solver_begin: int
+        Batch number at which CMFD solver should start executing
+    mesh : openmc.cmfd.CMFDMesh
+        Structured mesh to be used for acceleration
+    window_type : {'expanding', 'rolling', 'none'}
+        Specifies type of tally window scheme to use to accumulate CMFD
+        tallies. Options are:
+
+          * "expanding" - Have an expanding window that doubles in size
+            to give more weight to more recent tallies as more generations are
+            simulated
+          * "rolling" - Have a fixed window size that aggregates tallies from
+            the same number of previous generations tallied
+          * "none" - Don't use a windowing scheme so that all tallies from last
+            time they were reset are used for the CMFD algorithm.
+
+    n_procs_per_seed : int
+        Number of MPI processes used for each seed
+    n_seeds : int
+        Total number of seeds used for ensemble averaging
+    openmc_verbosity : int
+        Verbosity to set OpenMC instance to
+    verbosity : int
+        Verbosity for CMFDNode class
+    n_batches : int
+        Total number of batches simulated
+    global_comm : mpi4py.MPI.Intracomm
+        MPI intercommunicator to comunicate between CMFD and OpenMC nodes
+    local_comm : mpi4py.MPI.Intracomm
+        MPI intercommunicator to communicate locally between CMFD nodes
 
     """
 
@@ -55,25 +96,28 @@ class EnsAvgCMFDRun(object):
         self._cfg_file = None
         self._n_seeds = 1
         self._n_procs_per_seed = 1
-        self._seed_begin = 1
         self._verbosity = 1
-        self._openmc_verbosity = 1
-        self._n_particles = 1000
-        self._n_inactive = 10
+        self._openmc_verbosity = 7
         self._n_batches = 20
         self._tally_begin = 1
+        self._window_type = 'none'
         self._solver_begin = 1
-        self._display = {'balance': False, 'dominance': False,
-                         'entropy': False, 'source': False}
         self._mesh = None
 
         # External variables used during runtime but users cannot control
         self._local_comm = None
         self._global_comm = None
         self._node = None
+        self._node_type = None
+        self._global_params = None
+        self._current_batch = None
         self._global_args = {}
         self._openmc_args = {}
         self._cmfd_args = {}
+
+    @property
+    def current_batch(self):
+        return self._node._current_batch
 
     @property
     def cfg_file(self):
@@ -88,24 +132,12 @@ class EnsAvgCMFDRun(object):
         return self._n_procs_per_seed
 
     @property
-    def seed_begin(self):
-        return self._seed_begin
-
-    @property
     def verbosity(self):
         return self._verbosity
 
     @property
     def openmc_verbosity(self):
         return self._openmc_verbosity
-
-    @property
-    def n_particles(self):
-        return self._n_particles
-
-    @property
-    def n_inactive(self):
-        return self._n_inactive
 
     @property
     def n_batches(self):
@@ -120,8 +152,8 @@ class EnsAvgCMFDRun(object):
         return self._solver_begin
 
     @property
-    def display(self):
-        return self._display
+    def window_type(self):
+        return self._window_type
 
     @property
     def mesh(self):
@@ -134,6 +166,10 @@ class EnsAvgCMFDRun(object):
     @property
     def global_comm(self):
         return self._global_comm
+
+    @property
+    def node_type(self):
+        return self._node_type
 
     @cfg_file.setter
     def cfg_file(self, cfg_file):
@@ -152,12 +188,6 @@ class EnsAvgCMFDRun(object):
         check_greater_than('Number of processes per seed', n_procs_per_seed, 0)
         self._n_procs_per_seed = n_procs_per_seed
 
-    @seed_begin.setter
-    def seed_begin(self, begin):
-        check_type('Seed begin', begin, Integral)
-        check_greater_than('Seed begin', begin, 0)
-        self._seed_begin = begin
-
     @verbosity.setter
     def verbosity(self, verbosity):
         check_type('Verbosity', verbosity, Integral)
@@ -169,22 +199,6 @@ class EnsAvgCMFDRun(object):
         check_type('OpenMC verbosity', verbosity, Integral)
         check_greater_than('OpenMC verbosity', verbosity, 0)
         self._openmc_verbosity = verbosity
-
-        self._display = {'balance': False, 'dominance': False,
-                         'entropy': False, 'source': False}
-        self._mesh = None
-
-    @n_particles.setter
-    def n_particles(self, n_particles):
-        check_type('Number of particles', n_particles, Integral)
-        check_greater_than('Number of particles', n_particles, 0)
-        self._n_particles = n_particles
-
-    @n_inactive.setter
-    def n_inactive(self, n_inactive):
-        check_type('Number of inactive batches', n_inactive, Integral)
-        check_greater_than('Number of inactive batches', n_inactive, 0)
-        self._n_inactive = n_inactive
 
     @n_batches.setter
     def n_batches(self, n_batches):
@@ -204,14 +218,12 @@ class EnsAvgCMFDRun(object):
         check_greater_than('CMFD solver begin batch', begin, 0)
         self._solver_begin = begin
 
-    @display.setter
-    def display(self, display):
-        check_type('display', display, Mapping)
-        for key, value in display.items():
-            check_value('display key', key,
-                        ('balance', 'entropy', 'dominance', 'source'))
-            check_type("display['{}']".format(key), value, bool)
-            self._display[key] = value
+    @window_type.setter
+    def window_type(self, window_type):
+        check_type('CMFD window type', window_type, str)
+        check_value('CMFD window type', window_type,
+                    ['none', 'rolling', 'expanding'])
+        self._window_type = window_type
 
     @mesh.setter
     def mesh(self, cmfd_mesh):
@@ -261,15 +273,27 @@ class EnsAvgCMFDRun(object):
                                              np.array(cmfd_mesh.dimension))
         self._mesh = cmfd_mesh
 
-    def run(self, **kwargs):
-        # TODO documentation
-        with self.run_in_memory(**kwargs):
+    def run(self):
+        """ Run OpenMC with ensemble-averaged CMFD """
+        with self.run_in_memory():
             for _ in self.iter_batches():
                 pass
 
     @contextmanager
     def run_in_memory(self):
-        # TODO documentation
+        """ Context manager for EnsAvgCMFDNode
+
+        This function can be used with a 'with' statement to ensure the
+        EnseAvgCMFDRun class is properly initialized/finalized. For example::
+
+            from openmc.ensemble_averaging import EnsAvgCMFDRun
+            ea_run = EnsAvgCMFDRun()
+            with ea_run.run_in_memory():
+                do_stuff_before_simulation_start()
+                for _ in ea_run.iter_batches():
+                    do_stuff_between_batches()
+
+        """
         self.init()
         kwargs = {
             'global_args': self._global_args,
@@ -278,17 +302,18 @@ class EnsAvgCMFDRun(object):
         }
         with self._node.run_in_memory(**kwargs):
             yield
-        sys.exit()
         self.finalize()
 
     def init(self):
-        # TODO documentation
+        """ Initialize EnsAvgRunCMFD instance by setting all necessary
+        parameters
+
+        """
         if not have_mpi:
             raise OpenMCError('mpi4py Python module is required to'
                               'run CMFD with ensemble averaging')
-
         # Read config file
-        if self._cfg_file is not None:
+        if self._cfg_file:
             self._read_cfg_file()
 
         # Define local and global communicators
@@ -297,39 +322,56 @@ class EnsAvgCMFDRun(object):
         # Set node parameters
         self._set_node_params()
 
+        # Write summary of ensemble averaging parameters
+        if self._verbosity >= 1 and self._global_comm.Get_rank() == 0:
+            self._write_summary()
+        self.global_comm.Barrier()
+
     def finalize(self):
-        # TODO documentation
+        """ Finalize ensemble averaging simulation """
         pass
         # TODO print out timing stats
 
     def iter_batches(self):
+        """ Iterator over batches.
+
+        This function returns a generator-iterator that allows Python code to
+        be run between batches when running ensemble averaging. It should
+        be used in conjunction with
+        :func:`openmc.ensemble_averaging.EnsAvgCMFDRun.run_in_memory` to ensure
+        proper initialization/finalization
+
+        """
         status = 0
         while status == 0:
             status = self._node.next_batch()
-            # TODO comm barrier
-            # TODO comm bcast weightfactors
-            # TODO reweight source
-            # TODO broadcast node status to master
+            if self._verbosity >= 2:
+                rank = self.global_comm.Get_rank()
+                print("{:>11s}Process {} finished batch".format('', rank))
+                sys.stdout.flush()
+            # Put barrier to synchronize processes
+            self.global_comm.Barrier()
             yield
 
     def _read_cfg_file(self):
+        """ Read config file and set all global, CMFD, and OpenMC parameters """
+        openmc_params = ['n_threads', 'seed_begin', 'n_particles',
+                         'n_inactive']
+        cmfd_params = ['ref_d', 'downscatter', 'cmfd_ktol', 'norm',
+                       'w_shift', 'stol', 'spectral', 'window_size',
+                       'gauss_seidel_tolerance', 'display', 'n_threads']
         mesh_params = ['lower_left', 'upper_right', 'dimension', 'width',
                        'energy', 'albedo', 'map']
-        ea_params = ['n_seeds', 'n_procs_per_seed', 'seed_begin', 'verbosity',
-                     'openmc_verbosity', 'n_particles', 'n_inactive',
-                     'n_batches', 'tally_begin', 'solver_begin', 'display']
-        # TODO
-        openmc_params = ['']
-        cmfd_params = ['ref_d', 'downscatter', 'cmfd_ktol', 'norm', 'w_shift',
-                       'stol', 'spectral', 'gauss_seidel_tolerance',
-                       'n_threads']
+        self._global_params = ['n_seeds', 'n_procs_per_seed', 'verbosity',
+                               'openmc_verbosity', 'n_batches', 'tally_begin',
+                               'solver_begin', 'window_type']
 
         config = configparser.ConfigParser()
         config.read(self._cfg_file)
 
         section = 'Ensemble Averaging'
         if section in config.sections():
-            for param in ea_params:
+            for param in self._global_params:
                 if param in config[section]:
                     value = json.loads(config.get(section, param))
                     setattr(self, param, value)
@@ -342,10 +384,11 @@ class EnsAvgCMFDRun(object):
                     value = json.loads(config.get(section, param))
                     setattr(cmfd_mesh, param, value)
             self.mesh = cmfd_mesh
+        self._global_params += 'local_comm', 'global_comm', 'mesh'
 
         section = 'OpenMC Node'
         if section in config.sections():
-            for param in cmfd_params:
+            for param in openmc_params:
                 if param in config[section]:
                     value = json.loads(config.get(section, param))
                     self._openmc_args[param] = value
@@ -357,7 +400,22 @@ class EnsAvgCMFDRun(object):
                     value = json.loads(config.get(section, param))
                     self._cmfd_args[param] = value
 
+    def _write_summary(self):
+        """ Write summary of global ensemble averaging parameters """
+        outstr = "**** SUMMARY OF ENSEMBLE AVERAGING PARAMETERS ****\n"
+        for param in self._global_params:
+            if 'comm' in param:
+                param_repr = (str(getattr(self, param).Get_size()) +
+                              " total procs")
+            else:
+                param_repr = str(getattr(self, param))
+            outstr += "     {}: {}\n".format(param, param_repr)
+        outstr += "**************************************************\n"
+        print(outstr)
+        sys.stdout.flush()
+
     def _define_comms(self):
+        """ Define intercommunicators for ensemble averaging """
         # Define global communicator
         self._global_comm = MPI.COMM_WORLD
 
@@ -374,18 +432,16 @@ class EnsAvgCMFDRun(object):
         self._local_comm =  MPI.Comm.Split(self._global_comm, color=color)
 
     def _set_node_params(self):
-        # TODO print statement to say what node is set to
+        """ Set node properties based on MPI process rank """
         # Define node type
         if self._global_comm.Get_rank() < self._n_procs_per_seed:
             self._node = CMFDNode()
+            self._node_type = "CMFD"
         else:
             self._node = OpenMCNode()
+            self._node_type = "OpenMC"
 
         # Define global args to pass to node
-        global_params = ['local_comm', 'global_comm', 'n_seeds', 'verbosity',
-                         'openmc_verbosity', 'n_procs_per_seed', 'mesh',
-                         'tally_begin', 'seed_begin', 'solver_begin',
-                         'n_particles', 'n_inactive', 'n_batches']
 
-        for param in global_params:
+        for param in self._global_params:
             self._global_args[param] = getattr(self, param)
