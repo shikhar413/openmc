@@ -341,7 +341,7 @@ class EnsAvgCMFDRun(object):
                 if param in config[section]:
                     value = json.loads(config.get(section, param))
                     setattr(cmfd_mesh, param, value)
-        self.mesh = cmfd_mesh
+            self.mesh = cmfd_mesh
 
         section = 'OpenMC Node'
         if section in config.sections():
