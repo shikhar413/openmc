@@ -349,6 +349,8 @@ class OpenMCNode(object):
             # Reweight source based on updated weight factors
             self._cmfd_reweight()
 
+        if self._current_batch == openmc.lib.settings.batches:
+            status = 1
         return status
 
     def finalize(self):
