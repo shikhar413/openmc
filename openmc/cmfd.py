@@ -1077,6 +1077,15 @@ class CMFDRun(object):
         # Initialize parameters for CMFD tally windows
         self._set_tally_window()
 
+        # Set reference diffusion parameters
+        if self._ref_d.size > 0:
+            self._set_reference_params = True
+            # Check length of reference diffusion parameters equal to number of
+            # energy groups
+            if self._ref_d.size != self._indices[3]:
+                raise OpenMCError('Number of reference diffusion parameters '
+                                  'must equal number of CMFD energy groups')
+
         # Define all variables that will exist only on master process
         if openmc.lib.master():
             # Set global albedo
@@ -1191,6 +1200,12 @@ class CMFDRun(object):
         # Get current batch through C API
         # Add 1 as next_batch has not been called yet
         current_batch = openmc.lib.current_batch() + 1
+
+        # Check to set CMFD tallies as active
+        if self._tally_begin == current_batch:
+            tallies = openmc.lib.tallies
+            for tally_id in self._tally_ids:
+                tallies[tally_id].active = True
 
         # Check to activate CMFD solver and possible feedback
         if self._solver_begin == current_batch:
@@ -2114,37 +2129,37 @@ class CMFDRun(object):
         self._current = np.where(is_accel[..., np.newaxis, np.newaxis], 
                                  np.sum(self._current_rate, axis=5), 0.0)
 
-        # Get p1 scatter rr from CMFD tally 3
-        tally_id = self._tally_ids[3]
-        p1scattrr = tallies[tally_id].results[:,0,1]
-
-        # Define target tally reshape dimensions for p1 scatter tally
-        target_tally_shape = [nz, ny, nx, 2, ng, 1]
-
-        # Reshape and extract only p1 data from tally results as there is
-        # no need for p0 data
-        reshape_p1scattrr = np.swapaxes(p1scattrr.reshape(target_tally_shape),
-                                        0, 2)[:,:,:,1,:,:]
-
-        # p1-scatter rr is flipped in energy axis as tally results are given in
-        # reverse order of energy group
-        reshape_p1scattrr = np.flip(reshape_p1scattrr, axis=3)
-
-        # Bank p1-scatter rr to p1scatt_rate
-        self._p1scatt_rate = np.append(self._p1scatt_rate, reshape_p1scattrr,
-                                       axis=4)
-
-        # Compute p1-scatter xs as aggregate of banked p1scatt_rate over tally
-        # window divided by flux
-        self._p1scattxs = np.divide(np.sum(self._p1scatt_rate, axis=4),
-                                    self._flux, where=self._flux > 0,
-                                    out=np.zeros_like(self._p1scattxs))
-
         if self._set_reference_params:
             # Set diffusion coefficients based on reference value
             self._diffcof = np.where(self._flux > 0,
                                      self._ref_d[None, None, None, :], 0.0)
         else:
+            # Get p1 scatter rr from CMFD tally 3
+            tally_id = self._tally_ids[3]
+            p1scattrr = tallies[tally_id].results[:,0,1]
+
+            # Define target tally reshape dimensions for p1 scatter tally
+            target_tally_shape = [nz, ny, nx, 2, ng, 1]
+
+            # Reshape and extract only p1 data from tally results as there is
+            # no need for p0 data
+            reshape_p1scattrr = np.swapaxes(p1scattrr.reshape(target_tally_shape),
+                                            0, 2)[:,:,:,1,:,:]
+
+            # p1-scatter rr is flipped in energy axis as tally results are given in
+            # reverse order of energy group
+            reshape_p1scattrr = np.flip(reshape_p1scattrr, axis=3)
+
+            # Bank p1-scatter rr to p1scatt_rate
+            self._p1scatt_rate = np.append(self._p1scatt_rate, reshape_p1scattrr,
+                                           axis=4)
+
+            # Compute p1-scatter xs as aggregate of banked p1scatt_rate over tally
+            # window divided by flux
+            self._p1scattxs = np.divide(np.sum(self._p1scatt_rate, axis=4),
+                                        self._flux, where=self._flux > 0,
+                                        out=np.zeros_like(self._p1scattxs))
+
             # Calculate and store diffusion coefficient
             with np.errstate(divide='ignore', invalid='ignore'):
                 self._diffcof = np.where(self._flux > 0, 1.0 / (3.0 *
@@ -2263,15 +2278,6 @@ class CMFDRun(object):
         # Allocate dtilde and dhat
         self._dtilde = np.zeros((nx, ny, nz, ng, 6))
         self._dhat = np.zeros((nx, ny, nz, ng, 6))
-
-        # Set reference diffusion parameters
-        if self._ref_d.size > 0:
-            self._set_reference_params = True
-            # Check length of reference diffusion parameters equal to number of
-            # energy groups
-            if self._ref_d.size != self._indices[3]:
-                raise OpenMCError('Number of reference diffusion parameters '
-                                  'must equal number of CMFD energy groups')
 
         # Logical for determining whether region of interest is accelerated
         # region
@@ -3057,6 +3063,11 @@ class CMFDRun(object):
         n_tallies = 4
         self._tally_ids = []
         for i in range(n_tallies):
+            # Skip computation of p1 scattering tally if reference diffusion
+            # parameters given
+            if self._set_reference_params and i == 3:
+                continue
+
             cmfd_tally = openmc.lib.Tally()
             # Set nuclide bins
             cmfd_tally.nuclides = ['total']
@@ -3111,6 +3122,3 @@ class CMFDRun(object):
                 cmfd_tally.scores = ['scatter']
                 cmfd_tally.type = 'volume'
                 cmfd_tally.estimator = 'analog'
-
-            # Set all tallies to be active from beginning
-            cmfd_tally.active = True
