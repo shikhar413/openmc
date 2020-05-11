@@ -998,32 +998,32 @@ class CMFDNode(object):
             # Set diffusion coefficients based on reference value
             self._diffcof = np.where(self._flux > 0,
                                      self._ref_d[None, None, None, :], 0.0)
-        # Get p1 scatter reaction rate from seed averaged data
-        p1scattrr = seed_avg_tally_data[self._p1scatt_slice]
-
-        # Define target tally reshape dimensions for p1 scatter tally
-        target_tally_shape = [nz, ny, nx, 2, ng, 1]
-
-        # Reshape and extract only p1 data from tally results as there is
-        # no need for p0 data
-        reshape_p1scattrr = np.swapaxes(p1scattrr.reshape(target_tally_shape),
-                                        0, 2)[:,:,:,1,:,:]
-
-        # p1-scatter rr is flipped in energy axis as tally results are given in
-        # reverse order of energy group
-        reshape_p1scattrr = np.flip(reshape_p1scattrr, axis=3)
-
-        # Bank p1-scatter rr to p1scatt_rate
-        self._p1scatt_rate = np.append(self._p1scatt_rate, reshape_p1scattrr,
-                                       axis=4)
-
-        # Compute p1-scatter xs as aggregate of banked p1scatt_rate over tally
-        # window divided by flux
-        self._p1scattxs = np.divide(np.sum(self._p1scatt_rate, axis=4),
-                                    self._flux, where=self._flux > 0,
-                                    out=np.zeros_like(self._p1scattxs))
-
         else:
+            # Get p1 scatter reaction rate from seed averaged data
+            p1scattrr = seed_avg_tally_data[self._p1scatt_slice]
+
+            # Define target tally reshape dimensions for p1 scatter tally
+            target_tally_shape = [nz, ny, nx, 2, ng, 1]
+
+            # Reshape and extract only p1 data from tally results as there is
+            # no need for p0 data
+            reshape_p1scattrr = np.swapaxes(p1scattrr.reshape(target_tally_shape),
+                                            0, 2)[:,:,:,1,:,:]
+
+            # p1-scatter rr is flipped in energy axis as tally results are given in
+            # reverse order of energy group
+            reshape_p1scattrr = np.flip(reshape_p1scattrr, axis=3)
+
+            # Bank p1-scatter rr to p1scatt_rate
+            self._p1scatt_rate = np.append(self._p1scatt_rate, reshape_p1scattrr,
+                                           axis=4)
+
+            # Compute p1-scatter xs as aggregate of banked p1scatt_rate over tally
+            # window divided by flux
+            self._p1scattxs = np.divide(np.sum(self._p1scatt_rate, axis=4),
+                                        self._flux, where=self._flux > 0,
+                                        out=np.zeros_like(self._p1scattxs))
+
             # Calculate and store diffusion coefficient
             with np.errstate(divide='ignore', invalid='ignore'):
                 self._diffcof = np.where(self._flux > 0, 1.0 / (3.0 *
@@ -1796,7 +1796,7 @@ class CMFDNode(object):
         total_tallies = nx*ny*nz*ng*12
         self._current_slice = slice(tally_idx, tally_idx+total_tallies)
 
-        if self._set_reference_params:
+        if not self._set_reference_params:
             tally_idx += total_tallies
             total_tallies = nx*ny*nz*ng*2
             self._p1scatt_slice = slice(tally_idx, tally_idx+total_tallies)
