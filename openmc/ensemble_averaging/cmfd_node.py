@@ -57,8 +57,6 @@ class CMFDNode(object):
         Batch number at which CMFD tallies should begin accummulating
     solver_begin: int
         Batch number at which CMFD solver should start executing
-    ref_d : list of floats
-        List of reference diffusion coefficients to fix CMFD parameters to
     display : dict
         Dictionary indicating which CMFD results to output. Note that CMFD
         k-effective will always be outputted. Acceptable keys are:
@@ -81,6 +79,8 @@ class CMFDNode(object):
         Structured mesh to be used for acceleration
     norm : float
         Normalization factor applied to the CMFD fission source distribution
+    ref_d : list of floats
+        List of reference diffusion coefficients to fix CMFD parameters to
     window_type : {'expanding', 'rolling', 'none'}
         Specifies type of tally window scheme to use to accumulate CMFD
         tallies. Options are:
@@ -159,7 +159,6 @@ class CMFDNode(object):
         # Variables that users can modify
         self._display = {'balance': False, 'dominance': False,
                          'entropy': False, 'source': False}
-        self._ref_d = np.array([])
         self._downscatter = False
         self._cmfd_ktol = 1.e-8
         self._norm = 1.
@@ -173,6 +172,7 @@ class CMFDNode(object):
         # Variables defined by EnsAvgCMFDRun class
         self._mesh = None
         self._window_type = None
+        self._ref_d = None
         self._tally_begin = None
         self._solver_begin = None
         self._n_procs_per_seed = None
@@ -266,10 +266,6 @@ class CMFDNode(object):
         self._tally_data_size = None
 
     @property
-    def ref_d(self):
-        return self._ref_d
-
-    @property
     def display(self):
         return self._display
 
@@ -316,6 +312,10 @@ class CMFDNode(object):
     @property
     def window_type(self):
         return self._window_type
+
+    @property
+    def ref_d(self):
+        return self._ref_d
 
     @property
     def tally_begin(self):
@@ -380,12 +380,6 @@ class CMFDNode(object):
     @property
     def k_cmfd(self):
         return self._k_cmfd
-
-    @ref_d.setter
-    def ref_d(self, diff_params):
-        check_type('Reference diffusion params', diff_params,
-                   Iterable, Real)
-        self._ref_d = np.array(diff_params)
 
     @display.setter
     def display(self, display):
@@ -481,6 +475,10 @@ class CMFDNode(object):
     @window_type.setter
     def window_type(self, window_type):
         self._window_type = window_type
+
+    @ref_d.setter
+    def ref_d(self, ref_d):
+        self._ref_d = ref_d
 
     @tally_begin.setter
     def tally_begin(self, begin):
@@ -599,7 +597,7 @@ class CMFDNode(object):
 
     def _write_summary(self):
         """ Write summary of CMFD node parameters """
-        cmfd_params = ['ref_d', 'downscatter', 'cmfd_ktol', 'norm',
+        cmfd_params = ['downscatter', 'cmfd_ktol', 'norm',
                        'w_shift', 'stol', 'spectral', 'window_size',
                        'gauss_seidel_tolerance', 'display', 'n_threads']
         rank = self._global_comm.Get_rank()
@@ -724,6 +722,15 @@ class CMFDNode(object):
 
         # Initialize parameters for CMFD tally windows
         self._set_tally_window()
+
+        # Set reference diffusion parameters
+        if self._ref_d.size > 0:
+            self._set_reference_params = True
+            # Check length of reference diffusion parameters equal to number of
+            # energy groups
+            if self._ref_d.size != self._indices[3]:
+                raise OpenMCError('Number of reference diffusion parameters '
+                                  'must equal number of CMFD energy groups')
 
         # Define all variables that will exist only on master process
         # Set global albedo
@@ -987,6 +994,10 @@ class CMFDNode(object):
         self._current = np.where(is_accel[..., np.newaxis, np.newaxis],
                                  np.sum(self._current_rate, axis=5), 0.0)
 
+        if self._set_reference_params:
+            # Set diffusion coefficients based on reference value
+            self._diffcof = np.where(self._flux > 0,
+                                     self._ref_d[None, None, None, :], 0.0)
         # Get p1 scatter reaction rate from seed averaged data
         p1scattrr = seed_avg_tally_data[self._p1scatt_slice]
 
@@ -1012,10 +1023,6 @@ class CMFDNode(object):
                                     self._flux, where=self._flux > 0,
                                     out=np.zeros_like(self._p1scattxs))
 
-        if self._set_reference_params:
-            # Set diffusion coefficients based on reference value
-            self._diffcof = np.where(self._flux > 0,
-                                     self._ref_d[None, None, None, :], 0.0)
         else:
             # Calculate and store diffusion coefficient
             with np.errstate(divide='ignore', invalid='ignore'):
@@ -1635,15 +1642,6 @@ class CMFDNode(object):
         self._dtilde = np.zeros((nx, ny, nz, ng, 6))
         self._dhat = np.zeros((nx, ny, nz, ng, 6))
 
-        # Set reference diffusion parameters
-        if self._ref_d.size > 0:
-            self._set_reference_params = True
-            # Check length of reference diffusion parameters equal to number of
-            # energy groups
-            if self._ref_d.size != self._indices[3]:
-                raise OpenMCError('Number of reference diffusion parameters '
-                                  'must equal number of CMFD energy groups')
-
         # Logical for determining whether region of interest is accelerated
         # region
         is_accel = self._coremap != _CMFD_NOACCEL
@@ -1798,9 +1796,10 @@ class CMFDNode(object):
         total_tallies = nx*ny*nz*ng*12
         self._current_slice = slice(tally_idx, tally_idx+total_tallies)
 
-        tally_idx += total_tallies
-        total_tallies = nx*ny*nz*ng*2
-        self._p1scatt_slice = slice(tally_idx, tally_idx+total_tallies)
+        if self._set_reference_params:
+            tally_idx += total_tallies
+            total_tallies = nx*ny*nz*ng*2
+            self._p1scatt_slice = slice(tally_idx, tally_idx+total_tallies)
 
         # Add 2 to total tally data size to account for keff and
         # num_realizations

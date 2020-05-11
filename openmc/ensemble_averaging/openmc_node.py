@@ -40,6 +40,8 @@ class OpenMCNode(object):
         Batch number at which CMFD solver should start executing
     mesh : openmc.cmfd.CMFDMesh
         Structured mesh to be used for acceleration
+    ref_d : list of floats
+        List of reference diffusion coefficients to fix CMFD parameters to
     window_type : {'expanding', 'rolling', 'none'}
         Specifies type of tally window scheme to use to accumulate CMFD
         tallies. Options are:
@@ -92,6 +94,7 @@ class OpenMCNode(object):
         # Variables defined by EnsAvgCMFDRun class
         self._tally_begin = None
         self._solver_begin = None
+        self._ref_d = None
         self._window_type = None
         self._mesh = None
         self._n_procs_per_seed = None
@@ -103,6 +106,7 @@ class OpenMCNode(object):
         self._local_comm = None
 
         # External variables used during runtime but users cannot control
+        self._set_reference_params = False
         self._indices = np.zeros(4, dtype=np.int32)
         self._egrid = None
         self._mesh_id = None
@@ -120,6 +124,10 @@ class OpenMCNode(object):
     @property
     def solver_begin(self):
         return self._solver_begin
+
+    @property
+    def ref_d(self):
+        return self._ref_d
 
     @property
     def window_type(self):
@@ -209,6 +217,10 @@ class OpenMCNode(object):
     @solver_begin.setter
     def solver_begin(self, begin):
         self._solver_begin = begin
+
+    @ref_d.setter
+    def ref_d(self, ref_d):
+        self._ref_d = ref_d
 
     @window_type.setter
     def window_type(self, window_type):
@@ -317,13 +329,21 @@ class OpenMCNode(object):
             batches, 2=tally triggers reached)
 
         """
+        # Increment current batch
+        self._current_batch += 1
+
+        # Check to set CMFD tallies as active
+        if self._tally_begin == self._current_batch:
+            tallies = openmc.lib.tallies
+            for tally_id in self._tally_ids:
+                tallies[tally_id].active = True
+
         # Check to reset tallies
         if self._reset_every:
             self._cmfd_tally_reset()
 
-        # Aggregate CMFD tallies and broadcast to CMFDNode
+        # Aggregate CMFD tallies by running next batch in OpenMC
         status = openmc.lib.next_batch()
-        self._current_batch = openmc.lib.current_batch()
 
         # Broadcast CMFD tallies to CMFD node
         if openmc.lib.master():
@@ -427,6 +447,15 @@ class OpenMCNode(object):
         # Initialize parameters for CMFD tally windows
         self._set_tally_window()
 
+        # Set reference diffusion parameters
+        if self._ref_d.size > 0:
+            self._set_reference_params = True
+            # Check length of reference diffusion parameters equal to number of
+            # energy groups
+            if self._ref_d.size != self._indices[3]:
+                raise OpenMCError('Number of reference diffusion parameters '
+                                  'must equal number of CMFD energy groups')
+
     def _set_tally_window(self):
         """ Set parameters to handle different tally window options """
         # Set tallies to reset every batch if window_type is not none
@@ -509,6 +538,8 @@ class OpenMCNode(object):
 
     def _send_tallies_to_cmfd_node(self):
         """ Aggregate CMFD tallies and transfer to CMFD node """
+        keff = openmc.lib.keff()[0]
+
         # Get tallies in-memory
         tallies = openmc.lib.tallies
 
@@ -532,14 +563,18 @@ class OpenMCNode(object):
         tally_id = self._tally_ids[2]
         current = tallies[tally_id].results[:,0,1]
 
-        # Get p1 scatter rr from CMFD tally 3
-        tally_id = self._tally_ids[3]
-        p1scattrr = tallies[tally_id].results[:,0,1]
+        if self._set_reference_params:
+            # Get p1 scatter rr from CMFD tally 3
+            tally_id = self._tally_ids[3]
+            p1scattrr = tallies[tally_id].results[:,0,1]
 
-        keff = openmc.lib.keff()[0]
+            tally_data = np.concatenate((flux, totalrr, scattrr, nfissrr,
+                                         current, p1scattrr,
+                                         [num_realizations, keff]))
+        else:
+            tally_data = np.concatenate((flux, totalrr, scattrr, nfissrr,
+                                         current, [num_realizations, keff]))
 
-        tally_data = np.concatenate((flux, totalrr, scattrr, nfissrr, current,
-                                     p1scattrr, [num_realizations, keff]))
         self._global_comm.Send(tally_data, dest=0, tag=0)
         if self._verbosity >= 2:
             source = self._global_comm.Get_rank()
@@ -645,6 +680,11 @@ class OpenMCNode(object):
         n_tallies = 4
         self._tally_ids = []
         for i in range(n_tallies):
+            # Skip computation of p1 scattering tally if reference diffusion
+            # parameters given
+            if self._set_reference_params and i == 3:
+                continue
+
             cmfd_tally = openmc.lib.Tally()
             # Set nuclide bins
             cmfd_tally.nuclides = ['total']
@@ -699,6 +739,3 @@ class OpenMCNode(object):
                 cmfd_tally.scores = ['scatter']
                 cmfd_tally.type = 'volume'
                 cmfd_tally.estimator = 'analog'
-
-            # Set all tallies to be active from beginning
-            cmfd_tally.active = True
