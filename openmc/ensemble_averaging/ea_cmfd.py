@@ -58,6 +58,8 @@ class EnsAvgCMFDRun(object):
         Batch number at which CMFD solver should start executing
     mesh : openmc.cmfd.CMFDMesh
         Structured mesh to be used for acceleration
+    ref_d : list of floats
+        List of reference diffusion coefficients to fix CMFD parameters to
     window_type : {'expanding', 'rolling', 'none'}
         Specifies type of tally window scheme to use to accumulate CMFD
         tallies. Options are:
@@ -101,6 +103,7 @@ class EnsAvgCMFDRun(object):
         self._n_batches = 20
         self._tally_begin = 1
         self._window_type = 'none'
+        self._ref_d = np.array([])
         self._solver_begin = 1
         self._mesh = None
 
@@ -154,6 +157,10 @@ class EnsAvgCMFDRun(object):
     @property
     def window_type(self):
         return self._window_type
+
+    @property
+    def ref_d(self):
+        return self._ref_d
 
     @property
     def mesh(self):
@@ -217,6 +224,12 @@ class EnsAvgCMFDRun(object):
         check_type('CMFD solver begin batch', begin, Integral)
         check_greater_than('CMFD solver begin batch', begin, 0)
         self._solver_begin = begin
+
+    @ref_d.setter
+    def ref_d(self, diff_params):
+        check_type('Reference diffusion params', diff_params,
+                   Iterable, Real)
+        self._ref_d = np.array(diff_params)
 
     @window_type.setter
     def window_type(self, window_type):
@@ -357,14 +370,14 @@ class EnsAvgCMFDRun(object):
         """ Read config file and set all global, CMFD, and OpenMC parameters """
         openmc_params = ['n_threads', 'seed_begin', 'n_particles',
                          'n_inactive']
-        cmfd_params = ['ref_d', 'downscatter', 'cmfd_ktol', 'norm',
+        cmfd_params = ['downscatter', 'cmfd_ktol', 'norm',
                        'w_shift', 'stol', 'spectral', 'window_size',
                        'gauss_seidel_tolerance', 'display', 'n_threads']
         mesh_params = ['lower_left', 'upper_right', 'dimension', 'width',
                        'energy', 'albedo', 'map']
         self._global_params = ['n_seeds', 'n_procs_per_seed', 'verbosity',
                                'openmc_verbosity', 'n_batches', 'tally_begin',
-                               'solver_begin', 'window_type']
+                               'solver_begin', 'window_type', 'ref_d']
 
         config = configparser.ConfigParser()
         config.read(self._cfg_file)
