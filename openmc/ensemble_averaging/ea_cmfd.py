@@ -15,8 +15,9 @@ TODO Put my paper
 
 """
 
+from collections.abc import Iterable
 from contextlib import contextmanager
-from numbers import Integral
+from numbers import Integral, Real
 import configparser
 import json
 import sys

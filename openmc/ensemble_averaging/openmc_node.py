@@ -564,6 +564,9 @@ class OpenMCNode(object):
         current = tallies[tally_id].results[:,0,1]
 
         if self._set_reference_params:
+            tally_data = np.concatenate((flux, totalrr, scattrr, nfissrr,
+                                         current, [num_realizations, keff]))
+        else:
             # Get p1 scatter rr from CMFD tally 3
             tally_id = self._tally_ids[3]
             p1scattrr = tallies[tally_id].results[:,0,1]
@@ -571,9 +574,6 @@ class OpenMCNode(object):
             tally_data = np.concatenate((flux, totalrr, scattrr, nfissrr,
                                          current, p1scattrr,
                                          [num_realizations, keff]))
-        else:
-            tally_data = np.concatenate((flux, totalrr, scattrr, nfissrr,
-                                         current, [num_realizations, keff]))
 
         self._global_comm.Send(tally_data, dest=0, tag=0)
         if self._verbosity >= 2:
