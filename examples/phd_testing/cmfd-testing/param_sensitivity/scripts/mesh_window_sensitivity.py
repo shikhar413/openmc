@@ -49,7 +49,7 @@ def generate_input_files(cluster, n_seeds, run_file):
     os.system('mkdir -p {}'.format(cluster_params['prob_type']))
     os.chdir(cluster_params['prob_type'])
 
-    for seed in n_seeds:
+    for seed in [n_seeds]:
         seed_dir = 'seed{}'.format(str(seed))
         os.system('mkdir -p {}'.format(seed_dir))
         os.chdir(seed_dir)
