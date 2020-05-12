@@ -126,12 +126,20 @@ class CMFDNode(object):
     k_cmfd : list of floats
         List of CMFD k-effectives, stored for each generation that CMFD is
         invoked
+    time_cmfdnode : float
+        Time in CMFD node, in seconds
     time_cmfd : float
-        Time for entire CMFD calculation, in seconds
+        Time in CMFD routine excluding communication costs, in seconds
     time_cmfdbuild : float
         Time for building CMFD matrices, in seconds
     time_cmfdsolve : float
         Time for solving CMFD matrix equations, in seconds
+    time_waittallies : float
+        Time waiting for tallies from OpenMC tallies, in seconds
+    time_waitsrccnts : float
+        Time waiting for source counts from OpenMC tallies, in seconds
+    time_sendweightfactors : float
+        Time sending weightfactors to OpenMC nodes
     n_threads : int
         Number of threads allocated to OpenMC for CMFD solver
     n_procs_per_seed : int
@@ -222,9 +230,13 @@ class CMFDNode(object):
         self._dom = []
         self._k_cmfd = []
         self._resnb = None
+        self._time_cmfdnode = None
         self._time_cmfd = None
         self._time_cmfdbuild = None
         self._time_cmfdsolve = None
+        self._time_waittallies = None
+        self._time_waitsrccnts = None
+        self._time_sendweightfactors = None
         self._current_batch = 0
 
         # All index-related variables, for numpy vectorization
@@ -580,10 +592,10 @@ class CMFDNode(object):
         return status
 
     def finalize(self):
-        """ Finalize simulation by printing CMFD timing stats. """
-        if openmc.lib.master():
-            # Print out CMFD timing statistics
-            self._write_cmfd_timing_stats()
+        """ Finalize simulation by printing Ensemble Averaging timing stats. """
+        openmc_timing_stats = self._recv_openmc_timing_stats()
+        # Print out CMFD timing statistics
+        self._write_timing_stats(openmc_timing_stats)
 
     def _initialize_ea_params(self, global_args, cmfd_args):
         """ Initialize global parameters inherited from EnsAvgCMFDRun class """
@@ -675,15 +687,38 @@ class CMFDNode(object):
         # Define all variables necessary for running CMFD
         self._initialize_cmfd()
 
-    def _write_cmfd_timing_stats(self):
-        """ Write CMFD timing stats to buffer after finalizing simulation """
-        outstr = ("=====================>     "
-                  "CMFD TIMING STATISTICS     <====================\n\n"
-                  "   Time in CMFD                    =  {:.5e} seconds\n"
+    def _write_timing_stats(self, openmc_times):
+        """ Write ensemble averaging timing stats to buffer after finalizing simulation """
+        self._time_cmfd = (self._time_cmfdnode - self._time_waittallies -
+                           self._time_waitsrccnts -
+                           self._time_sendweightfactors)
+        outstr = ("==================>     "
+                  "CMFD NODE TIMING STATISTICS     <==================\n\n"
+                  "   Time in CMFD Node               =  {:.5e} seconds\n"
+                  "     CMFD routines                 =  {:.5e} seconds\n"
                   "     Building matrices             =  {:.5e} seconds\n"
-                  "     Solving matrices              =  {:.5e} seconds\n")
-        print(outstr.format(self._time_cmfd, self._time_cmfdbuild,
-                            self._time_cmfdsolve))
+                  "     Solving matrices              =  {:.5e} seconds\n"
+                  "     Waiting for tallies           =  {:.5e} seconds\n"
+                  "     Waiting for sourcecounts      =  {:.5e} seconds\n"
+                  "     Sending weightfactors         =  {:.5e} seconds\n")
+        print(outstr.format(self._time_cmfdnode, self._time_cmfd,
+                            self._time_cmfdbuild, self._time_cmfdsolve,
+                            self._time_waittallies, self._time_waitsrccnts,
+                            self._time_sendweightfactors))
+
+        outstr = ("\n=================>     "
+                  "OPENMC NODE TIMING STATISTICS     <=================\n\n")
+        time_openmc = openmc_times[:, 0] - np.sum(openmc_times[:, 1:], axis=1)
+        for i in range(self._n_seeds):
+            outstr += ("SEED {}\n"
+                       "   Time in OpenMC Node             =  {:.5e} seconds\n"
+                       "     OpenMC routines               =  {:.5e} seconds\n"
+                       "     Sending tallies               =  {:.5e} seconds\n"
+                       "     Sending sourcecounts          =  {:.5e} seconds\n"
+                       "     Waiting for weightfactors     =  {:.5e} seconds\n")
+            print(outstr.format(i+1, openmc_times[i, 0], time_openmc[i], 
+                                openmc_times[i, 1], openmc_times[i, 2],
+                                openmc_times[i, 3]))
         sys.stdout.flush()
 
     def _initialize_cmfd(self):
@@ -755,9 +790,13 @@ class CMFDNode(object):
         self._current_rate = np.zeros((nx, ny, nz, 12, ng, 0))
 
         # Initialize timers
+        self._time_cmfdnode = 0.0
         self._time_cmfd = 0.0
         self._time_cmfdbuild = 0.0
         self._time_cmfdsolve = 0.0
+        self._time_waittallies = 0.0
+        self._time_waitsrccnts = 0.0
+        self._time_sendweightfactors = 0.0
 
     def _recv_tallies_from_openmc(self):
         """ Receive tally data from all OpenMC seeds
@@ -807,6 +846,32 @@ class CMFDNode(object):
 
         # Compute seed-averaged sourcecounts
         self._sourcecounts = np.sum(all_sourcecount_data, axis=0)/self._n_seeds
+
+    def _recv_openmc_timing_stats(self):
+        """ Receive timing stats from all OpenMC seeds
+
+        Returns
+        -------
+        numpy.ndarray
+            Timing data by seed
+
+        """
+        timing_data_size = 4  # Receiving 4 time entries from each OpenMC seed
+        all_timing_data = np.empty([self._n_seeds, timing_data_size],
+                                  dtype=np.float64)
+        for i in range(self._n_seeds):
+            timing_data = np.empty(timing_data_size, dtype=np.float64)
+            status = MPI.Status()
+            self._global_comm.Recv(timing_data, source=MPI.ANY_SOURCE, status=status, tag=2)
+            source = status.Get_source()
+            if self._verbosity >= 2:
+                dest = self._global_comm.Get_rank()
+                outstr = "{:>11s}Process {} received timing data from process {}"
+                print(outstr.format('', dest, source))
+                sys.stdout.flush()
+            seed_idx = int((source-self._n_procs_per_seed)/self._n_procs_per_seed)
+            all_timing_data[seed_idx,:] = timing_data
+        return all_timing_data
 
     def _compute_xs(self, seed_avg_tally_data):
         """Takes seed-averaged CMFD tallies from OpenMC node and computes
@@ -1039,6 +1104,8 @@ class CMFDNode(object):
 
         if self._current_batch >= self._tally_begin:
             openmc_tallies = self._recv_tallies_from_openmc()
+            time_stop_wait_tallies = time.time()
+            self._time_waittallies += time_stop_wait_tallies - time_start_cmfd
             self._compute_xs(openmc_tallies)
 
         if self._current_batch >= self._solver_begin:
@@ -1055,14 +1122,18 @@ class CMFDNode(object):
             self._calc_fission_source()
 
             # Receive sourcecounts from OpenMC
+            time_start_recv_sourcecounts = time.time()
             self._recv_sourcecounts_from_openmc()
+            time_stop_recv_sourcecounts = time.time()
+            self._time_waitsrccnts += (time_stop_recv_sourcecounts -
+                                       time_start_recv_sourcecounts)
 
             # Update source weightfactors and broadcast to all OpenMC processes
             self._update_weightfactors()
 
         # Stop CMFD timer
         time_stop_cmfd = time.time()
-        self._time_cmfd += time_stop_cmfd - time_start_cmfd
+        self._time_cmfdnode += time_stop_cmfd - time_start_cmfd
         if self._current_batch >= self._solver_begin:
             # Write CMFD output if CMFD on for current batch
             self._write_cmfd_output()
@@ -1198,6 +1269,7 @@ class CMFDNode(object):
                                dtype=np.float32))
 
         # Broadcast weight factors to all procs
+        time_start_sendweightfactors = time.time()
         for i in range(self._n_seeds*self._n_procs_per_seed):
             dest = i + self._n_procs_per_seed
             self._global_comm.Send(self._weightfactors, dest=dest)
@@ -1206,6 +1278,9 @@ class CMFDNode(object):
                 outstr = "{:>11s}Sending weight factors from process {} to {}"
                 print(outstr.format('', source, dest))
                 sys.stdout.flush()
+        time_stop_sendweightfactors = time.time()
+        self._time_sendweightfactors += (time_stop_sendweightfactors -
+                                         time_start_sendweightfactors)
 
     def _build_loss_matrix(self):
         """ Builds loss matrix in CMFD calculation
