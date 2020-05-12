@@ -15,6 +15,7 @@ References
 from contextlib import contextmanager
 from numbers import Integral
 import sys
+import time
 
 import numpy as np
 import h5py
@@ -78,6 +79,14 @@ class OpenMCNode(object):
         MPI intercommunicator to comunicate between CMFD and OpenMC nodes
     local_comm : mpi4py.MPI.Intracomm
         MPI intercommunicator to communicate locally between CMFD nodes
+    time_openmcnode : float
+        Time in OpenMC node, in seconds
+    time_sendtallies : float
+        Time taken to send tallies to CMFD node, in seconds
+    time_sendsrccnts : float
+        Time taken to send source counts to CMFD node, in seconds
+    time_waitweightfactors : float
+        Time waiting for weightfactors from CMFD node
     """
 
     def __init__(self):
@@ -116,6 +125,10 @@ class OpenMCNode(object):
         self._weightfactors = None
         self._reset_every = None
         self._current_batch = 0
+        self._time_openmcnode = None
+        self._time_sendtallies = None
+        self._time_sendsrccnts = None
+        self._time_waitweightfactors = None
 
     @property
     def tally_begin(self):
@@ -329,6 +342,10 @@ class OpenMCNode(object):
             batches, 2=tally triggers reached)
 
         """
+        # Start timer for OpenMC node
+        if openmc.lib.master():
+            time_start_openmc = time.time()
+
         # Increment current batch
         self._current_batch += 1
 
@@ -348,7 +365,11 @@ class OpenMCNode(object):
         # Broadcast CMFD tallies to CMFD node
         if openmc.lib.master():
             if self._current_batch >= self._tally_begin:
+                time_start_sendtallies = time.time()
                 self._send_tallies_to_cmfd_node()
+                time_stop_sendtallies = time.time()
+                self._time_sendtallies += (time_stop_sendtallies -
+                                           time_start_sendtallies)
 
         if self._current_batch >= self._solver_begin:
             # Count bank sites in CMFD mesh
@@ -361,16 +382,31 @@ class OpenMCNode(object):
             # Send sourcecounts to CMFD node and wait for CMFD node to send
             # updated weight factors
             if openmc.lib.master():
+                time_start_sendsrccnts = time.time()
                 self._send_sourcecounts_to_cmfd_node()
+                time_stop_sendsrccnts = time.time()
+                self._time_sendsrccnts += (time_stop_sendsrccnts -
+                                           time_start_sendsrccnts)
 
             # Receive updated weight factors from CMFD node and update source
+            if openmc.lib.master():
+                time_start_recv_weightfactors = time.time()
             self._recv_weightfactors_from_cmfd_node()
+            if openmc.lib.master():
+                time_stop_recv_weightfactors = time.time()
+                self._time_waitweightfactors += (time_stop_recv_weightfactors -
+                                                 time_start_recv_weightfactors)
 
             # Reweight source based on updated weight factors
             self._cmfd_reweight()
 
         if self._current_batch == openmc.lib.settings.batches:
             status = 1
+
+        # Stop timer for OpenMC node
+        if openmc.lib.master():
+            time_stop_openmc = time.time()
+            self._time_openmcnode += time_stop_openmc - time_start_openmc
         return status
 
     def finalize(self):
@@ -380,6 +416,8 @@ class OpenMCNode(object):
         """
         # Finalize simuation
         openmc.lib.simulation_finalize()
+        if openmc.lib.master():
+            self._send_timing_stats_to_cmfd_node()
 
     def _initialize_ea_params(self, global_args, openmc_args):
         """ Initialize global parameters inherited from EnsAvgCMFDRun class """
@@ -416,6 +454,12 @@ class OpenMCNode(object):
         openmc.lib.settings.inactive = self._n_inactive
         openmc.lib.settings.batches = self._n_batches
         openmc.lib.settings.particles = self._n_particles
+
+        # Initialize timers
+        self._time_openmcnode = 0.0
+        self._time_sendtallies = 0.0
+        self._time_sendsrccnts = 0.0
+        self._time_waitweightfactors = 0.0
 
     def _configure_cmfd(self):
         """ Configure CMFD parameters and set CMFD input variables """
@@ -588,6 +632,18 @@ class OpenMCNode(object):
         if self._verbosity >= 2:
             source = self._global_comm.Get_rank()
             outstr = "{:>11s}Sending source data from process {} to {}"
+            print(outstr.format('', source, 0))
+            sys.stdout.flush()
+
+    def _send_timing_stats_to_cmfd_node(self):
+        """ Transfer timing stats to CMFD node for printing """
+        timing_data = np.array([self._time_openmcnode, self._time_sendtallies,
+                                self._time_sendsrccnts,
+                                self._time_waitweightfactors])
+        self._global_comm.Send(timing_data, dest=0, tag=2)
+        if self._verbosity >= 2:
+            source = self._global_comm.Get_rank()
+            outstr = "{:>11s}Sending timing data from process {} to {}"
             print(outstr.format('', source, 0))
             sys.stdout.flush()
 
