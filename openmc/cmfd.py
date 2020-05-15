@@ -1202,7 +1202,8 @@ class CMFDRun(object):
         current_batch = openmc.lib.current_batch() + 1
 
         # Check to set CMFD tallies as active
-        if self._tally_begin == current_batch:
+        # TODO fix so that not checking so often
+        if self._tally_begin >= current_batch:
             tallies = openmc.lib.tallies
             for tally_id in self._tally_ids:
                 tallies[tally_id].active = True
