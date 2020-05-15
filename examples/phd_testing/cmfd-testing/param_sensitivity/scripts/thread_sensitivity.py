@@ -98,7 +98,7 @@ def create_files(param_template, batch_template, cluster_params, node, thread, r
         param_template = param_template.replace('{n_threads}', str(thread))
         n_batches = str(cluster_params['n_batches'])
         n_inactive = str(cluster_params['n_inactive'])
-        if mesh == 'pincell':
+        if mesh == 'pincell' and node == 2:
             n_batches = '10'
             n_inactive = '9'
         param_template = param_template.replace('{n_batches}', n_batches)
