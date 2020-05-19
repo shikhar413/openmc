@@ -1564,7 +1564,7 @@ class CMFDRun(object):
         """
         # Initialize variables
         m = openmc.lib.meshes[self._mesh_id]
-        bank = openmc.lib.source_bank()
+        souce_bank = openmc.lib.source_bank()
         energy = self._egrid
         sites_outside = np.zeros(1, dtype=bool)
         nxnynz = np.prod(self._indices[0:3])
@@ -1575,8 +1575,9 @@ class CMFDRun(object):
         count = np.zeros(self._sourcecounts.shape)
 
         # Get location and energy of each particle in source bank
-        source_xyz = openmc.lib.source_bank()['r']
-        source_energies = openmc.lib.source_bank()['E']
+        source_xyz = source_bank['r']
+        source_energies = source_bank['E']
+        source_weights = source_bank['wgt']
 
         # Convert xyz location to mesh index and ravel index to scalar
         mesh_locations = np.floor((source_xyz - m.lower_left) / m.width)
@@ -1599,9 +1600,10 @@ class CMFDRun(object):
         energy_bins[idx] = np.digitize(source_energies[idx], energy) - 1
 
         # Determine all unique combinations of mesh bin and energy bin, and
-        # count number of particles that belong to these combinations
-        idx, counts = np.unique(np.array([mesh_bins, energy_bins]), axis=1,
-                                return_counts=True)
+        # sum total weight of particles that belong to these combinations
+        idx, inverse = np.unique(np.array([mesh_bins, energy_bins]), axis=1,
+                                return_inverse=True)
+        counts = np.bincount(inverse, weights=source_weights)
 
         # Store counts to appropriate mesh-energy combination
         count[idx[0].astype(int), idx[1].astype(int)] = counts
