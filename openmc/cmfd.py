@@ -1203,7 +1203,7 @@ class CMFDRun(object):
 
         # Check to set CMFD tallies as active
         # TODO fix so that not checking so often
-        if self._tally_begin >= current_batch:
+        if self._tally_begin <= current_batch:
             tallies = openmc.lib.tallies
             for tally_id in self._tally_ids:
                 tallies[tally_id].active = True
@@ -1564,7 +1564,7 @@ class CMFDRun(object):
         """
         # Initialize variables
         m = openmc.lib.meshes[self._mesh_id]
-        souce_bank = openmc.lib.source_bank()
+        source_bank = openmc.lib.source_bank()
         energy = self._egrid
         sites_outside = np.zeros(1, dtype=bool)
         nxnynz = np.prod(self._indices[0:3])
