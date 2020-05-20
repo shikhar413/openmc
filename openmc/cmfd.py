@@ -1564,7 +1564,7 @@ class CMFDRun(object):
         """
         # Initialize variables
         m = openmc.lib.meshes[self._mesh_id]
-        souce_bank = openmc.lib.source_bank()
+        source_bank = openmc.lib.source_bank()
         energy = self._egrid
         sites_outside = np.zeros(1, dtype=bool)
         nxnynz = np.prod(self._indices[0:3])
