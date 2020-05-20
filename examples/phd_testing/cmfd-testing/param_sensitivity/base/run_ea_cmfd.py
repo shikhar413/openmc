@@ -25,7 +25,7 @@ def init_prob_params(problem_type, mesh_type):
             err_msg = 'Logic for 1D mesh type {} has not been defined yet'
             print(err_msg.format(mesh_type))
             sys.exit()
-        cmfd_mesh.dimenion = [1, 1, int(400./mesh_sz)]
+        cmfd_mesh.dimension = [1, 1, int(400./mesh_sz)]
 
     elif problem_type == '2d-beavrs':
         cmfd_mesh.lower_left = [-182.78094, -182.78094, 220.0]
