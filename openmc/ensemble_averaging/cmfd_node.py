@@ -20,7 +20,7 @@ from mpi4py import MPI
 
 import openmc.lib
 from openmc.checkvalue import (check_type, check_length, check_value,
-                               check_greater_than)
+                               check_greater_than, check_less_than)
 from openmc.exceptions import OpenMCError
 
 # Maximum/minimum neutron energies
@@ -96,6 +96,8 @@ class CMFDNode(object):
     window_size : int
         Size of window to use for tally window scheme. Only relevant when
         window_type is set to "rolling"
+    max_window_size : int
+        Maximum size of window to use for an expanding tally window scheme
     w_shift : float
         Optional Wielandt shift parameter for accelerating power iterations. By
         default, it is very large so there is effectively no impact.
@@ -107,6 +109,11 @@ class CMFDNode(object):
     gauss_seidel_tolerance : Iterable of float
         Two parameters specifying the absolute inner tolerance and the relative
         inner tolerance for Gauss-Seidel iterations when performing CMFD.
+    damping_factor : float
+        Damping factor to control weight of OpenMC vs. CMFD source to apply
+        towards particle source weights during CMFD feedback. A value of 0.0
+        corresponds to no CMFD feedback while a value of 1.0 corresponds to
+        a full weightage of CMFD weight factors. #TODO reword
     indices : numpy.ndarray
         Stores spatial and group dimensions as [nx, ny, nz, ng]
     cmfd_src : numpy.ndarray
@@ -171,10 +178,12 @@ class CMFDNode(object):
         self._cmfd_ktol = 1.e-8
         self._norm = 1.
         self._window_size = 10
+        self._max_window_size = sys.maxsize
         self._w_shift = 1.e6
         self._stol = 1.e-8
         self._spectral = 0.0
         self._gauss_seidel_tolerance = [1.e-10, 1.e-5]
+        self._damping_factor = 1.0
         self._n_threads = 1
 
         # Variables defined by EnsAvgCMFDRun class
@@ -302,6 +311,10 @@ class CMFDNode(object):
         return self._w_shift
 
     @property
+    def max_window_size(self):
+        return self._max_window_size
+
+    @property
     def stol(self):
         return self._stol
 
@@ -312,6 +325,10 @@ class CMFDNode(object):
     @property
     def gauss_seidel_tolerance(self):
         return self._gauss_seidel_tolerance
+
+    @property
+    def damping_factor(self):
+        return self._damping_factor
 
     @property
     def n_threads(self):
@@ -427,6 +444,16 @@ class CMFDNode(object):
             warnings.warn(warn_msg, RuntimeWarning)
         self._window_size = window_size
 
+    @max_window_size.setter
+    def max_window_size(self, window_size):
+        check_type('CMFD max window size', window_size, Integral)
+        check_greater_than('CMFD max window size', window_size, 0)
+        if self._window_type != 'expanding':
+            warn_msg = 'Window size will have no effect on CMFD simulation ' \
+                       'unless window type is set to "expanding".'
+            warnings.warn(warn_msg, RuntimeWarning)
+        self._max_window_size = window_size
+
     @w_shift.setter
     def w_shift(self, w_shift):
         check_type('CMFD Wielandt shift', w_shift, Real)
@@ -449,6 +476,13 @@ class CMFDNode(object):
         check_length('Gauss-Seidel tolerance', gauss_seidel_tolerance, 2)
         self._gauss_seidel_tolerance = gauss_seidel_tolerance
         
+    @damping_factor.setter
+    def damping_factor(self, damping_factor):
+        check_type('CMFD damping factor', damping_factor, Real)
+        check_greater_than('CMFD damping factor', damping_factor, 0., True)
+        check_less_than('CMFD damping factor', damping_factor, 1., True)
+        self._damping_factor = damping_factor
+
     @n_threads.setter
     def n_threads(self, threads):
         check_type('CMFD threads', threads, Integral)
@@ -611,7 +645,8 @@ class CMFDNode(object):
         """ Write summary of CMFD node parameters """
         cmfd_params = ['downscatter', 'cmfd_ktol', 'norm',
                        'w_shift', 'stol', 'spectral', 'window_size',
-                       'gauss_seidel_tolerance', 'display', 'n_threads']
+                       'gauss_seidel_tolerance', 'display', 'n_threads',
+                       'damping_dactor', 'max_window_size']
         rank = self._global_comm.Get_rank()
         if self._global_comm.Get_rank() == 0:
             outstr = "********** PROCESS {}: CMFD NODE, ACTIVE **********\n"
@@ -882,7 +917,8 @@ class CMFDNode(object):
         # Update window size for expanding window if necessary
         num_cmfd_batches = self._current_batch - self._tally_begin + 1
         if (self._window_type == 'expanding' and
-                num_cmfd_batches == self._window_size * 2):
+                num_cmfd_batches == self._window_size * 2 and
+                self._window_size * 2 <= self._max_window_size):
             self._window_size *= 2
 
         # Discard tallies from oldest batch if window limit reached
@@ -1267,6 +1303,10 @@ class CMFDNode(object):
                                sourcecounts, where=div_condition,
                                out=np.ones_like(self._cmfd_src),
                                dtype=np.float32))
+
+        # Apply damping factor
+        self._weightfactors = (1.0 - (1.0 - self._weightfactors) *
+                               self._damping_factor)
 
         # Broadcast weight factors to all procs
         time_start_sendweightfactors = time.time()
