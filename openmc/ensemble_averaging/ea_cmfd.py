@@ -374,7 +374,7 @@ class EnsAvgCMFDRun(object):
         cmfd_params = ['downscatter', 'cmfd_ktol', 'norm',
                        'w_shift', 'stol', 'spectral', 'window_size',
                        'gauss_seidel_tolerance', 'display', 'n_threads',
-                       'damping_dactor', 'max_window_size']
+                       'damping_factor', 'max_window_size']
         mesh_params = ['lower_left', 'upper_right', 'dimension', 'width',
                        'energy', 'albedo', 'map']
         self._global_params = ['n_seeds', 'n_procs_per_seed', 'verbosity',
