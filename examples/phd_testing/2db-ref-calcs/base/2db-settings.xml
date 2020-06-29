@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <settings>
   <run_mode>eigenvalue</run_mode>
-  <particles>10000000</particles>
+  <particles>100000000</particles>
   <batches>9999</batches>
   <inactive>9998</inactive>
   <seed>{seed}</seed>
@@ -22,9 +22,10 @@
     <tallies>false</tallies>
   </output>
   <mesh id="2">
-    <dimension> {ent_dim} </dimension>
+    <dimension> 289 289 1 </dimension>
     <lower_left> -182.78094 -182.78094 220.0 </lower_left>
     <upper_right> 182.78094 182.78094 240.0 </upper_right>
   </mesh>
   <entropy_mesh>2</entropy_mesh>
+  <state_point batches="" />
 </settings>
