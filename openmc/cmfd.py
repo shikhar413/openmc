@@ -1481,7 +1481,9 @@ class CMFDRun(object):
 
         # Check and raise error if source sites exist outside of CMFD mesh
         if openmc.lib.master() and outside:
-            raise OpenMCError('Source sites outside of the CMFD mesh')
+            #raise OpenMCError('Source sites outside of the CMFD mesh')
+            warn_msg = 'Detected source point outside of CMFD mesh'
+            warnings.warn('Detected source sites', RuntimeWarning)
 
         # Have master compute weight factors, ignore any zeros in
         # sourcecounts or cmfd_src
@@ -1546,12 +1548,12 @@ class CMFDRun(object):
         openmc.lib.source_bank()['wgt'] *= self._weightfactors[
                 mesh_ijk[:,0], mesh_ijk[:,1], mesh_ijk[:,2], energy_bins]
 
-        if openmc.lib.master() and np.any(source_energies < energy[0]):
-            print(' WARNING: Source point below energy grid')
-            sys.stdout.flush()
-        if openmc.lib.master() and np.any(source_energies > energy[-1]):
-            print(' WARNING: Source point above energy grid')
-            sys.stdout.flush()
+        if np.any(source_energies < energy[0]):
+            warn_msg = 'Detected source point below energy grid'
+            warnings.warn(warn_msg, RuntimeWarning)
+        if np.any(source_energies > energy[-1]):
+            warn_msg = 'Detected source point above energy grid'
+            warnings.warn(warn_msg, RuntimeWarning)
 
     def _count_bank_sites(self):
         """Determines the number of fission bank sites in each cell of a given
@@ -1585,9 +1587,45 @@ class CMFDRun(object):
             mesh_locations[:,1] * m.dimension[0] + mesh_locations[:,0]
 
         # Check if any source locations lie outside of defined CMFD mesh
-        if np.any(mesh_bins < 0) or np.any(mesh_bins >= np.prod(m.dimension)):
+        # TODO (For production, just keep outside[0] = True, put stuff after else in else-block
+        # TODO until count[idx[0].astype(int), idx[1].astype(int)] = counts)
+        if np.any(mesh_locations < 0) or np.any(mesh_locations >= m.dimension):
+            idx = np.where((mesh_locations >= m.dimension) | (mesh_locations < 0))
+            unique_locs = []
+            new_locs = []
+            for i in idx[0]:
+                source_loc = openmc.lib.source_bank()['r'][i]
+                if list(source_loc) in unique_locs:
+                    openmc.lib.source_bank()['r'][i] = new_locs[unique_locs.index(list(source_loc))]
+                else:
+                    new_loc = np.zeros((3,))
+                    for j in range(3):
+                        loc = source_loc[j]
+                        if loc < m.lower_left[j]:
+                            new_loc[j] = np.random.uniform(m.lower_left[j], m.lower_left[j] + m.width[j])
+                        elif loc > m.upper_right[j]:
+                            new_loc[j] = np.random.uniform(m.upper_right[j] - m.width[j], m.upper_right[j])
+                        else:
+                            new_loc[j] = loc
+                    unique_locs.append(list(source_loc))
+                    new_locs.append(new_loc)
+                    prev_loc = source_loc
+                    print("Source location changed from", source_loc, "to", new_loc)
+                    openmc.lib.source_bank()['r'][i] = new_loc
+                    sys.stdout.flush()
             outside[0] = True
 
+            # Get location and energy of each particle in source bank
+            source_xyz = source_bank['r']
+            source_energies = source_bank['E']
+            source_weights = source_bank['wgt']
+
+            # Convert xyz location to mesh index and ravel index to scalar
+            mesh_locations = np.floor((source_xyz - m.lower_left) / m.width)
+            mesh_bins = mesh_locations[:,2] * m.dimension[1] * m.dimension[0] + \
+            mesh_locations[:,1] * m.dimension[0] + mesh_locations[:,0]
+
+        #else:
         # Determine which energy bin each particle's energy belongs to
         # Separate into cases bases on where source energies lies on egrid
         energy_bins = np.zeros(len(source_energies), dtype=int)
