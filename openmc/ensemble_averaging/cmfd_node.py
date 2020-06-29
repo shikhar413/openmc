@@ -646,7 +646,7 @@ class CMFDNode(object):
         cmfd_params = ['downscatter', 'cmfd_ktol', 'norm',
                        'w_shift', 'stol', 'spectral', 'window_size',
                        'gauss_seidel_tolerance', 'display', 'n_threads',
-                       'damping_dactor', 'max_window_size']
+                       'damping_factor', 'max_window_size']
         rank = self._global_comm.Get_rank()
         if self._global_comm.Get_rank() == 0:
             outstr = "********** PROCESS {}: CMFD NODE, ACTIVE **********\n"
