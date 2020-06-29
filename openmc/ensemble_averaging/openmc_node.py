@@ -400,9 +400,6 @@ class OpenMCNode(object):
             # Reweight source based on updated weight factors
             self._cmfd_reweight()
 
-        if self._current_batch == openmc.lib.settings.batches:
-            status = 1
-
         # Stop timer for OpenMC node
         if openmc.lib.master():
             time_stop_openmc = time.time()
@@ -452,7 +449,7 @@ class OpenMCNode(object):
         openmc.lib.settings.seed = self._seed_num
         openmc.lib.settings.verbosity = self._openmc_verbosity
         openmc.lib.settings.inactive = self._n_inactive
-        openmc.lib.settings.batches = self._n_batches
+        openmc.lib.settings.set_batches(self._n_batches)
         openmc.lib.settings.particles = self._n_particles
 
         # Initialize timers
