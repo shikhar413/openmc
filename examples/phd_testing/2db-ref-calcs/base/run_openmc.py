@@ -6,37 +6,21 @@ from mpi4py import MPI
 import openmc.lib as capi
 import numpy as np
 
-def init_openmc_run(problem_type, test_num):
+def init_run(problem_type, test_num):
     test_num_dict = {
         '0': {
-            'runtype': 'nocmfd'
+            'runtype': 'nocmfd',
+            'cmfd-attrs': {
+            }
         },
         '1': {
             'runtype': 'cmfd',
-            'cmfd-mesh': 'qassembly',
             'cmfd-attrs': {
                 'window_type': 'expanding'
             }
         },
         '2': {
             'runtype': 'cmfd',
-            'cmfd-mesh': 'qassembly',
-            'cmfd-attrs': {
-                'window_type': 'expanding',
-                'max_window_size': '64'
-            }
-        },
-        '3': {
-            'runtype': 'cmfd',
-            'cmfd-mesh': 'qassembly',
-            'cmfd-attrs': {
-                'window_type': 'expanding',
-                'max_window_size': '16'
-            }
-        },
-        '4': {
-            'runtype': 'cmfd',
-            'cmfd-mesh': 'pincell',
             'cmfd-attrs': {
                 'window_type': 'expanding',
                 'use_all_threads': True
@@ -50,53 +34,55 @@ def init_openmc_run(problem_type, test_num):
 
     params = test_num_dict[test_num]
 
-    if params['runtype'] == 'nocmfd':
-        return capi
+    # Define CMFD parameters
+    cmfd_mesh = cmfd.CMFDMesh()
+    if problem_type == '1d-homog':
+        cmfd_mesh.lower_left = [-5., -5., -200.]
+        cmfd_mesh.upper_right = [5., 5., 200.]
+        cmfd_mesh.albedo = [1., 1., 1., 1., 0., 0.]
+        cmfd_mesh.dimension = [1, 1, 1000]
+
+    elif problem_type == '2d-beavrs':
+        cmfd_mesh.lower_left = [-182.78094, -182.78094, 220.0]
+        cmfd_mesh.upper_right = [182.78094, 182.78094, 240.0]
+        cmfd_mesh.albedo = [0., 0., 0., 0., 1., 1.]
+        cmfd_mesh.energy = [0.0, 0.625, 20000000]
+
+        mesh_dim, mesh_map = get_2db_mesh_properties('qassembly')
+        cmfd_mesh.dimension = mesh_dim
+        cmfd_mesh.map = mesh_map
+
     else:
-       # Define CMFD parameters
-       cmfd_mesh = cmfd.CMFDMesh()
-        if problem_type == '1d-homog':
-            cmfd_mesh.lower_left = [-5., -5., -200.]
-            cmfd_mesh.upper_right = [5., 5., 200.]
-            cmfd_mesh.albedo = [1., 1., 1., 1., 0., 0.]
-        elif problem_type == '2d-beavrs':
-            cmfd_mesh.lower_left = [-182.78094, -182.78094, 220.0]
-            cmfd_mesh.upper_right = [182.78094, 182.78094, 240.0]
-            cmfd_mesh.albedo = [0., 0., 0., 0., 1., 1.]
-            cmfd_mesh.energy = [0.0, 0.625, 20000000]
+        err_msg = 'Logic for problem type {} has not been defined yet'
+        print(err_msg.format(problem_type))
+        sys.exit()
 
-            mesh_dim, mesh_map = get_2db_mesh_properties(params['cmfd-mesh'])
-            cmfd_mesh.dimension = mesh_dim
-            cmfd_mesh.map = mesh_map
-        else:
-            err_msg = 'Logic for problem type {} has not been defined yet'
-            print(err_msg.format(problem_type))
-            sys.exit()
+    # Initialize CMFDRun object
+    cmfd_run = cmfd.CMFDRun()
 
-        # Initialize CMFDRun object
-        cmfd_run = cmfd.CMFDRun()
+    # Set all runtime parameters (cmfd_mesh, tolerances, tally_resets, etc)
+    # All error checking done under the hood when setter function called
+    cmfd_run.mesh = cmfd_mesh
+    if problem_type == '1d-homog':
+        cmfd_run.ref_d = []
+    else:
+        cmfd_run.ref_d = [1.42669, 0.400433]
+    if params['runtype'] == 'cmfd':
+        cmfd_run.tally_begin = 2
+        cmfd_run.solver_begin = 3
+    else:
+        cmfd_run.tally_begin = sys.maxsize - 1
+        cmfd_run.solver_begin = sys.maxsize
 
-        # Set all runtime parameters (cmfd_mesh, tolerances, tally_resets, etc)
-        # All error checking done under the hood when setter function called
-        cmfd_run.mesh = cmfd_mesh
-        if problem_type == '1d-homog':
-            cmfd_run.ref_d = []
-            cmfd_run.tally_begin = 10
-            cmfd_run.solver_begin = 20
-        else:
-            cmfd_run.ref_d = [1.42669, 0.400433]
-            cmfd_run.tally_begin = 2
-            cmfd_run.solver_begin = 3
+    cmfd_run.display = {'balance': True, 'dominance': False, 'entropy': True, 'source': False}
+    cmfd_run.feedback = True
+    cmfd_run.downscatter = True
+    cmfd_run.gauss_seidel_tolerance = [1.e-15, 1.e-20]
 
-        cmfd_run.display = {'balance': True, 'dominance': True, 'entropy': False, 'source': True}
-        cmfd_run.feedback = True
-        cmfd_run.downscatter = True
-        cmfd_run.gauss_seidel_tolerance = [1.e-15, 1.e-20]
+    for attr in params['cmfd-attrs']:
+        setattr(cmfd_run, attr, params['cmfd-attrs'][attr])
 
-        for attr in params['cmfd-attrs']:
-            setattr(cmfd_run, attr, params['cmfd-attrs'][attr])
-
-        return cmfd_run
+    return cmfd_run
 
 def init_prob_params(problem_type):
     if problem_type == '1d-homog':
@@ -229,9 +215,11 @@ if __name__ == "__main__":
     # Get number of OpenMP threads as command line arg
     n_threads = sys.argv[1]
 
+    # Get problem type as command line argument
+    prob_type = sys.argv[2]
+
     # Get test number as command line argument
-    test_num = sys.argv[2]
-    prob_type = '2d-beavrs'
+    test_num = sys.argv[3]
 
     labels, coeffs = init_prob_params(prob_type)
 
@@ -259,12 +247,10 @@ if __name__ == "__main__":
     statepoint_interval = 10
 
     # TODO Get OpenMC instance to run in memory
-    openmc_run = init_openmc_run(prob_type, test_num)
+    cmfd_run = init_run(prob_type, test_num)
 
-    with openmc_run.run_in_memory(args=args):
-        if hasattr(openmc_run, '__name__'):
-            openmc_run.simulation_init()
-        for _ in openmc_run.iter_batches():
+    with cmfd_run.run_in_memory(args=args):
+        for _ in cmfd_run.iter_batches():
             curr_gen = capi.current_batch()
             
             if comm.Get_rank() == 0:
@@ -285,17 +271,10 @@ if __name__ == "__main__":
 
             # Create new statepoint, remove previous one and save numpy arrays
             if curr_gen % statepoint_interval == 0:
-                openmc_run.statepoint_write()
                 if comm.Get_rank() == 0:
                     np.save("entropy_data", entropy_data)
                     np.save("fet_data", fet_data)
                     # Remove previous statepoint if more than one exists
-                    if curr_gen != statepoint_interval:
-                        os.system('rm {}'.format(prev_sp))
-                    # Update previous statepoint
-                    prev_sp = glob.glob(os.path.join("statepoint.*.h5"))[0]
-        if hasattr(openmc_run, '__name__'):
-            openmc_run.simulation_finalize()
 
     # End of simulation, save fet and entropy data
     if comm.Get_rank() == 0:

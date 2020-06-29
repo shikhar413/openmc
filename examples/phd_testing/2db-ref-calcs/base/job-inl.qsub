@@ -1,0 +1,14 @@
+#!/bin/bash
+#PBS -l select={nodes}:ncpus={ppn}
+#PBS -l walltime={walltime}
+#PBS -j oe
+#PBS -P neup
+#PBS -q general
+#PBS -N {job_name}
+
+source $HOME/.bashrc_local
+cd $PBS_O_WORKDIR
+cat $PBS_NODEFILE | sort | uniq > hostfile
+
+mpiexec -machinefile hostfile -n {nprocs} python3 run_openmc.py {openmc_args}
+
