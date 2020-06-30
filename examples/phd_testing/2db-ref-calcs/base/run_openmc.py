@@ -255,19 +255,22 @@ if __name__ == "__main__":
             
             if comm.Get_rank() == 0:
                 entropy_p = capi.entropy_p()
-                entropy = np.sum(np.log(entropy_p[entropy_p>0])/(np.log(2)) * entropy_p[entropy_p>0])*-1
+                positive_entropy = entropy_p[entropy_p > 0]
+                entropy = np.sum(np.log(positive_entropy)/(np.log(2)) * positive_entropy)*-1
                 fet_tallies = capi.convergence_tally()
 
                 if curr_gen == 1:
                     fet_data = np.empty((0,1+len(labels)), float)
-                    entropy_data = np.empty((0,2+len(entropy_p)), float)
+                    entropy_data = np.empty((0,2+len(positive_entropy)), float)
+                    np.save('pos_idx', np.where(entropy_p > 0))
+                    np.save('zero_idx', np.where(entropy_p == 0))
 
                 # Compute scaled FET coefficients
                 a_n = np.product(coeffs, axis=1) * fet_tallies
 
                 # Store a_n, curr_gen, and entropy to numpy array
                 fet_data = np.vstack((fet_data, [curr_gen] + list(a_n)))
-                entropy_data = np.vstack((entropy_data, [curr_gen] + [entropy] + list(entropy_p.flatten())))
+                entropy_data = np.vstack((entropy_data, [curr_gen] + [entropy] + list(positive_entropy.flatten())))
 
             # Create new statepoint, remove previous one and save numpy arrays
             if curr_gen % statepoint_interval == 0:

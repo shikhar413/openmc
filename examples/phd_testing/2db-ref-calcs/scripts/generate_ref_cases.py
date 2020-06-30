@@ -8,9 +8,10 @@ def generate_input_files(seed_begin, seed_end, prob_type, run_strat, run_file):
         'batch_file': "job-inl.qsub",
         'run_command': "qsub ",
         'base_files': ['settings.xml', 'geometry.xml', 'materials.xml', 'run_openmc.py'],
-        'ppn': 36,       # TODO what is it for Lehmi? Potentially separate cases for Lehmi and Falcon?
+        'ppn': 36,
         'nodes': 10,
-        'walltime': '12:00:00',
+        'walltime': {'1d-homog': '24:00:00',
+                     '2d-beavrs': '12:00:00'}
     }
     strat_dirname_dict = {
         0: 'nocmfd',
@@ -60,7 +61,7 @@ def create_files(prob_prefix, batch_template, cluster_params, seed, prob_name, r
     batch_template = batch_template.replace('{job_name}', jobname)
     batch_template = batch_template.replace('{nodes}', str(nodes))
     batch_template = batch_template.replace('{ppn}', str(cluster_params['ppn']))
-    batch_template = batch_template.replace('{walltime}', cluster_params['walltime'])
+    batch_template = batch_template.replace('{walltime}', cluster_params['walltime'][prob_type])
     batch_template = batch_template.replace('{nprocs}', str(nprocs))
     openmc_args = "{} {} {}".format(nthreads, prob_name, run_strat)
     batch_template = batch_template.replace('{openmc_args}', openmc_args)
