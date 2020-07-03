@@ -8,6 +8,7 @@ examples/phd_testing/cmfd-testing/thread_sensitivity/2d-beavrs*
 examples/phd_testing/cmfd-testing/param_sensitivity/2d-beavrs/vary*
 examples/phd_testing/cmfd-testing/param_sensitivity/1d-homog/vary*
 examples/phd_testing/lcrc_runs/*/seed*
+examples/phd_testing/cmfd-testing/var_testing/2d-beavrs
 
 # Compiled objects and modules
 *.a
