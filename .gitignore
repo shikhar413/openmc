@@ -7,6 +7,9 @@ examples/phd_testing/fb-fet-timing/2d-*
 examples/phd_testing/cmfd-testing/thread_sensitivity/2d-beavrs*
 examples/phd_testing/cmfd-testing/param_sensitivity/2d-beavrs/vary*
 examples/phd_testing/cmfd-testing/param_sensitivity/1d-homog/vary*
+examples/phd_testing/cmfd-testing/param_sensitivity/mesh-window-sensitivity
+examples/phd_testing/ref-calcs/1d-homog-nocmfd
+examples/phd_testing/ref-calcs/2d-beavrs-cmfd-qassembly
 
 # Compiled objects and modules
 *.a
