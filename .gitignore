@@ -2,12 +2,14 @@
 examples/phd_testing/fet-stationarity/1d-homog
 examples/phd_testing/fet-stationarity/2d-beavrs/seed*
 examples/phd_testing/fet-stationarity/3d-exasmr/seed*
+
 examples/phd_testing/fb-fet-timing/1d-*
 examples/phd_testing/fb-fet-timing/2d-*
+
 examples/phd_testing/cmfd-testing/param_sensitivity/thread-sensitivity
 examples/phd_testing/cmfd-testing/param_sensitivity/tally_solver_begin_sensitivity
-examples/phd_testing/cmfd-testing/param_sensitivity/2d-beavrs/vary*
-examples/phd_testing/cmfd-testing/param_sensitivity/1d-homog/vary*
+examples/phd_testing/cmfd-testing/param_sensitivity/timing-sensitivity
+
 examples/phd_testing/cmfd-testing/fet-stationarity/1d-homog-offset
 examples/phd_testing/cmfd-testing/fet-stationarity/2d-beavrs
 
