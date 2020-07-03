@@ -1,0 +1,13 @@
+#!/bin/bash
+#PBS -l select=10:ncpus=36
+#PBS -l walltime=48:00:00
+#PBS -j oe
+#PBS -P neup
+#PBS -q general
+#PBS -N s1expwindow-16limit-activeon
+
+source $HOME/.bashrc
+cd $PBS_O_WORKDIR
+cat $PBS_NODEFILE | sort | uniq > hostfile
+
+mpiexec -machinefile hostfile -n 20 python3 run_openmc.py 18 1d-homog

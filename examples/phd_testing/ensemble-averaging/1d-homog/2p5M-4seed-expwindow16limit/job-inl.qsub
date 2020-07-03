@@ -1,0 +1,13 @@
+#!/bin/bash
+#PBS -l select=5:ncpus=36
+#PBS -l walltime=48:00:00
+#PBS -j oe
+#PBS -P neup
+#PBS -q general
+#PBS -N s2nocmfd
+
+source $HOME/.bashrc
+cd $PBS_O_WORKDIR
+cat $PBS_NODEFILE | sort | uniq > hostfile
+
+mpiexec -machinefile hostfile -n 10 python3 run_ea_cmfd.py 1d-homog
