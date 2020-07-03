@@ -9,4 +9,4 @@
 #SBATCH --time={walltime}
 
 scontrol show hostnames $SLURM_JOB_NODELIST | sort | uniq > hostfile
-mpiexec -n 2 --machinefile hostfile python3 run_openmc.py {openmc_args}
+mpiexec -n {nproc} --machinefile hostfile python3 run_openmc.py {openmc_args}

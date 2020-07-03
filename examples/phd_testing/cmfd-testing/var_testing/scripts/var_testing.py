@@ -4,27 +4,17 @@ import os
 
 def generate_input_files(cluster, prob_type, run_file):
     if cluster == "INL Cluster":
-        pass
-        '''
         param_dict = {
-            '1d-homog-offset': {
-                'batch_file': "job.slurm",
-                'run_command': "sbatch ",
-                'base_files': ['1dh-offset-settings.xml', '1dh-geometry.xml', '1dh-materials.xml', 'run_openmc.py'],
-                'ppn': 32,
-                'nodes': 1,
-                'walltime': '12:00:00'
-            },
-            '2d-beavrs': {
-                'batch_file': "job.slurm",
-                'run_command': "sbatch ",
-                'base_files': ['2db-settings.xml', '2db-geometry.xml', '2db-materials.xml', 'run_openmc.py'],
-                'ppn': 32,
-                'nodes': 1,
-                'walltime': '12:00:00',
+            '1d-homog': {
+                'batch_file': "job-inl.qsub",
+                'run_command': "qsub ",
+                'base_files': ['1dh-unif-settings.xml', '1dh-geometry.xml', '1dh-materials.xml', 'run_openmc.py'],
+                'ppn': 36,
+                'nodes': 4,
+                'walltime': '48:00:00',
+                'partition': 'neup'
             }
         }
-        '''
 
     elif cluster == "LCRC Cluster":
         param_dict = {
