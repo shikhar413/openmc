@@ -11,6 +11,7 @@ examples/phd_testing/cmfd-testing/param_sensitivity/mesh-window-sensitivity
 examples/phd_testing/ref-calcs/1d-homog-nocmfd
 examples/phd_testing/ref-calcs/2d-beavrs-cmfd-qassembly
 examples/phd_testing/lcrc_runs/*/seed*
+examples/phd_testing/cmfd-testing/var_testing/1d-homog
 examples/phd_testing/cmfd-testing/var_testing/2d-beavrs
 
 # Compiled objects and modules

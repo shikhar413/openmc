@@ -1,0 +1,31 @@
+<?xml version='1.0' encoding='utf-8'?>
+<settings>
+  <run_mode>eigenvalue</run_mode>
+  <particles>10000000</particles>
+  <batches>19999</batches>
+  <inactive>19998</inactive>
+  <seed>1</seed>
+  <fet_convergence>
+    <dimension>1</dimension>
+    <axial_order>10</axial_order>
+    <min>-200.0</min>
+    <max>200.0</max>
+  </fet_convergence>
+  <source strength="1.0">
+    <space type="cartesian">
+      <x parameters="-5.0 5.0" type="uniform" />
+      <y parameters="-5.0 5.0" type="uniform" />
+      <z parameters="-200.0 200." type="uniform" />
+    </space>
+  </source>
+  <output>
+    <summary>false</summary>
+    <tallies>false</tallies>
+  </output>
+  <mesh id="1">
+    <dimension>1 1 1000</dimension>
+    <lower_left>-5.0 -5.0 -200.0</lower_left>
+    <upper_right>5.0 5.0 200.0</upper_right>
+  </mesh>
+  <entropy_mesh>1</entropy_mesh>
+</settings>
