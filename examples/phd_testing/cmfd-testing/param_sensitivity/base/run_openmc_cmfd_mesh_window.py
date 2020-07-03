@@ -9,7 +9,7 @@ import numpy as np
 def init_cmfd_params(problem_type):
     # Define CMFD parameters
     cmfd_mesh = cmfd.CMFDMesh()
-    if problem_type == '1d-homog':
+    if '1d-homog' in problem_type:
         cmfd_mesh.lower_left = [-5., -5., -200.]
         cmfd_mesh.upper_right = [5., 5., 200.]
         cmfd_mesh.albedo = [1., 1., 1., 1., 0., 0.]
@@ -28,7 +28,7 @@ def init_cmfd_params(problem_type):
     # Set all runtime parameters (cmfd_mesh, tolerances, tally_resets, etc)
     # All error checking done under the hood when setter function called
     cmfd_run.mesh = cmfd_mesh
-    if problem_type == '1d-homog':
+    if '1d-homog' in problem_type:
         cmfd_run.ref_d = []
         cmfd_run.tally_begin = 10
         cmfd_run.solver_begin = 20
@@ -47,7 +47,7 @@ def init_cmfd_params(problem_type):
     return cmfd_run
 
 def init_prob_params(problem_type):
-    if problem_type == '1d-homog':
+    if '1d-homog' in problem_type:
         n_modes = 10
         labels = np.array(['P{}'.format(str(i)) for i in range(n_modes+1)])
         coeffs = np.zeros((len(labels), 1),dtype=float)

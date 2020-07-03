@@ -2,38 +2,71 @@ import sys
 import socket
 import os
 
-def generate_input_files(cluster, n_seeds, run_file):
-    cmfd_probs = ['expwindow-16limit-activeon', 'expwindow-64limit-activeon',
-                  'fixwindow-16limit-activeon', 'expwindow-64limit-activeoff',
-                  'expwindow-nolimit-activeon', 'fixwindow-64limit-activeon']
-    df_cmfd_probs = ['expwindow-16limit-activeon', 'expwindow-64limit-activeon',
-                  'fixwindow-16limit-activeon', 'fixwindow-64limit-activeon']
+def generate_input_files(cluster, seed_begin, seed_end, prob_type, run_file):
+    if prob_type == '1d-homog-offset':
+        cmfd_probs = ['expwindow-16limit-activeon', 'expwindow-64limit-activeon',
+                      'fixwindow-16limit-activeon', 'expwindow-nolimit-activeon',
+                      'fixwindow-64limit-activeon']
+    else:
+        cmfd_probs = ['expwindow-16limit-activeon', 'expwindow-64limit-activeon',
+                      'fixwindow-16limit-activeon', 'expwindow-64limit-activeoff',
+                      'expwindow-nolimit-activeon', 'fixwindow-64limit-activeon']
+
     if cluster == "Green Cluster":
-        cluster_params = {
-            'prob_type': "1d-homog",
-            'particles': [1000000, 10000000], # 100000
-            'mesh_types': ['20cm', '0p4cm'],  #'4cm', '1cm'
-            'batch_file': "job.slurm",
-            'run_command': "sbatch ",
-            'xml_files': ['1dh-unif-settings.xml', '1dh-geometry.xml', '1dh-materials.xml'],
-            'ppn': 32,
-            'nodes': 1,
-            'walltime': '12:00:00',
-            'solver_end': 150
+        param_dict = {
+            '1d-homog': {
+                'particles': [1000000, 10000000],
+                'mesh_types': ['20cm', '0p4cm'],
+                'batch_file': "job.slurm",
+                'run_command': "sbatch ",
+                'xml_files': ['1dh-unif-settings.xml', '1dh-geometry.xml', '1dh-materials.xml'],
+                'ppn': 32,
+                'nodes': 1,
+                'walltime': '12:00:00',
+                'solver_end': 150
+            }
         }
     elif cluster == "INL Cluster":
-        cluster_params = {
-            'prob_type': "2d-beavrs",
-            'particles': [10000000, 100000000],
-            'mesh_types': ['assembly', 'qassembly'],
-            'batch_file': "job-inl.qsub",
-            'run_command': "qsub ",
-            'xml_files': ['2db-settings.xml', '2db-geometry.xml', '2db-materials.xml'],
-            'ppn': 36,
-            'nodes': 1,
-            'walltime': '12:00:00',
-            'solver_end': 200
+        param_dict = {
+            '1d-homog': {
+                'particles': [1000000, 10000000],
+                'mesh_types': ['20cm', '0p4cm'],
+                'batch_file': "job-inl.qsub",
+                'run_command': "qsub ",
+                'xml_files': ['1dh-unif-settings.xml', '1dh-geometry.xml', '1dh-materials.xml'],
+                'ppn': 36,
+                'nodes': 4,
+                'walltime': '72:00:00',
+                'solver_end': 150
+            },
+            '1d-homog-offset': {
+                'particles': [1000000, 10000000],
+                'mesh_types': ['20cm', '0p4cm'],
+                'batch_file': "job-inl.qsub",
+                'run_command': "qsub ",
+                'xml_files': ['1dh-offset-settings.xml', '1dh-geometry.xml', '1dh-materials.xml'],
+                'ppn': 36,
+                'nodes': 4,
+                'walltime': '24:00:00',
+                'solver_end': 150
+            },
+            '2d-beavrs': {
+                'particles': [10000000, 100000000],
+                'mesh_types': ['assembly', 'qassembly'],
+                'batch_file': "job-inl.qsub",
+                'run_command': "qsub ",
+                'xml_files': ['2db-settings.xml', '2db-geometry.xml', '2db-materials.xml'],
+                'ppn': 36,
+                'nodes': 1,
+                'walltime': '12:00:00',
+                'solver_end': 200
+            }
         }
+    if prob_type not in param_dict:
+        print('Problem type {} not defined')
+        sys.exit()
+
+    cluster_params = param_dict[prob_type]
 
     os.system('mkdir -p ./../mesh-window-sensitivity')
     os.chdir('./../mesh-window-sensitivity')
@@ -46,10 +79,10 @@ def generate_input_files(cluster, n_seeds, run_file):
     with open('../base/{}'.format(cluster_params['batch_file']), 'r') as file:
         batch_template = file.read()
 
-    os.system('mkdir -p {}'.format(cluster_params['prob_type']))
-    os.chdir(cluster_params['prob_type'])
+    os.system('mkdir -p {}'.format(prob_type))
+    os.chdir(prob_type)
 
-    for seed in [n_seeds]:
+    for seed in range(seed_begin, seed_end+1):
         seed_dir = 'seed{}'.format(str(seed))
         os.system('mkdir -p {}'.format(seed_dir))
         os.chdir(seed_dir)
@@ -64,7 +97,7 @@ def generate_input_files(cluster, n_seeds, run_file):
             os.chdir('nocmfd')
             for xml_file in cluster_params['xml_files']:
                 os.system('cp ./../../../../../base/{} ./{}'.format(xml_file, xml_file.split('-')[-1]))
-            create_files(nocmfd_template, batch_template, particle, cluster_params, seed, 'nocmfd', run_file)
+            create_files(nocmfd_template, batch_template, particle, cluster_params, seed, 'nocmfd', run_file, prob_type)
             os.chdir('./..')
             # Create files for cmfd case
             for mesh in cluster_params['mesh_types']:
@@ -76,28 +109,16 @@ def generate_input_files(cluster, n_seeds, run_file):
                     os.chdir(cmfd_prob)
                     for xml_file in cluster_params['xml_files']:
                         os.system('cp ./../../../../../../base/{} ./{}'.format(xml_file, xml_file.split('-')[-1]))
-                    create_files(cmfd_template, batch_template, particle, cluster_params, seed, cmfd_prob, run_file, mesh=mesh)
+                    create_files(cmfd_template, batch_template, particle, cluster_params, seed, cmfd_prob, run_file, prob_type, mesh=mesh)
                     os.chdir('./..')
                 os.chdir('./..')
-            # Create files for df-cmfd case
-            for mesh in cluster_params['mesh_types']:
-                mesh_dir = 'df-cmfd-{}-mesh'.format(mesh)
-                os.system('mkdir -p {}'.format(mesh_dir))
-                os.chdir(mesh_dir)
-                for cmfd_prob in df_cmfd_probs:
-                    os.system('mkdir -p {}'.format(cmfd_prob))
-                    os.chdir(cmfd_prob)
-                    for xml_file in cluster_params['xml_files']:
-                        os.system('cp ./../../../../../../base/{} ./{}'.format(xml_file, xml_file.split('-')[-1]))
-                    create_files(cmfd_template, batch_template, particle, cluster_params, seed, cmfd_prob, run_file, mesh=mesh, df=True)
-                    os.chdir('./..')
-                os.chdir('./..')
+
             os.chdir('./..')
         os.chdir('./..')
     os.chdir('./..')
 
 
-def create_files(py_template, batch_template, nparticles, cluster_params, seed, prob_name, run_file, mesh=None, df=False):
+def create_files(py_template, batch_template, nparticles, cluster_params, seed, prob_name, run_file, prob_type, mesh=None):
     all_prob_params = {
         'nocmfd': {
             'solver_end': '',
@@ -153,7 +174,7 @@ def create_files(py_template, batch_template, nparticles, cluster_params, seed, 
     nprocs = nodes*2
     nthreads = int(cluster_params['ppn']/2)
 
-    batch_template = batch_template.replace('{prob_type}', cluster_params['prob_type'])
+    batch_template = batch_template.replace('{prob_type}', prob_type)
     batch_template = batch_template.replace('{tasks}', str(tasks))
     batch_template = batch_template.replace('{nodes}', str(nodes))
     batch_template = batch_template.replace('{ppn}', str(cluster_params['ppn']))
@@ -165,8 +186,6 @@ def create_files(py_template, batch_template, nparticles, cluster_params, seed, 
         f.write(batch_template)
 
     prob_params = all_prob_params[prob_name]
-    if df:
-        prob_params['max_window_size'] += "\n    cmfd_run.damping_factor = 0.5"
 
     py_template = py_template.replace('{solver_end}', prob_params['solver_end'])
     py_template = py_template.replace('{window_type}', prob_params['window_type'])
@@ -182,8 +201,13 @@ def create_files(py_template, batch_template, nparticles, cluster_params, seed, 
 
     print_str = os.getcwd().split('mesh-window-sensitivity/')[-1]
     if run_file:
-        print('Running batch script in {}'.format(print_str))
-        os.system(cluster_params['run_command']+cluster_params['batch_file'])
+        statepoints = sorted(glob.glob(os.path.join("statepoint.*.h5")))
+        if (len(statepoints) == 0) or (len(statepoints) >= 1 and int(statepoints[-1].split('.')[1]) != n_batches):
+            print('Running batch script in {}'.format(print_str))
+            os.system(cluster_params['run_command']+cluster_params['batch_file'])
+        else:
+            print('Example problem completed {}'.format(print_str))
+
     else:
         print('Created input files in {}'.format(print_str))
 
@@ -273,16 +297,18 @@ def get_cluster(socket_name):
         sys.exit()
 
 if __name__ == "__main__":
-    if len(sys.argv) not in [2, 3]:
-        print('Usage: tally_solver_begin_sensitivity.py [n_seeds] [-r]')
+    if len(sys.argv) not in [4, 5]:
+        print('Usage: tally_solver_begin_sensitivity.py [seed_begin] [seed_end] [prob_type] [-r]')
         sys.exit()
 
     # Get command line arguments
-    n_seeds = sys.argv[1]
-    run_file = len(sys.argv) == 3 and sys.argv[2] == '-r'
+    seed_begin = int(sys.argv[1])
+    seed_end = int(sys.argv[2])
+    prob_type = sys.argv[3]
+    run_file = len(sys.argv) == 5 and sys.argv[4] == '-r'
 
     # Get cluster where script is running on
     cluster = get_cluster(socket.gethostname())
 
     # Generate OpenMC and batch script input files
-    generate_input_files(cluster, n_seeds, run_file)
+    generate_input_files(cluster, seed_begin, seed_end, prob_type, run_file)

@@ -7,7 +7,7 @@ import openmc.lib as capi
 import numpy as np
 
 def init_prob_params(problem_type):
-    if problem_type == '1d-homog':
+    if '1d-homog' in problem_type:
         n_modes = 10
         labels = np.array(['P{}'.format(str(i)) for i in range(n_modes+1)])
         coeffs = np.zeros((len(labels), 1),dtype=float)
