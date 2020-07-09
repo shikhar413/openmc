@@ -31,7 +31,7 @@ def generate_input_files(seed_begin, seed_end, prob_type, run_strat, run_file):
 
     # Generate files for each problem type
     prob_dirname = '{}-{}'.format(prob_type, strat_dirname_dict[run_strat])
-    if prob_dirname not in ['1d-homog-nocmfd', '1d-homog-cmfd-0p4cm', '2d-beavrs-cmfd-qassembly']:
+    if prob_dirname not in ['1d-homog-nocmfd', '2d-beavrs-nocmfd', '2d-beavrs-cmfd-qassembly']:
         print('Invalid combination of problem type and run strategy')
         sys.exit()
 
