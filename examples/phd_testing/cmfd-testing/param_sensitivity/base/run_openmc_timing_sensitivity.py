@@ -28,7 +28,7 @@ def init_cmfd_params(problem_type, mesh_type):
 
         mesh_dim, mesh_map = get_2db_mesh_properties(mesh_type)
         cmfd_mesh.dimension = mesh_dim
-        if mesh_map:
+        if mesh_map is not None:
             cmfd_mesh.map = mesh_map
 
     # Initialize CMFDRun object
@@ -37,8 +37,12 @@ def init_cmfd_params(problem_type, mesh_type):
     # Set all runtime parameters (cmfd_mesh, tolerances, tally_resets, etc)
     # All error checking done under the hood when setter function called
     cmfd_run.mesh = cmfd_mesh
-    cmfd_run.tally_begin = 2
-    cmfd_run.solver_begin = 3
+    if mesh_type != 'nocmfd':
+        cmfd_run.tally_begin = 2
+        cmfd_run.solver_begin = 3
+    else:
+        cmfd_run.tally_begin = sys.maxsize
+        cmfd_run.solver_begin = sys.maxsize
     if problem_type == '1d-homog':
         cmfd_run.ref_d = []
     else:
@@ -49,7 +53,7 @@ def init_cmfd_params(problem_type, mesh_type):
     cmfd_run.downscatter = True
     cmfd_run.gauss_seidel_tolerance = [1.e-15, 1.e-20]
     cmfd_run.window_type = 'expanding'
-    if mesh_type == 'pincell':
+    if mesh_type == 'pincell' or mesh_type == '0p4cm':
         cmfd_mesh.use_all_threads = True
     return cmfd_run
 
@@ -150,3 +154,4 @@ if __name__ == "__main__":
     with cmfd_run.run_in_memory(args=['-s', n_threads]):
         for _ in cmfd_run.iter_batches():
             pass
+    os.system('rm *.h5')
