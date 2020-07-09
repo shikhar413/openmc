@@ -9,9 +9,12 @@ examples/phd_testing/fb-fet-timing/2d-*
 examples/phd_testing/cmfd-testing/param_sensitivity/thread-sensitivity
 examples/phd_testing/cmfd-testing/param_sensitivity/tally_solver_begin_sensitivity
 examples/phd_testing/cmfd-testing/param_sensitivity/timing-sensitivity
+examples/phd_testing/cmfd-testing/var_testing/2d-beavrs
 
 examples/phd_testing/cmfd-testing/fet-stationarity/1d-homog-offset
 examples/phd_testing/cmfd-testing/fet-stationarity/2d-beavrs
+
+examples/phd_testing/lcrc_runs/*/seed*
 
 # Compiled objects and modules
 *.a
