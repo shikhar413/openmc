@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <settings>
   <run_mode>eigenvalue</run_mode>
-  <particles>1000000</particles>
+  <particles>10000000</particles>
   <batches>999</batches>
   <inactive>998</inactive>
   <seed>1</seed>
@@ -15,17 +15,19 @@
     <space type="cartesian">
       <x parameters="-5.0 5.0" type="uniform" />
       <y parameters="-5.0 5.0" type="uniform" />
-      <z parameters="-200.0 200." type="uniform" />
+      <z interpolation="histogram" type="tabular">
+        <parameters>-200.0 196.0 200.0 0.00025 0.225 0.225</parameters>
+      </z>
     </space>
   </source>
   <output>
     <summary>false</summary>
     <tallies>false</tallies>
   </output>
-  <mesh id="1">
+  <!--mesh id="1">
     <dimension>1 1 1000</dimension>
     <lower_left>-5.0 -5.0 -200.0</lower_left>
     <upper_right>5.0 5.0 200.0</upper_right>
   </mesh>
-  <entropy_mesh>1</entropy_mesh>
+  <entropy_mesh>1</entropy_mesh-->
 </settings>
