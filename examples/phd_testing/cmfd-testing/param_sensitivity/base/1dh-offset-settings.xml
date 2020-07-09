@@ -25,7 +25,7 @@
     <tallies>false</tallies>
   </output>
   <mesh id="1">
-    <dimension>1 1 4000</dimension>
+    <dimension>1 1 1000</dimension>
     <lower_left>-5.0 -5.0 -200.0</lower_left>
     <upper_right>5.0 5.0 200.0</upper_right>
   </mesh>

@@ -101,6 +101,7 @@ ConvergenceTally::compute_1d()
 {
   // Assumes z axis define Legendre axis
   // Array storing convergence tally results
+  // TODO make it so that dimension can be selected using xml file
   double res[n_bins_] = {0};
   const int nthreads = omp_get_max_threads();
 
@@ -125,7 +126,7 @@ ConvergenceTally::compute_1d()
       double res_tmp[n_bins_] = {0};
       calc_pn_c(axial_order_, x_norm, res_tmp);
       for (auto j = 0; j < n_bins_; j++) {
-        res_private[ithread*n_bins_+j] += res_tmp[j];
+        res_private[ithread*n_bins_+j] += res_tmp[j] * simulation::keff;
       }
     }
 
