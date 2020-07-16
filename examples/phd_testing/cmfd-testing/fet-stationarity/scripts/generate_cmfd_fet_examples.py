@@ -24,7 +24,24 @@ def generate_input_files(cluster, seed_begin, seed_end, prob_type, run_file):
         }
 
     elif cluster == "INL Cluster":
-        pass
+        param_dict = {
+            '1d-homog-offset': {
+                'batch_file': "job-inl.qsub",
+                'run_command': "qsub ",
+                'base_files': ['1dh-offset-settings.xml', '1dh-geometry.xml', '1dh-materials.xml', 'run_openmc.py'],
+                'ppn': 36,
+                'nodes': 1,
+                'walltime': '24:00:00'
+            },
+            '2d-beavrs': {
+                'batch_file': "job-inl.qsub",
+                'run_command': "qsub ",
+                'base_files': ['2db-settings.xml', '2db-geometry.xml', '2db-materials.xml', 'run_openmc.py'],
+                'ppn': 36,
+                'nodes': 1,
+                'walltime': '24:00:00',
+            }
+        }
 
     if prob_type not in param_dict:
         print('Problem type {} not recognized'.format(prob_type))

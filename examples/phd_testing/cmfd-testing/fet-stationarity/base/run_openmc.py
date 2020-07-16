@@ -25,7 +25,7 @@ def init_openmc_run(problem_type, test_num, mesh_type, use_ref_d):
             'runtype': 'cmfd',
             'cmfd-attrs': {
                 'window_type': 'expanding',
-                'max_window_size': '64'
+                'max_window_size': 64
             }
         },
         '3': {

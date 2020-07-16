@@ -1,6 +1,7 @@
 import sys
 import socket
 import os
+import glob
 
 def generate_input_files(cluster, seed_begin, seed_end, prob_type, run_file):
     if prob_type == '1d-homog-offset':
@@ -23,6 +24,7 @@ def generate_input_files(cluster, seed_begin, seed_end, prob_type, run_file):
                 'ppn': 32,
                 'nodes': 1,
                 'walltime': '12:00:00',
+                'n_batches': 1999,
                 'solver_end': 150
             }
         }
@@ -37,6 +39,7 @@ def generate_input_files(cluster, seed_begin, seed_end, prob_type, run_file):
                 'ppn': 36,
                 'nodes': 4,
                 'walltime': '72:00:00',
+                'n_batches': 1999,
                 'solver_end': 150
             },
             '1d-homog-offset': {
@@ -47,7 +50,8 @@ def generate_input_files(cluster, seed_begin, seed_end, prob_type, run_file):
                 'xml_files': ['1dh-offset-settings.xml', '1dh-geometry.xml', '1dh-materials.xml'],
                 'ppn': 36,
                 'nodes': 4,
-                'walltime': '24:00:00',
+                'walltime': '72:00:00',
+                'n_batches': 1499,
                 'solver_end': 150
             },
             '2d-beavrs': {
@@ -59,6 +63,7 @@ def generate_input_files(cluster, seed_begin, seed_end, prob_type, run_file):
                 'ppn': 36,
                 'nodes': 1,
                 'walltime': '12:00:00',
+                'n_batches': 399,
                 'solver_end': 200
             }
         }
@@ -198,6 +203,8 @@ def create_files(py_template, batch_template, nparticles, cluster_params, seed, 
         py_template = py_template.replace('{map_str}', map_str)
     with open('run_openmc.py', 'w') as f:
         f.write(py_template)
+
+    n_batches = cluster_params['n_batches']
 
     print_str = os.getcwd().split('mesh-window-sensitivity/')[-1]
     if run_file:
