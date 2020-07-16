@@ -52,7 +52,7 @@ def init_openmc_run(problem_type, mesh_type, window_size):
 
         mesh_dim, mesh_map = get_2db_mesh_properties(mesh_type)
         cmfd_mesh.dimension = mesh_dim
-        if mesh_map:
+        if mesh_map is not None:
             cmfd_mesh.map = mesh_map
     else:
         err_msg = 'Logic for problem type {} has not been defined yet'
@@ -194,7 +194,7 @@ def get_2db_mesh_properties(mesh_type):
 ]).reshape(n_assembly_x, n_assembly_y)
 
     if mesh_type == 'none':
-        return [1, 1, 1], None
+        return [1, 1, 1], None:
     if mesh_type not in mesh_properties:
         err_msg = 'Logic for 2D mesh type {} has not been defined yet'
         print(err_msg.format(mesh_type))
