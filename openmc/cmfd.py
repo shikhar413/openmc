@@ -1510,8 +1510,10 @@ class CMFDRun(object):
                                    sourcecounts, where=div_condition,
                                    out=np.ones_like(self._cmfd_src),
                                    dtype=np.float32))
-            self._weightfactors = (1.0 - (1.0 - self._weightfactors) *
-                                   self._damping_factor)
+            ub = 1. + self._damping_factor
+            self._weightfactors[self._weightfactors > ub] = ub
+            lb = 1./(1. + self._damping_factor)
+            self._weightfactors[self._weightfactors < lb] = lb
 
         if not self._feedback:
             return
