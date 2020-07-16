@@ -333,8 +333,9 @@ void initialize_batch()
   } else if (first_active) {
     simulation::time_inactive.stop();
     simulation::time_active.start();
+    // TODO: note that all tallies set to active by this line which gives incorrect answers if active_start < solver_begin
     for (auto& t : model::tallies) {
-      t->active_ = true;
+      //t->active_ = true;
     }
   }
 

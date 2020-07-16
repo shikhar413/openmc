@@ -1,10 +1,10 @@
 <?xml version='1.0' encoding='utf-8'?>
 <settings>
   <run_mode>eigenvalue</run_mode>
-  <particles>1000000</particles>
+  <particles>10000000</particles>
   <batches>999</batches>
   <inactive>998</inactive>
-  <seed>1</seed>
+  <seed>{seed}</seed>
   <fet_convergence>
     <dimension>1</dimension>
     <axial_order>10</axial_order>
@@ -22,10 +22,10 @@
     <summary>false</summary>
     <tallies>false</tallies>
   </output>
-  <mesh id="1">
+  <!--mesh id="1">
     <dimension>1 1 1000</dimension>
     <lower_left>-5.0 -5.0 -200.0</lower_left>
     <upper_right>5.0 5.0 200.0</upper_right>
   </mesh>
-  <entropy_mesh>1</entropy_mesh>
+  <entropy_mesh>1</entropy_mesh-->
 </settings>
