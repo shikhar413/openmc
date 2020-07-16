@@ -347,7 +347,7 @@ class CMFDRun(object):
         self._reset = []
         self._write_matrices = False
         self._spectral = 0.0
-        self._damping_factor = 1.0
+        self._damping_factor = 0.2
         self._gauss_seidel_tolerance = [1.e-10, 1.e-5]
         self._adjoint_type = 'physical'
         self._window_type = 'none'
