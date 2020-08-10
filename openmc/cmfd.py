@@ -379,6 +379,7 @@ class CMFDRun(object):
         self._scatt_rate = None
         self._nfiss_rate = None
         self._current_rate = None
+        self._sourcecount_rate = None
         self._flux = None
         self._totalxs = None
         self._p1scattxs = None
@@ -953,6 +954,8 @@ class CMFDRun(object):
                                               data=self._scatt_rate)
                     cmfd_group.create_dataset('total_rate',
                                               data=self._total_rate)
+                    cmfd_group.create_dataset('sourcecount_rate', 
+                                              data=self._sourcecount_rate)
                 elif openmc.settings.verbosity >= 5:
                     print('  CMFD data not written to statepoint file'
                           'as it already exists in {}'.format(filename))
@@ -1108,6 +1111,7 @@ class CMFDRun(object):
             self._scatt_rate = np.zeros((nx, ny, nz, ng, ng, 0))
             self._nfiss_rate = np.zeros((nx, ny, nz, ng, ng, 0))
             self._current_rate = np.zeros((nx, ny, nz, 12, ng, 0))
+            self._sourcecount_rate = np.zeros((nx*ny*nz, ng, 0))
 
             # Initialize timers
             self._time_cmfd = 0.0
@@ -1179,6 +1183,7 @@ class CMFDRun(object):
                     self._p1scatt_rate = cmfd_group['p1scatt_rate'][()]
                     self._scatt_rate = cmfd_group['scatt_rate'][()]
                     self._total_rate = cmfd_group['total_rate'][()]
+                    self._sourcecount_rate = cmfd_group['sourcecount_rate'][()]
                     self._mat_dim = np.max(self._coremap) + 1
 
     def _set_tally_window(self):
@@ -1488,6 +1493,9 @@ class CMFDRun(object):
         # Have master compute weight factors, ignore any zeros in
         # sourcecounts or cmfd_src
         if openmc.lib.master():
+            # Aggregate sourcecounts over banked sourcecount_rate
+            self._sourcecounts = np.sum(self._sourcecount_rate, axis=-1)
+
             # Compute normalization factor
             norm = np.sum(self._sourcecounts) / np.sum(self._cmfd_src)
 
@@ -1573,8 +1581,8 @@ class CMFDRun(object):
         ng = self._indices[3]
 
         outside = np.zeros(1, dtype=bool)
-        self._sourcecounts = np.zeros((nxnynz, ng))
-        count = np.zeros(self._sourcecounts.shape)
+        sourcecounts = np.zeros((nxnynz, ng))
+        count = np.zeros(sourcecounts.shape)
 
         # Get location and energy of each particle in source bank
         source_xyz = source_bank['r']
@@ -1648,13 +1656,23 @@ class CMFDRun(object):
 
         if have_mpi:
             # Collect values of count from all processors
-            self._intracomm.Reduce(count, self._sourcecounts, MPI.SUM)
+            self._intracomm.Reduce(count, sourcecounts, MPI.SUM)
             # Check if there were sites outside the mesh for any processor
             self._intracomm.Reduce(outside, sites_outside, MPI.LOR)
         # Deal with case if MPI not defined (only one proc)
         else:
             sites_outside = outside
-            self._sourcecounts = count
+            sourcecounts = count
+
+        if openmc.lib.master():
+            # Discard sourcecounts from oldest batch if window limit reached
+            tally_windows = self._sourcecount_rate.shape[-1] + 1
+            if tally_windows > self._window_size:
+                self._sourcecount_rate = self._sourcecount_rate[...,1:]
+
+            # Bank sourcecounts to sourcecount_rate
+            self._sourcecount_rate = np.append(self._sourcecount_rate, 
+                                               sourcecounts[..., None], axis=2)
 
         return sites_outside[0]
 
