@@ -83,9 +83,7 @@ class OpenMCNode(object):
         Time in OpenMC node, in seconds
     time_sendtallies : float
         Time taken to send tallies to CMFD node, in seconds
-    time_sendsrccnts : float
-        Time taken to send source counts to CMFD node, in seconds
-    time_waitweightfactors : float
+    time_waitcmfdsrc : float
         Time waiting for weightfactors from CMFD node
     """
 
@@ -127,8 +125,7 @@ class OpenMCNode(object):
         self._current_batch = 0
         self._time_openmcnode = None
         self._time_sendtallies = None
-        self._time_sendsrccnts = None
-        self._time_waitweightfactors = None
+        self._time_waitcmfdsrc = None
 
     @property
     def tally_begin(self):
@@ -379,23 +376,14 @@ class OpenMCNode(object):
             if openmc.lib.master() and outside:
                 raise OpenMCError('Source sites outside of the CMFD mesh')
 
-            # Send sourcecounts to CMFD node and wait for CMFD node to send
-            # updated weight factors
-            if openmc.lib.master():
-                time_start_sendsrccnts = time.time()
-                self._send_sourcecounts_to_cmfd_node()
-                time_stop_sendsrccnts = time.time()
-                self._time_sendsrccnts += (time_stop_sendsrccnts -
-                                           time_start_sendsrccnts)
-
             # Receive updated weight factors from CMFD node and update source
             if openmc.lib.master():
-                time_start_recv_weightfactors = time.time()
-            self._recv_weightfactors_from_cmfd_node()
+                time_start_recvcmfdsrc = time.time()
+            self._recv_cmfdsrc_from_cmfd_node()
             if openmc.lib.master():
-                time_stop_recv_weightfactors = time.time()
-                self._time_waitweightfactors += (time_stop_recv_weightfactors -
-                                                 time_start_recv_weightfactors)
+                time_stop_recvcmfdsrc = time.time()
+                self._time_waitcmfdsrc += (time_stop_recvcmfdsrc -
+                                           time_start_recvcmfdsrc)
 
             # Reweight source based on updated weight factors
             self._cmfd_reweight()
@@ -455,8 +443,7 @@ class OpenMCNode(object):
         # Initialize timers
         self._time_openmcnode = 0.0
         self._time_sendtallies = 0.0
-        self._time_sendsrccnts = 0.0
-        self._time_waitweightfactors = 0.0
+        self._time_waitcmfdsrc = 0.0
 
     def _configure_cmfd(self):
         """ Configure CMFD parameters and set CMFD input variables """
@@ -623,20 +610,10 @@ class OpenMCNode(object):
             print(outstr.format('', source, 0))
             sys.stdout.flush()
 
-    def _send_sourcecounts_to_cmfd_node(self):
-        """ Transfer sourcecounts to CMFD node for reweight calculation """
-        self._global_comm.Send(self._sourcecounts, dest=0, tag=1)
-        if self._verbosity >= 2:
-            source = self._global_comm.Get_rank()
-            outstr = "{:>11s}Sending source data from process {} to {}"
-            print(outstr.format('', source, 0))
-            sys.stdout.flush()
-
     def _send_timing_stats_to_cmfd_node(self):
         """ Transfer timing stats to CMFD node for printing """
         timing_data = np.array([self._time_openmcnode, self._time_sendtallies,
-                                self._time_sendsrccnts,
-                                self._time_waitweightfactors])
+                                self._time_waitcmfdsrc])
         self._global_comm.Send(timing_data, dest=0, tag=2)
         if self._verbosity >= 2:
             source = self._global_comm.Get_rank()
@@ -644,18 +621,50 @@ class OpenMCNode(object):
             print(outstr.format('', source, 0))
             sys.stdout.flush()
 
-    def _recv_weightfactors_from_cmfd_node(self):
+    def _recv_cmfdsrc_from_cmfd_node(self):
         """ Receive weightfactors from CMFD node and update source """
-        self._weightfactors = np.empty(self._indices, dtype=np.float64)
-        self._global_comm.Recv(self._weightfactors, source=0)
-        if self._verbosity >= 2:
-            dest = self._global_comm.Get_rank()
-            outstr = "{:>11s}Process {} received weight factors from process {}"
-            print(outstr.format('', dest, 0))
-            sys.stdout.flush()
+        if openmc.lib.master():
+            self._cmfd_src = np.empty(self._indices, dtype=np.float64)
+            self._global_comm.Recv(self._cmfd_src, source=0)
+
+            if self._verbosity >= 2:
+                dest = self._global_comm.Get_rank()
+                outstr = "{:>11s}Process {} received CMFD source from process {}"
+                print(outstr.format('', dest, 0))
+                sys.stdout.flush()
 
     def _cmfd_reweight(self):
         """ Perform weighting of particles in source bank """
+        if openmc.lib.master():
+            norm = np.sum(self._sourcecounts) / np.sum(self._cmfd_src)
+
+            # Define target reshape dimensions for sourcecounts. This
+            # defines how self._sourcecounts is ordered by dimension
+            target_shape = [nz, ny, nx, ng]
+
+            # Reshape sourcecounts to target shape. Swap x and z axes so
+            # that the shape is now [nx, ny, nz, ng]
+            sourcecounts = np.swapaxes(
+                    self._sourcecounts.reshape(target_shape), 0, 2)
+
+            # Flip index of energy dimension
+            sourcecounts = np.flip(sourcecounts, axis=3)
+
+            # Compute weight factors
+            div_condition = np.logical_and(sourcecounts > 0,
+                                           self._cmfd_src > 0)
+            self._weightfactors = (np.divide(self._cmfd_src * norm,
+                                   sourcecounts, where=div_condition,
+                                   out=np.ones_like(self._cmfd_src),
+                                   dtype=np.float32))
+            ub = 1. + self._damping_factor
+            self._weightfactors[self._weightfactors > ub] = ub
+            lb = 1./(1. + self._damping_factor)
+            self._weightfactors[self._weightfactors < lb] = lb
+
+        self._weightfactors = self.local_comm.bcast(
+                              self._weightfactors)
+
         m = openmc.lib.meshes[self._mesh_id]
         energy = self._egrid
         ng = self._indices[3]
