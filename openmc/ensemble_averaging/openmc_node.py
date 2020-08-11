@@ -13,7 +13,7 @@ References
 """
 
 from contextlib import contextmanager
-from numbers import Integral
+from numbers import Integral, Real
 import sys
 import time
 
@@ -55,6 +55,11 @@ class OpenMCNode(object):
           * "none" - Don't use a windowing scheme so that all tallies from last
             time they were reset are used for the CMFD algorithm.
 
+    weight_clipping : float
+        Weight clipping to control the maximum allowed change in weight in
+        the presence of CMFD feedback. During prolongation, the weight factor
+        in any CMFD mesh cell is clipped to
+        [1/(1+weight_clipping), 1+weight_clipping]
     n_threads : int
         Number of threads per process allocated to run OpenMC
     indices : numpy.ndarray
@@ -97,6 +102,7 @@ class OpenMCNode(object):
         self._n_particles = 1000
         self._n_inactive = 10
         self._seed_begin = 1
+        self._weight_clipping = 0.2
 
         # Variables defined by EnsAvgCMFDRun class
         self._tally_begin = None
@@ -148,6 +154,10 @@ class OpenMCNode(object):
         return self._mesh
 
     @property
+    def weight_clipping(self):
+        return self._weight_clipping
+
+    @property
     def n_threads(self):
         return self._n_threads
 
@@ -194,6 +204,12 @@ class OpenMCNode(object):
     @property
     def n_particles(self):
         return self._n_particles
+
+    @weight_clipping.setter
+    def weight_clipping(self, weight_clipping):
+        check_type('CMFD weight clipping', weight_clipping, Real)
+        check_greater_than('CMFD weight clipping', weight_clipping, 0., True)
+        self._weight_clipping = weight_clipping
 
     @n_threads.setter
     def n_threads(self, threads):
@@ -346,6 +362,9 @@ class OpenMCNode(object):
         # Increment current batch
         self._current_batch += 1
 
+        if self._current_batch > self._n_batches:
+            return 1
+
         # Check to set CMFD tallies as active
         if self._tally_begin == self._current_batch:
             tallies = openmc.lib.tallies
@@ -421,7 +440,7 @@ class OpenMCNode(object):
     def _write_summary(self):
         """ Write summary of OpenMC node parameters """
         openmc_params = ['n_threads', 'seed_begin', 'n_particles',
-                         'n_inactive']
+                         'n_inactive', 'weight_clipping']
         rank = self._global_comm.Get_rank()
         outstr = "********* PROCESS {}: OPENMC NODE, SEED {} *********\n".format(rank,
                                                                        self._seed_num)
@@ -591,9 +610,12 @@ class OpenMCNode(object):
         tally_id = self._tally_ids[2]
         current = tallies[tally_id].results[:,0,1]
 
+        current_batch = self._current_batch
+
         if self._set_reference_params:
             tally_data = np.concatenate((flux, totalrr, scattrr, nfissrr,
-                                         current, [num_realizations, keff]))
+                                         current, [num_realizations, keff,
+                                                   current_batch]))
         else:
             # Get p1 scatter rr from CMFD tally 3
             tally_id = self._tally_ids[3]
@@ -601,7 +623,8 @@ class OpenMCNode(object):
 
             tally_data = np.concatenate((flux, totalrr, scattrr, nfissrr,
                                          current, p1scattrr,
-                                         [num_realizations, keff]))
+                                         [num_realizations, keff,
+                                          current_batch]))
 
         self._global_comm.Send(tally_data, dest=0, tag=0)
         if self._verbosity >= 2:
@@ -635,6 +658,8 @@ class OpenMCNode(object):
 
     def _cmfd_reweight(self):
         """ Perform weighting of particles in source bank """
+        nx, ny, nz, ng = self._indices
+
         if openmc.lib.master():
             norm = np.sum(self._sourcecounts) / np.sum(self._cmfd_src)
 
@@ -657,9 +682,9 @@ class OpenMCNode(object):
                                    sourcecounts, where=div_condition,
                                    out=np.ones_like(self._cmfd_src),
                                    dtype=np.float32))
-            ub = 1. + self._damping_factor
+            ub = 1. + self._weight_clipping
             self._weightfactors[self._weightfactors > ub] = ub
-            lb = 1./(1. + self._damping_factor)
+            lb = 1./(1. + self._weight_clipping)
             self._weightfactors[self._weightfactors < lb] = lb
 
         self._weightfactors = self.local_comm.bcast(
@@ -667,7 +692,6 @@ class OpenMCNode(object):
 
         m = openmc.lib.meshes[self._mesh_id]
         energy = self._egrid
-        ng = self._indices[3]
 
         # Get locations and energies of all particles in source bank
         source_xyz = openmc.lib.source_bank()['r']
