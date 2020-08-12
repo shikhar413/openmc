@@ -43,6 +43,8 @@ class OpenMCNode(object):
         Structured mesh to be used for acceleration
     ref_d : list of floats
         List of reference diffusion coefficients to fix CMFD parameters to
+    asynchronous : bool
+        Whether or not to use asynchronous ensemble averaging
     window_type : {'expanding', 'rolling', 'none'}
         Specifies type of tally window scheme to use to accumulate CMFD
         tallies. Options are:
@@ -108,6 +110,7 @@ class OpenMCNode(object):
         self._tally_begin = None
         self._solver_begin = None
         self._ref_d = None
+        self._asynchronous = None
         self._window_type = None
         self._mesh = None
         self._n_procs_per_seed = None
@@ -129,6 +132,7 @@ class OpenMCNode(object):
         self._weightfactors = None
         self._reset_every = None
         self._current_batch = 0
+        self._cmfd_src = None
         self._time_openmcnode = None
         self._time_sendtallies = None
         self._time_waitcmfdsrc = None
@@ -144,6 +148,10 @@ class OpenMCNode(object):
     @property
     def ref_d(self):
         return self._ref_d
+
+    @property
+    def asynchronous(self):
+        return self._asynchronous
 
     @property
     def window_type(self):
@@ -247,6 +255,10 @@ class OpenMCNode(object):
     @ref_d.setter
     def ref_d(self, ref_d):
         self._ref_d = ref_d
+
+    @asynchronous.setter
+    def asynchronous(self, asynchronous):
+        self._asynchronous = asynchronous
 
     @window_type.setter
     def window_type(self, window_type):
@@ -534,7 +546,7 @@ class OpenMCNode(object):
         """
         # Initialize variables
         m = openmc.lib.meshes[self._mesh_id]
-        bank = openmc.lib.source_bank()
+        source_bank = openmc.lib.source_bank()
         energy = self._egrid
         sites_outside = np.zeros(1, dtype=bool)
         nxnynz = np.prod(self._indices[0:3])
@@ -545,8 +557,9 @@ class OpenMCNode(object):
         count = np.zeros(self._sourcecounts.shape)
 
         # Get location and energy of each particle in source bank
-        source_xyz = openmc.lib.source_bank()['r']
-        source_energies = openmc.lib.source_bank()['E']
+        source_xyz = source_bank['r']
+        source_energies = source_bank['E']
+        source_weights = source_bank['wgt']
 
         # Convert xyz location to mesh index and ravel index to scalar
         mesh_locations = np.floor((source_xyz - m.lower_left) / m.width)
@@ -555,7 +568,40 @@ class OpenMCNode(object):
 
         # Check if any source locations lie outside of defined CMFD mesh
         if np.any(mesh_bins < 0) or np.any(mesh_bins >= np.prod(m.dimension)):
+            idx = np.where((mesh_locations >= m.dimension) | (mesh_locations < 0))
+            unique_locs = []
+            new_locs = []
+            for i in idx[0]:
+                source_loc = openmc.lib.source_bank()['r'][i]
+                if list(source_loc) in unique_locs:
+                    openmc.lib.source_bank()['r'][i] = new_locs[unique_locs.index(list(source_loc))]
+                else:
+                    new_loc = np.zeros((3,))
+                    for j in range(3):
+                        loc = source_loc[j]
+                        if loc < m.lower_left[j]:
+                            new_loc[j] = np.random.uniform(m.lower_left[j], m.lower_left[j] + m.width[j])
+                        elif loc > m.upper_right[j]:
+                            new_loc[j] = np.random.uniform(m.upper_right[j] - m.width[j], m.upper_right[j])
+                        else:
+                            new_loc[j] = loc
+                    unique_locs.append(list(source_loc))
+                    new_locs.append(new_loc)
+                    prev_loc = source_loc
+                    print("Source location changed from", source_loc, "to", new_loc)
+                    openmc.lib.source_bank()['r'][i] = new_loc
+                    sys.stdout.flush()
             outside[0] = True
+
+            # Get location and energy of each particle in source bank
+            source_xyz = source_bank['r']
+            source_energies = source_bank['E']
+            source_weights = source_bank['wgt']
+
+            # Convert xyz location to mesh index and ravel index to scalar
+            mesh_locations = np.floor((source_xyz - m.lower_left) / m.width)
+            mesh_bins = mesh_locations[:,2] * m.dimension[1] * m.dimension[0] + \
+            mesh_locations[:,1] * m.dimension[0] + mesh_locations[:,0]
 
         # Determine which energy bin each particle's energy belongs to
         # Separate into cases bases on where source energies lies on egrid
@@ -570,8 +616,9 @@ class OpenMCNode(object):
 
         # Determine all unique combinations of mesh bin and energy bin, and
         # count number of particles that belong to these combinations
-        idx, counts = np.unique(np.array([mesh_bins, energy_bins]), axis=1,
-                                return_counts=True)
+        idx, inverse = np.unique(np.array([mesh_bins, energy_bins]), axis=1,
+                                 return_inverse=True)
+        counts = np.bincount(inverse, weights=source_weights)
 
         # Store counts to appropriate mesh-energy combination
         count[idx[0].astype(int), idx[1].astype(int)] = counts
@@ -626,18 +673,24 @@ class OpenMCNode(object):
                                          [num_realizations, keff,
                                           current_batch]))
 
-        self._global_comm.Send(tally_data, dest=0, tag=0)
-        if self._verbosity >= 2:
+        if self._asynchronous:
+            self._global_comm.Isend(tally_data, dest=0, tag=0)
+        else:
+            self._global_comm.Send(tally_data, dest=0, tag=0)
+        if self._verbosity >= 0:
             source = self._global_comm.Get_rank()
-            outstr = "{:>11s}Sending tally data from process {} to {}"
-            print(outstr.format('', source, 0))
+            outstr = "{:>11s}Sending tally data for batch {} from process {} to {}"
+            print(outstr.format('', self._current_batch, source, 0))
             sys.stdout.flush()
 
     def _send_timing_stats_to_cmfd_node(self):
         """ Transfer timing stats to CMFD node for printing """
         timing_data = np.array([self._time_openmcnode, self._time_sendtallies,
                                 self._time_waitcmfdsrc])
-        self._global_comm.Send(timing_data, dest=0, tag=2)
+        if self._asynchronous:
+            self._global_comm.Isend(timing_data, dest=0, tag=1)
+        else:
+            self._global_comm.Send(timing_data, dest=0, tag=1)
         if self._verbosity >= 2:
             source = self._global_comm.Get_rank()
             outstr = "{:>11s}Sending timing data from process {} to {}"
@@ -648,9 +701,27 @@ class OpenMCNode(object):
         """ Receive weightfactors from CMFD node and update source """
         if openmc.lib.master():
             self._cmfd_src = np.empty(self._indices, dtype=np.float64)
-            self._global_comm.Recv(self._cmfd_src, source=0)
+            if self._asynchronous:
+                # Wait for CMFD source from CMFD node on first data transfer
+                if self._current_batch == self._solver_begin:
+                    req = self._global_comm.Irecv(self._cmfd_src, source=0)
+                    req.Wait()
+                # Otherwise keep requesting for newest available CMFD source
+                else:
+                    new_req_avail = True
+                    while (new_req_avail):
+                        req = self._global_comm.Irecv(self._cmfd_src, source=0)
+                        new_req_avail = req.Test()
+                        if new_req_avail:
+                            req.Wait()
+                        else:
+                            # One too many requests submitted by this point
+                            # The most recent request must be cancelled
+                            req.Cancel()
+            else:
+                self._global_comm.Recv(self._cmfd_src, source=0)
 
-            if self._verbosity >= 2:
+            if self._verbosity >= 0:
                 dest = self._global_comm.Get_rank()
                 outstr = "{:>11s}Process {} received CMFD source from process {}"
                 print(outstr.format('', dest, 0))
