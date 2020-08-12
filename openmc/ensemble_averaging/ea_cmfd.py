@@ -363,18 +363,19 @@ class EnsAvgCMFDRun(object):
                 rank = self.global_comm.Get_rank()
                 print("{:>11s}Process {} finished batch".format('', rank))
                 sys.stdout.flush()
-            # Put barrier to synchronize processes
-            self.global_comm.Barrier()
+            if self.current_batch >= self._tally_begin:
+                # Put barrier to synchronize processes
+                self.global_comm.Barrier()
             yield
 
     def _read_cfg_file(self):
         """ Read config file and set all global, CMFD, and OpenMC parameters """
         openmc_params = ['n_threads', 'seed_begin', 'n_particles',
-                         'n_inactive']
+                         'n_inactive', 'weight_clipping']
         cmfd_params = ['downscatter', 'cmfd_ktol', 'norm',
                        'w_shift', 'stol', 'spectral', 'window_size',
                        'gauss_seidel_tolerance', 'display', 'n_threads',
-                       'damping_factor', 'max_window_size']
+                       'max_window_size']
         mesh_params = ['lower_left', 'upper_right', 'dimension', 'width',
                        'energy', 'albedo', 'map']
         self._global_params = ['n_seeds', 'n_procs_per_seed', 'verbosity',
