@@ -787,10 +787,10 @@ class OpenMCNode(object):
         openmc.lib.source_bank()['wgt'] *= self._weightfactors[
                 mesh_ijk[:,0], mesh_ijk[:,1], mesh_ijk[:,2], energy_bins]
 
-        if openmc.lib.master() and np.any(source_energies < energy[0]):
+        if np.any(source_energies < energy[0]):
             print(' WARNING: Source point below energy grid')
             sys.stdout.flush()
-        if openmc.lib.master() and np.any(source_energies > energy[-1]):
+        if np.any(source_energies > energy[-1]):
             print(' WARNING: Source point above energy grid')
             sys.stdout.flush()
 
