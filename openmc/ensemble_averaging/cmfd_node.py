@@ -595,11 +595,11 @@ class CMFDNode(object):
         # Receive tally data from all OpenMCNode objects before CMFD execution
         if openmc.lib.master():
             self._execute_cmfd()
-            status = 1 if self._current_batch == self._n_batches else 0
 
         else:
-            status = 1
+            self._current_batch += 1
 
+        status = 1 if self._current_batch == self._n_batches else 0
         return status
 
     def finalize(self):
@@ -1253,7 +1253,7 @@ class CMFDNode(object):
         # Broadcast weight factors to all head nodes of all procs
         time_start_sendcmfdsrc = time.time()
         for i in range(self._n_seeds):
-            dest = self._n_seeds * i + self._n_procs_per_seed
+            dest = self._n_procs_per_seed * (i + 1)
             self._global_comm.Send(self._cmfd_src, dest=dest)
             if self._verbosity >= 2:
                 source = self._global_comm.Get_rank()
