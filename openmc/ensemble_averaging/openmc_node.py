@@ -677,7 +677,7 @@ class OpenMCNode(object):
             self._global_comm.Isend(tally_data, dest=0, tag=0)
         else:
             self._global_comm.Send(tally_data, dest=0, tag=0)
-        if self._verbosity >= 0:
+        if self._verbosity >= 2:
             source = self._global_comm.Get_rank()
             outstr = "{:>11s}Sending tally data for batch {} from process {} to {}"
             print(outstr.format('', self._current_batch, source, 0))
@@ -721,7 +721,7 @@ class OpenMCNode(object):
             else:
                 self._global_comm.Recv(self._cmfd_src, source=0)
 
-            if self._verbosity >= 0:
+            if self._verbosity >= 2:
                 dest = self._global_comm.Get_rank()
                 outstr = "{:>11s}Process {} received CMFD source from process {}"
                 print(outstr.format('', dest, 0))
