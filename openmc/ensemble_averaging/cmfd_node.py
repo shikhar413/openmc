@@ -841,7 +841,7 @@ class CMFDNode(object):
             status = MPI.Status()
             self._global_comm.Recv(tally_data, source=MPI.ANY_SOURCE, status=status, tag=0)
             source = status.Get_source()
-            if self._verbosity >= 0:
+            if self._verbosity >= 2:
                 dest = self._global_comm.Get_rank()
                 outstr = "{:>11s}Process {} received tally data from process {}"
                 print(outstr.format('', dest, source))
