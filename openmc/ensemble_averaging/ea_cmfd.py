@@ -61,6 +61,8 @@ class EnsAvgCMFDRun(object):
         Structured mesh to be used for acceleration
     ref_d : list of floats
         List of reference diffusion coefficients to fix CMFD parameters to
+    asynchronous : bool
+        Whether or not to use asynchronous ensemble averaging
     window_type : {'expanding', 'rolling', 'none'}
         Specifies type of tally window scheme to use to accumulate CMFD
         tallies. Options are:
@@ -105,6 +107,7 @@ class EnsAvgCMFDRun(object):
         self._tally_begin = 1
         self._window_type = 'none'
         self._ref_d = np.array([])
+        self._asynchronous = False
         self._solver_begin = 1
         self._mesh = None
 
@@ -162,6 +165,10 @@ class EnsAvgCMFDRun(object):
     @property
     def ref_d(self):
         return self._ref_d
+
+    @property
+    def asynchronous(self):
+        return self._asynchronous
 
     @property
     def mesh(self):
@@ -231,6 +238,11 @@ class EnsAvgCMFDRun(object):
         check_type('Reference diffusion params', diff_params,
                    Iterable, Real)
         self._ref_d = np.array(diff_params)
+
+    @asynchronous.setter
+    def asynchronous(self, asynchronous):
+        check_type('Asynchnronous CMFD', asynchronous, bool)
+        self._asynchronous = asynchronous
 
     @window_type.setter
     def window_type(self, window_type):
@@ -316,6 +328,7 @@ class EnsAvgCMFDRun(object):
         }
         with self._node.run_in_memory(**kwargs):
             yield
+        print("Process {} is finalizing".format(self._global_comm.Get_rank()))
         self.finalize()
 
     def init(self):
@@ -363,7 +376,8 @@ class EnsAvgCMFDRun(object):
                 rank = self.global_comm.Get_rank()
                 print("{:>11s}Process {} finished batch".format('', rank))
                 sys.stdout.flush()
-            if self.current_batch >= self._tally_begin:
+            if (self.current_batch >= self._tally_begin and 
+                    not self.asynchronous):
                 # Put barrier to synchronize processes
                 self.global_comm.Barrier()
             yield
@@ -380,7 +394,8 @@ class EnsAvgCMFDRun(object):
                        'energy', 'albedo', 'map']
         self._global_params = ['n_seeds', 'n_procs_per_seed', 'verbosity',
                                'openmc_verbosity', 'n_batches', 'tally_begin',
-                               'solver_begin', 'window_type', 'ref_d']
+                               'solver_begin', 'window_type', 'ref_d',
+                               'asynchronous']
 
         config = configparser.ConfigParser()
         config.read(self._cfg_file)
