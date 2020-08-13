@@ -291,6 +291,11 @@ class CMFDRun(object):
         window_type is set to "rolling"
     max_window_size: int
         TODO
+    weight_clipping : float
+        Weight clipping to control the maximum allowed change in weight in
+        the presence of CMFD feedback. During prolongation, the weight factor
+        in any CMFD mesh cell is clipped to
+        [1/(1+weight_clipping), 1+weight_clipping]
     indices : numpy.ndarray
         Stores spatial and group dimensions as [nx, ny, nz, ng]
     cmfd_src : numpy.ndarray
@@ -347,7 +352,7 @@ class CMFDRun(object):
         self._reset = []
         self._write_matrices = False
         self._spectral = 0.0
-        self._damping_factor = 0.2
+        self._weight_clipping = 0.2
         self._gauss_seidel_tolerance = [1.e-10, 1.e-5]
         self._adjoint_type = 'physical'
         self._window_type = 'none'
@@ -379,6 +384,7 @@ class CMFDRun(object):
         self._scatt_rate = None
         self._nfiss_rate = None
         self._current_rate = None
+        self._sourcecount_rate = None
         self._flux = None
         self._totalxs = None
         self._p1scattxs = None
@@ -512,8 +518,8 @@ class CMFDRun(object):
         return self._spectral
 
     @property
-    def damping_factor(self):
-        return self._damping_factor
+    def weight_clipping(self):
+        return self._weight_clipping
 
     @property
     def reset(self):
@@ -719,12 +725,12 @@ class CMFDRun(object):
         check_type('CMFD spectral radius', spectral, Real)
         self._spectral = spectral
 
-    @damping_factor.setter
-    def damping_factor(self, damping_factor):
-        check_type('CMFD damping factor', damping_factor, Real)
-        check_greater_than('CMFD damping factor', damping_factor, 0, True)
-        check_less_than('CMFD damping factor', damping_factor, 1, True)
-        self._damping_factor = damping_factor
+    @weight_clipping.setter
+    def weight_clipping(self, weight_clipping):
+        check_type('CMFD damping factor', weight_clipping, Real)
+        check_greater_than('CMFD damping factor', weight_clipping, 0, True)
+        check_less_than('CMFD damping factor', weight_clipping, 1, True)
+        self._weight_clipping = weight_clipping
 
     @reset.setter
     def reset(self, reset):
@@ -953,6 +959,8 @@ class CMFDRun(object):
                                               data=self._scatt_rate)
                     cmfd_group.create_dataset('total_rate',
                                               data=self._total_rate)
+                    cmfd_group.create_dataset('sourcecount_rate', 
+                                              data=self._sourcecount_rate)
                 elif openmc.settings.verbosity >= 5:
                     print('  CMFD data not written to statepoint file'
                           'as it already exists in {}'.format(filename))
@@ -1108,6 +1116,7 @@ class CMFDRun(object):
             self._scatt_rate = np.zeros((nx, ny, nz, ng, ng, 0))
             self._nfiss_rate = np.zeros((nx, ny, nz, ng, ng, 0))
             self._current_rate = np.zeros((nx, ny, nz, 12, ng, 0))
+            self._sourcecount_rate = np.zeros((nx*ny*nz, ng, 0))
 
             # Initialize timers
             self._time_cmfd = 0.0
@@ -1179,6 +1188,7 @@ class CMFDRun(object):
                     self._p1scatt_rate = cmfd_group['p1scatt_rate'][()]
                     self._scatt_rate = cmfd_group['scatt_rate'][()]
                     self._total_rate = cmfd_group['total_rate'][()]
+                    self._sourcecount_rate = cmfd_group['sourcecount_rate'][()]
                     self._mat_dim = np.max(self._coremap) + 1
 
     def _set_tally_window(self):
@@ -1488,6 +1498,9 @@ class CMFDRun(object):
         # Have master compute weight factors, ignore any zeros in
         # sourcecounts or cmfd_src
         if openmc.lib.master():
+            # Aggregate sourcecounts over banked sourcecount_rate
+            self._sourcecounts = np.sum(self._sourcecount_rate, axis=-1)
+
             # Compute normalization factor
             norm = np.sum(self._sourcecounts) / np.sum(self._cmfd_src)
 
@@ -1510,9 +1523,9 @@ class CMFDRun(object):
                                    sourcecounts, where=div_condition,
                                    out=np.ones_like(self._cmfd_src),
                                    dtype=np.float32))
-            ub = 1. + self._damping_factor
+            ub = 1. + self._weight_clipping
             self._weightfactors[self._weightfactors > ub] = ub
-            lb = 1./(1. + self._damping_factor)
+            lb = 1./(1. + self._weight_clipping)
             self._weightfactors[self._weightfactors < lb] = lb
 
         if not self._feedback:
@@ -1525,7 +1538,6 @@ class CMFDRun(object):
 
         m = openmc.lib.meshes[self._mesh_id]
         energy = self._egrid
-        ng = self._indices[3]
 
         # Get locations and energies of all particles in source bank
         source_xyz = openmc.lib.source_bank()['r']
@@ -1575,8 +1587,8 @@ class CMFDRun(object):
         ng = self._indices[3]
 
         outside = np.zeros(1, dtype=bool)
-        self._sourcecounts = np.zeros((nxnynz, ng))
-        count = np.zeros(self._sourcecounts.shape)
+        sourcecounts = np.zeros((nxnynz, ng))
+        count = np.zeros(sourcecounts.shape)
 
         # Get location and energy of each particle in source bank
         source_xyz = source_bank['r']
@@ -1650,13 +1662,23 @@ class CMFDRun(object):
 
         if have_mpi:
             # Collect values of count from all processors
-            self._intracomm.Reduce(count, self._sourcecounts, MPI.SUM)
+            self._intracomm.Reduce(count, sourcecounts, MPI.SUM)
             # Check if there were sites outside the mesh for any processor
             self._intracomm.Reduce(outside, sites_outside, MPI.LOR)
         # Deal with case if MPI not defined (only one proc)
         else:
             sites_outside = outside
-            self._sourcecounts = count
+            sourcecounts = count
+
+        if openmc.lib.master():
+            # Discard sourcecounts from oldest batch if window limit reached
+            tally_windows = self._sourcecount_rate.shape[-1] + 1
+            if tally_windows > self._window_size:
+                self._sourcecount_rate = self._sourcecount_rate[...,1:]
+
+            # Bank sourcecounts to sourcecount_rate
+            self._sourcecount_rate = np.append(self._sourcecount_rate, 
+                                               sourcecounts[..., None], axis=2)
 
         return sites_outside[0]
 
