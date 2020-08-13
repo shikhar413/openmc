@@ -291,6 +291,11 @@ class CMFDRun(object):
         window_type is set to "rolling"
     max_window_size: int
         TODO
+    weight_clipping : float
+        Weight clipping to control the maximum allowed change in weight in
+        the presence of CMFD feedback. During prolongation, the weight factor
+        in any CMFD mesh cell is clipped to
+        [1/(1+weight_clipping), 1+weight_clipping]
     indices : numpy.ndarray
         Stores spatial and group dimensions as [nx, ny, nz, ng]
     cmfd_src : numpy.ndarray
@@ -347,7 +352,7 @@ class CMFDRun(object):
         self._reset = []
         self._write_matrices = False
         self._spectral = 0.0
-        self._damping_factor = 0.2
+        self._weight_clipping = 0.2
         self._gauss_seidel_tolerance = [1.e-10, 1.e-5]
         self._adjoint_type = 'physical'
         self._window_type = 'none'
@@ -513,8 +518,8 @@ class CMFDRun(object):
         return self._spectral
 
     @property
-    def damping_factor(self):
-        return self._damping_factor
+    def weight_clipping(self):
+        return self._weight_clipping
 
     @property
     def reset(self):
@@ -720,12 +725,12 @@ class CMFDRun(object):
         check_type('CMFD spectral radius', spectral, Real)
         self._spectral = spectral
 
-    @damping_factor.setter
-    def damping_factor(self, damping_factor):
-        check_type('CMFD damping factor', damping_factor, Real)
-        check_greater_than('CMFD damping factor', damping_factor, 0, True)
-        check_less_than('CMFD damping factor', damping_factor, 1, True)
-        self._damping_factor = damping_factor
+    @weight_clipping.setter
+    def weight_clipping(self, weight_clipping):
+        check_type('CMFD damping factor', weight_clipping, Real)
+        check_greater_than('CMFD damping factor', weight_clipping, 0, True)
+        check_less_than('CMFD damping factor', weight_clipping, 1, True)
+        self._weight_clipping = weight_clipping
 
     @reset.setter
     def reset(self, reset):
@@ -1518,9 +1523,9 @@ class CMFDRun(object):
                                    sourcecounts, where=div_condition,
                                    out=np.ones_like(self._cmfd_src),
                                    dtype=np.float32))
-            ub = 1. + self._damping_factor
+            ub = 1. + self._weight_clipping
             self._weightfactors[self._weightfactors > ub] = ub
-            lb = 1./(1. + self._damping_factor)
+            lb = 1./(1. + self._weight_clipping)
             self._weightfactors[self._weightfactors < lb] = lb
 
         if not self._feedback:
@@ -1533,7 +1538,6 @@ class CMFDRun(object):
 
         m = openmc.lib.meshes[self._mesh_id]
         energy = self._egrid
-        ng = self._indices[3]
 
         # Get locations and energies of all particles in source bank
         source_xyz = openmc.lib.source_bank()['r']
