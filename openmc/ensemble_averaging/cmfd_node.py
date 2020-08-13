@@ -837,7 +837,7 @@ class CMFDNode(object):
         all_tally_data = np.zeros([self._n_seeds, self._tally_data_size],
                                   dtype=np.float64)
         for i in range(incoming_seeds):
-            tally_data = np.empty(self._tally_data_size,dtype=np.float64)
+            tally_data = np.empty(self._tally_data_size, dtype=np.float64)
             status = MPI.Status()
             self._global_comm.Recv(tally_data, source=MPI.ANY_SOURCE, status=status, tag=0)
             source = status.Get_source()
@@ -1883,7 +1883,7 @@ class CMFDNode(object):
             total_tallies = nx*ny*nz*ng*2
             self._p1scatt_slice = slice(tally_idx, tally_idx+total_tallies)
 
-        # Add 2 to total tally data size to account for keff,
+        # Add 3 to total tally data size to account for keff,
         # num_realizations, and current_batch
         self._tally_data_size = tally_idx + total_tallies + 3
 
