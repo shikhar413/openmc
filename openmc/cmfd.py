@@ -799,8 +799,12 @@ class CMFDRun(object):
         elif have_mpi:
             self._intracomm = MPI.COMM_WORLD
 
+        openmc_seed = kwargs.pop('seed', None)
+
         # Run and pass arguments to C API run_in_memory function
         with openmc.lib.run_in_memory(**kwargs):
+            if openmc_seed is not None:
+                openmc.lib.settings.seed = openmc_seed
             self.init()
             yield
             self.finalize()
