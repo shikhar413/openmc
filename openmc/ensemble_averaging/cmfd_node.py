@@ -100,6 +100,9 @@ class CMFDNode(object):
         window_type is set to "rolling"
     max_window_size : int
         Maximum size of window to use for an expanding tally window scheme
+    batch_lag : int
+        Number of batches to use for discarding CMFD data from seeds that lag
+        behind the fastest progressing seed.        
     w_shift : float
         Optional Wielandt shift parameter for accelerating power iterations. By
         default, it is very large so there is effectively no impact.
@@ -174,6 +177,7 @@ class CMFDNode(object):
         self._norm = 1.
         self._window_size = 10
         self._max_window_size = sys.maxsize
+        self._batch_lag = sys.maxsize
         self._w_shift = 1.e6
         self._stol = 1.e-8
         self._spectral = 0.0
@@ -242,6 +246,7 @@ class CMFDNode(object):
         self._time_sendcmfdsrc = None
         self._current_batch = 0
         self._n_cmfd_updates = 0
+        self._seed_lag = None
         self._seeds_finished = None
 
         # All index-related variables, for numpy vectorization
@@ -309,6 +314,10 @@ class CMFDNode(object):
     @property
     def max_window_size(self):
         return self._max_window_size
+
+    @property
+    def batch_lag(self):
+        return self._batch_lag
 
     @property
     def stol(self):
@@ -449,6 +458,12 @@ class CMFDNode(object):
                        'unless window type is set to "expanding".'
             warnings.warn(warn_msg, RuntimeWarning)
         self._max_window_size = window_size
+
+    @batch_lag.setter
+    def batch_lag(self, batch_lag):
+        check_type('CMFD batch lag', batch_lag, Integral)
+        check_greater_than('CMFD batch lag', batch_lag, 0)
+        self._batch_lag = batch_lag
 
     @w_shift.setter
     def w_shift(self, w_shift):
@@ -635,7 +650,7 @@ class CMFDNode(object):
         cmfd_params = ['downscatter', 'cmfd_ktol', 'norm',
                        'w_shift', 'stol', 'spectral', 'window_size',
                        'gauss_seidel_tolerance', 'display', 'n_threads',
-                       'max_window_size']
+                       'max_window_size', 'batch_lag']
         rank = self._global_comm.Get_rank()
         if self._global_comm.Get_rank() == 0:
             outstr = "********** PROCESS {}: CMFD NODE, ACTIVE **********\n"
@@ -818,6 +833,7 @@ class CMFDNode(object):
         self._time_sendcmfdsrc = 0.0
 
         self._seeds_finished = np.zeros(self._n_seeds, dtype=bool)
+        self._seed_lag = np.ones((self._n_seeds,), dtype=int)*self._batch_lag
 
     def _recv_tallies_from_openmc(self):
         """ Receive tally data from all OpenMC seeds
@@ -847,10 +863,30 @@ class CMFDNode(object):
                 print(outstr.format('', dest, source))
                 sys.stdout.flush()
             seed_idx = int((source-self._n_procs_per_seed)/self._n_procs_per_seed)
-            self._seeds_finished[seed_idx] = tally_data[-1] == self._n_batches
+
+            # Obtain batch number of received tallies and update current batch
+            tally_batch = int(tally_data[-1])
+            if tally_batch > self._current_batch:
+                self._current_batch = tally_batch
+                print("Current CMFD batch:", self._current_batch)
+                sys.stdout.flush()
+
+            # Check if seed has finished running total number of batches
+            self._seeds_finished[seed_idx] = tally_batch == self._n_batches
+
+            # Check seed lag to determine wheter CMFD XS calculation should be skipped
+            # for received tally data
+            skip_batch = (self._current_batch - tally_batch) >= self._seed_lag[seed_idx]
+
+            if skip_batch:
+                self._seed_lag[seed_idx] += self._batch_lag
+                print("Skipping data for seed {} batch {}, current batch: {}"
+                      .format(seed_idx, tally_batch, self._current_batch))
+                sys.stdout.flush()
 
             all_tally_data[seed_idx,:] = tally_data
-        return np.sum(all_tally_data, axis=0)/incoming_seeds
+
+        return np.sum(all_tally_data, axis=0)/incoming_seeds, skip_batch
 
     def _recv_openmc_timing_stats(self):
         """ Receive timing stats from all OpenMC seeds
@@ -1118,22 +1154,15 @@ class CMFDNode(object):
         """ Runs CMFD calculation on master node """
         # Start CMFD timer
         time_start_cmfd = time.time()
-        openmc_tallies = self._recv_tallies_from_openmc()
+        openmc_tallies, skip_batch = self._recv_tallies_from_openmc()
         time_stop_wait_tallies = time.time()
         self._time_waittallies += time_stop_wait_tallies - time_start_cmfd
 
-        # Obtain batch number of received tallies and update current batch
         tally_batch = int(openmc_tallies[-1])
-        if tally_batch > self._current_batch:
-            self._current_batch = tally_batch
-            print("Current CMFD batch:", self._current_batch)
-            sys.stdout.flush()
-
-        # TODO add some threshold for discarding old tally batches
-        if tally_batch >= self._tally_begin:
+        if tally_batch >= self._tally_begin and not skip_batch:
             self._compute_xs(openmc_tallies)
 
-        if tally_batch >= self._solver_begin:
+        if tally_batch >= self._solver_begin and not skip_batch:
             # Create CMFD data based on OpenMC tallies
             self._set_up_cmfd()
 
@@ -1152,7 +1181,7 @@ class CMFDNode(object):
         # Stop CMFD timer
         time_stop_cmfd = time.time()
         self._time_cmfdnode += time_stop_cmfd - time_start_cmfd
-        if tally_batch >= self._solver_begin:
+        if tally_batch >= self._solver_begin and not skip_batch:
             # Write CMFD output if CMFD on for current batch
             self._write_cmfd_output()
 
@@ -1275,7 +1304,7 @@ class CMFDNode(object):
             else:
                 self._global_comm.Send(self._cmfd_src, dest=dest)
 
-            if self._verbosity >= 0:
+            if self._verbosity >= 2:
                 source = self._global_comm.Get_rank()
                 outstr = "{:>11s}Sending CMFD source from process {} to {}"
                 print(outstr.format('', source, dest))
