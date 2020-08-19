@@ -3,20 +3,15 @@ examples/phd_testing/fet-stationarity/1d-homog
 examples/phd_testing/fet-stationarity/2d-beavrs/seed*
 examples/phd_testing/fet-stationarity/3d-exasmr/seed*
 
-examples/phd_testing/fb-fet-timing/1d-*
-examples/phd_testing/fb-fet-timing/2d-*
+examples/phd_testing/fb-fet-timing/[1-2]d-*
 
 examples/phd_testing/cmfd-testing/param_sensitivity/mesh-window-sensitivity
 examples/phd_testing/cmfd-testing/param_sensitivity/thread-sensitivity
 examples/phd_testing/cmfd-testing/param_sensitivity/tally_solver_begin_sensitivity
 examples/phd_testing/cmfd-testing/param_sensitivity/timing-sensitivity
-examples/phd_testing/cmfd-testing/var_testing/2d-beavrs
 
-examples/phd_testing/cmfd-testing/fet-stationarity/1d-homog-offset
-examples/phd_testing/cmfd-testing/fet-stationarity/2d-beavrs
-
-examples/phd_testing/cmfd-testing/var_testing/1d-homog
-examples/phd_testing/cmfd-testing/var_testing/2d-beavrs
+examples/phd_testing/cmfd-testing/fet-stationarity/[1-3]d-*
+examples/phd_testing/cmfd-testing/var_testing/[1-3]d-*
 
 examples/phd_testing/lcrc_runs/*/seed*
 
@@ -26,6 +21,7 @@ examples/phd_testing/ref-calcs/2d-beavrs-cmfd-qassembly
 examples/phd_testing/ensemble-averaging/1d-homog/*/*.npy
 examples/phd_testing/ensemble-averaging/1d-homog/*/hostfile
 examples/phd_testing/ensemble-averaging/1d-homog/*/*.o[0-9][0-9][0-9][0-9][0-9][0-9][0-9]
+examples/phd_testing/ensemble-averaging/timing-tests/[1-3]d-*
 
 # Compiled objects and modules
 *.a
