@@ -8,6 +8,7 @@ def generate_input_files(cluster, prob_type, run_file):
             '1d-homog': {
                 'batch_file': "job.slurm",
                 'params_file': '1dh-params.cfg',
+                'partition': 'sched_mit_nse',
                 'run_command': "sbatch ",
                 'base_files': ['1dh-unif-settings.xml', '1dh-geometry.xml', '1dh-materials.xml'],
                 'ppn': 32,
@@ -15,11 +16,13 @@ def generate_input_files(cluster, prob_type, run_file):
                 'mult_factor': 3,
                 'n_particles': 10000000,
                 'n_procs_per_seed': 2,
+                'n_batches': 499,
                 'max_window_size': 32
             },
             '1d-homog-offset': {
                 'batch_file': "job.slurm",
                 'params_file': '1dh-params.cfg',
+                'partition': 'sched_mit_nse',
                 'run_command': "sbatch ",
                 'base_files': ['1dh-offset-settings.xml', '1dh-geometry.xml', '1dh-materials.xml'],
                 'ppn': 32,
@@ -27,11 +30,13 @@ def generate_input_files(cluster, prob_type, run_file):
                 'mult_factor': 3,
                 'n_particles': 10000000,
                 'n_procs_per_seed': 2,
+                'n_batches': 999,
                 'max_window_size': 32
             },
             '2d-beavrs': {
                 'batch_file': "job.slurm",
                 'params_file': '2db-params.cfg',
+                'partition': 'sched_mit_nse',
                 'run_command': "sbatch ",
                 'base_files': ['2db-settings.xml', '2db-geometry.xml', '2db-materials.xml'],
                 'ppn': 32,
@@ -39,6 +44,7 @@ def generate_input_files(cluster, prob_type, run_file):
                 'mult_factor': 3,
                 'n_particles': 10000000,
                 'n_procs_per_seed': 2,
+                'n_batches': 199,
                 'max_window_size': 8
             }
         }
@@ -48,6 +54,7 @@ def generate_input_files(cluster, prob_type, run_file):
             '1d-homog': {
                 'batch_file': "job.slurm",
                 'params_file': '1dh-params.cfg',
+                'partition': 'bdwall',
                 'run_command': "sbatch ",
                 'base_files': ['1dh-unif-settings.xml', '1dh-geometry.xml', '1dh-materials.xml'],
                 'ppn': 36,
@@ -55,11 +62,13 @@ def generate_input_files(cluster, prob_type, run_file):
                 'mult_factor': 32,
                 'n_particles': 10000000,
                 'n_procs_per_seed': 2,
+                'n_batches': 499,
                 'max_window_size': 32
             },
             '1d-homog-offset': {
                 'batch_file': "job.slurm",
                 'params_file': '1dh-params.cfg',
+                'partition': 'bdwall',
                 'run_command': "sbatch ",
                 'base_files': ['1dh-offset-settings.xml', '1dh-geometry.xml', '1dh-materials.xml'],
                 'ppn': 36,
@@ -67,11 +76,13 @@ def generate_input_files(cluster, prob_type, run_file):
                 'mult_factor': 32,
                 'n_particles': 10000000,
                 'n_procs_per_seed': 2,
+                'n_batches': 999,
                 'max_window_size': 32
             },
             '2d-beavrs': {
                 'batch_file': "job.slurm",
                 'params_file': '2db-params.cfg',
+                'partition': 'bdwall',
                 'run_command': "sbatch ",
                 'base_files': ['2db-settings.xml', '2db-geometry.xml', '2db-materials.xml'],
                 'ppn': 36,
@@ -79,6 +90,7 @@ def generate_input_files(cluster, prob_type, run_file):
                 'mult_factor': 32,
                 'n_particles': 10000000,
                 'n_procs_per_seed': 2,
+                'n_batches': 199,
                 'max_window_size': 8
             }
         }
@@ -140,7 +152,11 @@ def generate_input_files(cluster, prob_type, run_file):
     os.chdir('./..')
 
 def create_files(batch_template, params_template, cluster_params, prob_name, run_file, run_strat):
+    n_batches = cluster_params['n_batches']
+    n_inactive = n_batches - 1
     os.system("sed -i 's-{n_particles}"+"-{}-g' settings.xml".format(run_strat['n_particles']))
+    os.system("sed -i 's-{n_batches}"+"-{}-g' settings.xml".format(n_batches))
+    os.system("sed -i 's-{n_inactive}"+"-{}-g' settings.xml".format(n_inactive))
     test_num = run_strat['name'].split('-')[0]
     jobname = test_num+'-'+prob_name
     nodes = run_strat['nodes']
@@ -153,6 +169,7 @@ def create_files(batch_template, params_template, cluster_params, prob_name, run
     batch_template = batch_template.replace('{nodes}', str(nodes))
     batch_template = batch_template.replace('{ppn}', str(cluster_params['ppn']))
     batch_template = batch_template.replace('{walltime}', cluster_params['walltime'])
+    batch_template = batch_template.replace('{partition}', cluster_params['partition'])
     batch_template = batch_template.replace('{nproc}', str(nprocs))
     if run_strat['ea_run']:
         openmc_args = prob_name
@@ -162,6 +179,8 @@ def create_files(batch_template, params_template, cluster_params, prob_name, run
         params_template = params_template.replace('{max_window_size}', str(cluster_params['max_window_size']))
         params_template = params_template.replace('{n_particles}', str(run_strat['n_particles']))
         params_template = params_template.replace('{n_threads}', str(nthreads))
+        params_template = params_template.replace('{n_batches}', str(n_batches))
+        params_template = params_template.replace('{n_inactive}', str(n_inactive))
         with open('params.cfg', 'w') as f:
             f.write(params_template)
 

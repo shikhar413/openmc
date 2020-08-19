@@ -2,8 +2,8 @@
 <settings>
   <run_mode>eigenvalue</run_mode>
   <particles>{n_particles}</particles>
-  <batches>399</batches>
-  <inactive>398</inactive>
+  <batches>{n_batches}</batches>
+  <inactive>{n_inactive}</inactive>
   <seed>1</seed>
   <fet_convergence>
     <dimension>2</dimension>

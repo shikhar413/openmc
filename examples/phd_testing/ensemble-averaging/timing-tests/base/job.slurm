@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #SBATCH --job-name={job_name}
-#SBATCH --partition=sched_mit_nse
+#SBATCH --partition={partition}
 #SBATCH --nodes={nodes}
 #SBATCH --ntasks-per-node={ppn}
 #SBATCH --output=%x-%j.out

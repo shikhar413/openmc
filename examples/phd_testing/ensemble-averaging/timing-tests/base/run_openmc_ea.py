@@ -196,6 +196,7 @@ if __name__ == "__main__":
         mesh_dim, mesh_map = get_mesh_properties('qassembly', is_1d=False)
         cmfd_mesh.dimension = mesh_dim
         cmfd_mesh.map = mesh_map
+        ea_cmfd_run.mesh = cmfd_mesh
 
     with ea_cmfd_run.run_in_memory():
         seed_num = capi.settings.seed
@@ -232,8 +233,8 @@ if __name__ == "__main__":
                     if curr_gen % statepoint_interval == 0:
                         #cmfd_run.statepoint_write()
                         seed_num = int(ea_cmfd_run.global_comm.Get_rank() / 2)
-                        np.save("entropy_data-seed{}".format(seed_num), entropy_data)
-                        np.save("fet_data-seed{}".format(seed_num), fet_data)
+                        np.save("entropy_data_seed{}".format(seed_num), entropy_data)
+                        np.save("fet_data_seed{}".format(seed_num), fet_data)
                         '''
                         # Remove previous statepoint if more than one exists
                         if curr_gen != statepoint_interval:
@@ -244,5 +245,5 @@ if __name__ == "__main__":
 
         # End of simulation, save fet and entropy data
         if capi.master() and ea_cmfd_run.node_type == "OpenMC":
-            np.save("entropy_data-seed{}".format(seed_num), entropy_data)
-            np.save("fet_data-seed{}".format(seed_num), fet_data)
+            np.save("entropy_data_seed{}".format(seed_num), entropy_data)
+            np.save("fet_data_seed{}".format(seed_num), fet_data)
