@@ -11,11 +11,11 @@ def generate_input_files(cluster, prob_type, run_file):
                 'partition': 'sched_mit_nse',
                 'run_command': "sbatch ",
                 'base_files': ['1dh-unif-settings.xml', '1dh-geometry.xml', '1dh-materials.xml'],
-                'ppn': 32,
+                'tasks_per_node': 32,
+                'procs_per_node': 2,
                 'walltime': '12:00:00',
                 'mult_factor': 3,
                 'n_particles': 10000000,
-                'n_procs_per_seed': 2,
                 'n_batches': 499,
                 'max_window_size': 32
             },
@@ -25,11 +25,11 @@ def generate_input_files(cluster, prob_type, run_file):
                 'partition': 'sched_mit_nse',
                 'run_command': "sbatch ",
                 'base_files': ['1dh-offset-settings.xml', '1dh-geometry.xml', '1dh-materials.xml'],
-                'ppn': 32,
+                'tasks_per_node': 32,
+                'procs_per_node': 2,
                 'walltime': '12:00:00',
                 'mult_factor': 3,
                 'n_particles': 10000000,
-                'n_procs_per_seed': 2,
                 'n_batches': 999,
                 'max_window_size': 32
             },
@@ -39,11 +39,11 @@ def generate_input_files(cluster, prob_type, run_file):
                 'partition': 'sched_mit_nse',
                 'run_command': "sbatch ",
                 'base_files': ['2db-settings.xml', '2db-geometry.xml', '2db-materials.xml'],
-                'ppn': 32,
+                'tasks_per_node': 32,
+                'procs_per_node': 2,
                 'walltime': '12:00:00',
                 'mult_factor': 3,
                 'n_particles': 10000000,
-                'n_procs_per_seed': 2,
                 'n_batches': 199,
                 'max_window_size': 8
             }
@@ -57,11 +57,11 @@ def generate_input_files(cluster, prob_type, run_file):
                 'partition': 'bdwall',
                 'run_command': "sbatch ",
                 'base_files': ['1dh-unif-settings.xml', '1dh-geometry.xml', '1dh-materials.xml'],
-                'ppn': 36,
+                'tasks_per_node': 36,
+                'procs_per_node': 2,
                 'walltime': '12:00:00',
                 'mult_factor': 32,
                 'n_particles': 10000000,
-                'n_procs_per_seed': 2,
                 'n_batches': 499,
                 'max_window_size': 32
             },
@@ -71,11 +71,11 @@ def generate_input_files(cluster, prob_type, run_file):
                 'partition': 'bdwall',
                 'run_command': "sbatch ",
                 'base_files': ['1dh-offset-settings.xml', '1dh-geometry.xml', '1dh-materials.xml'],
-                'ppn': 36,
+                'tasks_per_node': 36,
+                'procs_per_node': 2,
                 'walltime': '12:00:00',
                 'mult_factor': 32,
                 'n_particles': 10000000,
-                'n_procs_per_seed': 2,
                 'n_batches': 999,
                 'max_window_size': 32
             },
@@ -85,11 +85,11 @@ def generate_input_files(cluster, prob_type, run_file):
                 'partition': 'bdwall',
                 'run_command': "sbatch ",
                 'base_files': ['2db-settings.xml', '2db-geometry.xml', '2db-materials.xml'],
-                'ppn': 36,
+                'tasks_per_node': 36,
+                'procs_per_node': 2,
                 'walltime': '12:00:00',
                 'mult_factor': 32,
                 'n_particles': 10000000,
-                'n_procs_per_seed': 2,
                 'n_batches': 199,
                 'max_window_size': 8
             }
@@ -154,31 +154,32 @@ def generate_input_files(cluster, prob_type, run_file):
 def create_files(batch_template, params_template, cluster_params, prob_name, run_file, run_strat):
     n_batches = cluster_params['n_batches']
     n_inactive = n_batches - 1
-    os.system("sed -i 's-{n_particles}"+"-{}-g' settings.xml".format(run_strat['n_particles']))
+    n_particles = 1 if run_strat['ea_run'] else run_strat['n_particles']
+    os.system("sed -i 's-{n_particles}"+"-{}-g' settings.xml".format(n_particles))
     os.system("sed -i 's-{n_batches}"+"-{}-g' settings.xml".format(n_batches))
     os.system("sed -i 's-{n_inactive}"+"-{}-g' settings.xml".format(n_inactive))
     test_num = run_strat['name'].split('-')[0]
     jobname = test_num+'-'+prob_name
     nodes = run_strat['nodes']
-    tasks = nodes * cluster_params['ppn']
-    procs_per_seed = cluster_params['n_procs_per_seed']
-    nprocs = nodes * procs_per_seed
-    nthreads = int(cluster_params['ppn']/procs_per_seed)
+    tasks = nodes * cluster_params['tasks_per_node']
+    procs_per_node = cluster_params['procs_per_node']
+    nprocs = nodes * procs_per_node
+    threads_per_proc = int(cluster_params['tasks_per_node']/procs_per_node)
 
     batch_template = batch_template.replace('{job_name}', jobname)
     batch_template = batch_template.replace('{nodes}', str(nodes))
-    batch_template = batch_template.replace('{ppn}', str(cluster_params['ppn']))
+    batch_template = batch_template.replace('{tasks_per_node}', str(cluster_params['tasks_per_node']))
     batch_template = batch_template.replace('{walltime}', cluster_params['walltime'])
     batch_template = batch_template.replace('{partition}', cluster_params['partition'])
     batch_template = batch_template.replace('{nproc}', str(nprocs))
     if run_strat['ea_run']:
         openmc_args = prob_name
         params_template = params_template.replace('{n_seeds}', str(run_strat['n_seeds']))
-        params_template = params_template.replace('{n_procs_per_seed}', str(procs_per_seed))
+        params_template = params_template.replace('{n_procs_per_seed}', str(procs_per_node))
         params_template = params_template.replace('{asynchronous}', run_strat['asynchronous'])
         params_template = params_template.replace('{max_window_size}', str(cluster_params['max_window_size']))
         params_template = params_template.replace('{n_particles}', str(run_strat['n_particles']))
-        params_template = params_template.replace('{n_threads}', str(nthreads))
+        params_template = params_template.replace('{threads_per_proc}', str(threads_per_proc))
         params_template = params_template.replace('{n_batches}', str(n_batches))
         params_template = params_template.replace('{n_inactive}', str(n_inactive))
         with open('params.cfg', 'w') as f:
@@ -186,7 +187,7 @@ def create_files(batch_template, params_template, cluster_params, prob_name, run
 
     else:
         max_window_size = cluster_params['max_window_size'] if run_strat['test_num'] == 2 else 0
-        openmc_args = "{} {} {} {} {}".format(run_strat['n_seeds'], nthreads, prob_name, run_strat['test_num'], max_window_size)
+        openmc_args = "{} {} {} {} {}".format(run_strat['n_seeds'], threads_per_proc, prob_name, run_strat['test_num'], max_window_size)
     batch_template = batch_template.replace('{openmc_args}', openmc_args)
     with open(cluster_params['batch_file'], 'w') as f:
         f.write(batch_template)

@@ -97,16 +97,16 @@ def init_openmc_run(problem_type, test_num, max_window_size):
             cmfd_run.tally_begin = 2000
             cmfd_run.solver_begin = 2000
         else:
-            cmfd_run.tally_begin = 10
-            cmfd_run.solver_begin = 20
+            cmfd_run.tally_begin = 1
+            cmfd_run.solver_begin = 1
     else:
         cmfd_run.ref_d = [1.42669, 0.400433]
         if params['runtype'] == 'nocmfd':
             cmfd_run.tally_begin = 2000
             cmfd_run.solver_begin = 2000
         else:
-            cmfd_run.tally_begin = 2
-            cmfd_run.solver_begin = 3
+            cmfd_run.tally_begin = 1
+            cmfd_run.solver_begin = 1
 
     cmfd_run.display = {'balance': True, 'dominance': True, 'entropy': False, 'source': True}
     cmfd_run.feedback = True
