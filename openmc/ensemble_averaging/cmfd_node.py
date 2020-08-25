@@ -12,6 +12,7 @@ from numbers import Real, Integral
 import sys
 import time
 import warnings
+import logging
 
 import numpy as np
 from scipy import sparse
@@ -81,8 +82,10 @@ class CMFDNode(object):
         Normalization factor applied to the CMFD fission source distribution
     ref_d : list of floats
         List of reference diffusion coefficients to fix CMFD parameters to
-    asynchronous : bool
-        Whether or not to use asynchronous ensemble averaging
+    ea_run_strategy : {'bulk-synch', 'eager-asynch', 'redez-asynch'}
+        Specifies type of ensemble averaging run strategy to employ
+    use_logger : bool
+        Whether or not to log events to log file
     window_type : {'expanding', 'rolling', 'none'}
         Specifies type of tally window scheme to use to accumulate CMFD
         tallies. Options are:
@@ -151,6 +154,8 @@ class CMFDNode(object):
         Number of MPI processes used for each seed
     n_seeds : int
         Total number of seeds used for ensemble averaging
+    seed_begin: int
+        Seed number at which to start independent OpenMC runs 
     openmc_verbosity : int
         Verbosity to set OpenMC instance to
     verbosity : int
@@ -188,11 +193,13 @@ class CMFDNode(object):
         self._mesh = None
         self._window_type = None
         self._ref_d = None
-        self._asynchronous = None
+        self._use_logger = None
+        self._ea_run_strategy = None
         self._tally_begin = None
         self._solver_begin = None
         self._n_procs_per_seed = None
         self._n_seeds = None
+        self._seed_begin = None
         self._openmc_verbosty = None
         self._verbosity = None
         self._n_batches = None
@@ -348,8 +355,12 @@ class CMFDNode(object):
         return self._ref_d
 
     @property
-    def asynchronous(self):
-        return self._asynchronous
+    def use_logger(self):
+        return self._use_logger
+
+    @property
+    def ea_run_strategy(self):
+        return self._ea_run_strategy
 
     @property
     def tally_begin(self):
@@ -366,6 +377,10 @@ class CMFDNode(object):
     @property
     def n_seeds(self):
         return self._n_seeds
+
+    @property
+    def seed_begin(self):
+        return self._seed_begin
 
     @property
     def openmc_verbosity(self):
@@ -506,6 +521,10 @@ class CMFDNode(object):
     def n_seeds(self, n_seeds):
         self._n_seeds = n_seeds
 
+    @seed_begin.setter
+    def seed_begin(self, begin):
+        self._seed_begin = begin
+
     @verbosity.setter
     def verbosity(self, verbosity):
         self._verbosity = verbosity
@@ -530,9 +549,13 @@ class CMFDNode(object):
     def ref_d(self, ref_d):
         self._ref_d = ref_d
 
-    @asynchronous.setter
-    def asynchronous(self, asynchronous):
-        self._asynchronous = asynchronous
+    @ea_run_strategy.setter
+    def ea_run_strategy(self, ea_run_strategy):
+        self._ea_run_strategy = ea_run_strategy
+
+    @use_logger.setter
+    def use_logger(self, use_logger):
+        self._use_logger = use_logger
 
     @tally_begin.setter
     def tally_begin(self, begin):
@@ -589,6 +612,8 @@ class CMFDNode(object):
 
     def init(self):
         """ Initialize CMFDNode instance by setting up CMFD parameters """
+        self._log_event('Started CMFD node init')
+        
         # Configure OpenMC parameters
         self._configure_openmc()
 
@@ -609,6 +634,8 @@ class CMFDNode(object):
         # Set cmfd_run variable to True through C API
         openmc.lib.settings.cmfd_run = True
 
+        self._log_event('Finished CMFD node init')
+
     def next_batch(self):
         """ Run next batch for CMFDNode.
 
@@ -619,6 +646,8 @@ class CMFDNode(object):
             batches)
 
         """
+        self._log_event('Started next batch, {} CMFD updates'.format(self._n_cmfd_updates))
+
         # Receive tally data from all OpenMCNode objects before CMFD execution
         if openmc.lib.master():
             self._execute_cmfd()
@@ -627,13 +656,20 @@ class CMFDNode(object):
         else:
             self._current_batch += 1
             status = 1 if self._current_batch == self._n_batches else 0
+
+        self._log_event('Finished batch, {} CMFD updates'.format(self._n_cmfd_updates))
         return status
 
     def finalize(self):
         """ Finalize simulation by printing Ensemble Averaging timing stats. """
+        self._log_event('Started CMFD node finalize')
+
         openmc_timing_stats = self._recv_openmc_timing_stats()
+
         # Print out CMFD timing statistics
         self._write_timing_stats(openmc_timing_stats)
+
+        self._log_event('Finished CMFD node finalize')
 
     def _initialize_ea_params(self, global_args, cmfd_args):
         """ Initialize global parameters inherited from EnsAvgCMFDRun class """
@@ -835,6 +871,11 @@ class CMFDNode(object):
         self._seeds_finished = np.zeros(self._n_seeds, dtype=bool)
         self._seed_lag = np.ones((self._n_seeds,), dtype=int)*self._batch_lag
 
+    def _log_event(self, log_msg):
+        if self._use_logger:
+            current_time = time.time()
+            logging.info(log_msg + ", time={}".format(current_time))
+
     def _recv_tallies_from_openmc(self):
         """ Receive tally data from all OpenMC seeds
 
@@ -845,10 +886,10 @@ class CMFDNode(object):
 
         """
         # Determine how many incoming MPI messages to expect
-        if self._asynchronous:
-            incoming_seeds = 1
-        else:
+        if self._ea_run_strategy == 'bulk-synch':
             incoming_seeds = self._n_seeds
+        else:
+            incoming_seeds = 1
 
         all_tally_data = np.zeros([self._n_seeds, self._tally_data_size],
                                   dtype=np.float64)
@@ -885,6 +926,15 @@ class CMFDNode(object):
                 sys.stdout.flush()
 
             all_tally_data[seed_idx,:] = tally_data
+
+            if self._ea_run_strategy == 'rendez-asynch' and self._current_batch >= self._solver_begin:
+                self._global_comm.Send(self._cmfd_src, dest=source)
+
+                if self._verbosity >= 2:
+                    dest = self._global_comm.Get_rank()
+                    outstr = "{:>11s}Sending CMFD source from process {} to {}"
+                    print(outstr.format('', dest, source))
+                    sys.stdout.flush()
 
         return np.sum(all_tally_data, axis=0)/incoming_seeds, skip_batch
 
@@ -925,12 +975,12 @@ class CMFDNode(object):
 
         # Define effective window size to account for each seed data coming in
         # individually for asynchronous case
-        if self._asynchronous:
+        if self._ea_run_strategy == 'bulk-synch':
+            effective_window_size = self._n_cmfd_updates
+        else:
             n_seeds = self._n_seeds
             n_updates = self._n_cmfd_updates
             effective_window_size = int(np.ceil(n_updates/n_seeds) * n_seeds)
-        else:
-            effective_window_size = self._n_cmfd_updates
 
         if (self._window_type == 'expanding' and
                 effective_window_size == self._window_size * 2 and
@@ -1154,13 +1204,20 @@ class CMFDNode(object):
         """ Runs CMFD calculation on master node """
         # Start CMFD timer
         time_start_cmfd = time.time()
+
         openmc_tallies, skip_batch = self._recv_tallies_from_openmc()
+        log_str = 'Received tallies from OpenMC'
+        if self._ea_run_strategy == 'rendez-asynch' and self._current_batch >= self._solver_begin:
+            log_str += ' and sent CMFD source'
+        self._log_event(log_str)
+
         time_stop_wait_tallies = time.time()
         self._time_waittallies += time_stop_wait_tallies - time_start_cmfd
 
         tally_batch = int(openmc_tallies[-1])
         if tally_batch >= self._tally_begin and not skip_batch:
             self._compute_xs(openmc_tallies)
+            self._log_event('Finished computing CMFD cross sections')
 
         if tally_batch >= self._solver_begin and not skip_batch:
             # Create CMFD data based on OpenMC tallies
@@ -1175,8 +1232,13 @@ class CMFDNode(object):
             # Calculate fission source
             self._calc_fission_source()
 
+            self._log_event('Finished CMFD calculation')
+
             # Broadcast CMFD source to all OpenMC processes
-            self._send_cmfd_src()
+            if self._ea_run_strategy != 'rendez-asynch':
+                self._send_cmfd_src()
+
+                self._log_event('Finished sending CMFD source to all processes')
 
         # Stop CMFD timer
         time_stop_cmfd = time.time()
@@ -1289,7 +1351,7 @@ class CMFDNode(object):
 
         """
         time_start_sendcmfdsrc = time.time()
-        if self._asynchronous:
+        if self._ea_run_strategy == 'eager-asynch':
             # If asynchronous, send data to processes not on final batch
             seed_idx = np.arange(self._n_seeds)[np.invert(self._seeds_finished)]
         else:
@@ -1299,7 +1361,7 @@ class CMFDNode(object):
         # Send CMFD source to relevant processes
         for i in seed_idx:
             dest = self._n_procs_per_seed * (i + 1)
-            if self._asynchronous:
+            if self._ea_run_strategy == 'eager-asynch':
                 self._global_comm.Isend(self._cmfd_src, dest=dest)
             else:
                 self._global_comm.Send(self._cmfd_src, dest=dest)
@@ -1614,7 +1676,7 @@ class CMFDNode(object):
 
         # Multiply window size by n_seeds if asynchrous mode to account for
         # data from a single seed coming in at a time
-        if self._asynchronous:
+        if self._ea_run_strategy != 'bulk-synch':
             self._window_size *= self._n_seeds
 
     def _set_coremap(self):
@@ -1748,6 +1810,7 @@ class CMFDNode(object):
         self._scattxs = np.zeros((nx, ny, nz, ng, ng))  # Incoming, outgoing
         self._nfissxs = np.zeros((nx, ny, nz, ng, ng))  # Incoming, outgoing
         self._diffcof = np.zeros((nx, ny, nz, ng))
+        self._cmfd_src = np.zeros((nx, ny, nz, ng))
 
         # Allocate dtilde and dhat
         self._dtilde = np.zeros((nx, ny, nz, ng, 6))
