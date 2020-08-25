@@ -175,12 +175,25 @@ int openmc_next_batch(int* status)
   }
 
   initialize_batch();
+  std::string fdir = "logs/";
+  std::string fname = "seed" + std::to_string(openmc_get_seed()) + "process" + std::to_string(mpi::rank) + "-openmc.log";
+  if (settings::use_logger) {
+    double time = std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::system_clock::now().time_since_epoch()).count();
+    std::ofstream log(fdir+fname, std::ios_base::app | std::ios_base::out);
+    log.precision(17);
+    log << "Initialized batch, time=" << time << "\n";
+  }
 
   // =======================================================================
   // LOOP OVER GENERATIONS
   for (current_gen = 1; current_gen <= settings::gen_per_batch; ++current_gen) {
-
     initialize_generation();
+    if (settings::use_logger) {
+      double time = std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::system_clock::now().time_since_epoch()).count();
+      std::ofstream log(fdir+fname, std::ios_base::app | std::ios_base::out);
+      log.precision(17);
+      log << "Initialized generation, time=" << time << "\n";
+    }
 
     // Start timer for transport
     simulation::time_transport.start();
@@ -203,10 +216,28 @@ int openmc_next_batch(int* status)
     // Accumulate time for transport
     simulation::time_transport.stop();
 
+    if (settings::use_logger) {
+      double time = std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::system_clock::now().time_since_epoch()).count();
+      std::ofstream log(fdir+fname, std::ios_base::app | std::ios_base::out);
+      log.precision(17);
+      log << "Transported particles, time=" << time << "\n";
+    }
     finalize_generation();
+    if (settings::use_logger) {
+      double time = std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::system_clock::now().time_since_epoch()).count();
+      std::ofstream log(fdir+fname, std::ios_base::app | std::ios_base::out);
+      log.precision(17);
+      log << "Finalized generation, time=" << time << "\n";
+    }
   }
 
   finalize_batch();
+  if (settings::use_logger) {
+    double time = std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::system_clock::now().time_since_epoch()).count();
+    std::ofstream log(fdir+fname, std::ios_base::app | std::ios_base::out);
+    log.precision(17);
+    log << "Finalized batch, time=" << time << "\n";
+  }
 
   // Check simulation ending criteria
   if (status) {

@@ -9,6 +9,9 @@
 
 #include <cstdint>
 #include <vector>
+#include <chrono>
+#include <ios>
+#include <fstream>
 
 namespace openmc {
 

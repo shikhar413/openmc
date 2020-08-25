@@ -17,6 +17,8 @@ import sys
 import time
 from ctypes import c_int
 import warnings
+import os
+import logging
 
 import numpy as np
 from scipy import sparse
@@ -291,6 +293,8 @@ class CMFDRun(object):
         window_type is set to "rolling"
     max_window_size: int
         TODO
+    use_logger : bool
+        Whether or not to log events to log file
     weight_clipping : float
         Weight clipping to control the maximum allowed change in weight in
         the presence of CMFD feedback. During prolongation, the weight factor
@@ -358,6 +362,7 @@ class CMFDRun(object):
         self._window_type = 'none'
         self._window_size = 10
         self._max_window_size = sys.maxsize
+        self._use_logger = False
         self._intracomm = None
         self._use_all_threads = False
 
@@ -496,6 +501,10 @@ class CMFDRun(object):
     @property
     def max_window_size(self):
         return self._max_window_size
+
+    @property
+    def use_logger(self):
+        return self._use_logger
 
     @property
     def power_monitor(self):
@@ -700,6 +709,11 @@ class CMFDRun(object):
             warnings.warn(warn_msg, RuntimeWarning)
         self._max_window_size = window_size
 
+    @use_logger.setter
+    def use_logger(self, use_logger):
+        check_type('CMFD use logger', use_logger, bool)
+        self._use_logger = use_logger
+
     @power_monitor.setter
     def power_monitor(self, power_monitor):
         check_type('CMFD power monitor', power_monitor, bool)
@@ -853,6 +867,12 @@ class CMFDRun(object):
         # Set cmfd_run variable to True through C API
         openmc.lib.settings.cmfd_run = True
 
+        # Create event logger
+        if self._use_logger:
+            openmc.lib.settings.use_logger = True
+            if openmc.lib.master():
+                self._create_logger()
+
     def next_batch(self):
         """ Run next batch for CMFDRun.
 
@@ -863,18 +883,22 @@ class CMFDRun(object):
             batches, 2=tally triggers reached)
 
         """
+        self._log_event('Started next batch, current batch {}'.format(openmc.lib.current_batch()))
         # Initialize CMFD batch
         self._cmfd_init_batch()
 
         # Run next batch
         status = openmc.lib.next_batch()
+        self._log_event('Finished OpenMC next batch')
 
         # Perform CMFD calculations
         self._execute_cmfd()
+        self._log_event('Finished running CMFD')
 
         # Write CMFD data to statepoint
         if openmc.lib.is_statepoint_batch():
             self.statepoint_write()
+        self._log_event('Finished next batch, current batch {}'.format(openmc.lib.current_batch()))
         return status
 
     def finalize(self):
@@ -883,12 +907,14 @@ class CMFDRun(object):
         information.
 
         """
+        self._log_event('Started CMFD finalize')
         # Finalize simuation
         openmc.lib.simulation_finalize()
 
         if openmc.lib.master():
             # Print out CMFD timing statistics
             self._write_cmfd_timing_stats()
+        self._log_event('Finished CMFD finalize')
 
     def statepoint_write(self, filename=None):
         """Write all simulation parameters to statepoint
@@ -910,6 +936,24 @@ class CMFDRun(object):
 
         # Append CMFD data to statepoint file using h5py
         self._write_cmfd_statepoint(filename)
+
+    def _create_logger(self):
+        """ Create logger for logging events"""
+        rank = self._intracomm.Get_rank()
+        seed = openmc.lib.settings.seed
+        log_dir = 'logs/'
+        log_fname = log_dir + 'seed{}process{}.log'.format(seed, rank)
+        log_dfmt = '%m/%d/%Y %I:%M:%S %p'
+        os.system('mkdir -p {}'.format(log_dir))
+
+        logging.basicConfig(format='%(asctime)s %(message)s', datefmt=log_dfmt,
+                            filename=log_fname, filemode='w',  level=logging.INFO)
+        logging.info('Log file created, CMFD initialization complete')
+
+    def _log_event(self, log_msg):
+        if self._use_logger and openmc.lib.master():
+            current_time = time.time()
+            logging.info(log_msg + ", time={}".format(current_time))
 
     def _write_cmfd_statepoint(self, filename):
         """Append all CNFD simulation parameters to existing statepoint
