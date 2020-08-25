@@ -219,6 +219,7 @@ if __name__ == "__main__":
                     if curr_gen == 1:
                         fet_data = np.empty((0, 1+len(labels)), dtype=np.float)
                         entropy_data = np.empty((0, 2+ent_dim), dtype=np.float)
+                        os.system('mkdir -p npy_files')
 
                     # Compute scaled FET coefficients
                     a_n = np.product(coeffs, axis=1) * fet_tallies
@@ -233,8 +234,8 @@ if __name__ == "__main__":
                     if curr_gen % statepoint_interval == 0:
                         #cmfd_run.statepoint_write()
                         seed_num = int(ea_cmfd_run.global_comm.Get_rank() / 2)
-                        np.save("entropy_data_seed{}".format(seed_num), entropy_data)
-                        np.save("fet_data_seed{}".format(seed_num), fet_data)
+                        np.save("npy_files/entropy_data_seed{}".format(seed_num), entropy_data)
+                        np.save("npy_files/fet_data_seed{}".format(seed_num), fet_data)
                         '''
                         # Remove previous statepoint if more than one exists
                         if curr_gen != statepoint_interval:
@@ -245,5 +246,5 @@ if __name__ == "__main__":
 
         # End of simulation, save fet and entropy data
         if capi.master() and ea_cmfd_run.node_type == "OpenMC":
-            np.save("entropy_data_seed{}".format(seed_num), entropy_data)
-            np.save("fet_data_seed{}".format(seed_num), fet_data)
+            np.save("npy_files/entropy_data_seed{}".format(seed_num), entropy_data)
+            np.save("npy_files/fet_data_seed{}".format(seed_num), fet_data)

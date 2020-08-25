@@ -1,9 +1,10 @@
 <?xml version='1.0' encoding='utf-8'?>
 <settings>
   <run_mode>eigenvalue</run_mode>
-  <particles>1000000</particles>
-  <batches>999</batches>
-  <inactive>998</inactive>
+  <particles>{n_particles}</particles>
+  <batches>{n_batches}</batches>
+  <inactive>{n_inactive}</inactive>
+  <seed>1</seed>
   <fet_convergence>
     <dimension>1</dimension>
     <axial_order>10</axial_order>
@@ -14,7 +15,9 @@
     <space type="cartesian">
       <x parameters="-5.0 5.0" type="uniform" />
       <y parameters="-5.0 5.0" type="uniform" />
-      <z parameters="-200.0 200." type="uniform" />
+      <z interpolation="histogram" type="tabular">
+        <parameters>-200.0 196.0 200.0 0.00025 0.225 0.225</parameters>
+      </z>
     </space>
   </source>
   <output>
@@ -27,4 +30,5 @@
     <upper_right>5.0 5.0 200.0</upper_right>
   </mesh>
   <entropy_mesh>1</entropy_mesh>
+  <state_point batches="" />
 </settings>

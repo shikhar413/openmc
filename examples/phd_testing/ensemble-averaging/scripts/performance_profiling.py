@@ -14,23 +14,9 @@ def generate_input_files(cluster, prob_type, run_file):
                 'tasks_per_node': 32,
                 'procs_per_node': 2,
                 'walltime': '12:00:00',
-                'mult_factor': 3,
+                'mult_factor': 4,
                 'n_particles': 10000000,
-                'n_batches': 499,
-                'max_window_size': 32
-            },
-            '1d-homog-offset': {
-                'batch_file': "job.slurm",
-                'params_file': '1dh-params.cfg',
-                'partition': 'sched_mit_nse',
-                'run_command': "sbatch ",
-                'base_files': ['1dh-offset-settings.xml', '1dh-geometry.xml', '1dh-materials.xml'],
-                'tasks_per_node': 32,
-                'procs_per_node': 2,
-                'walltime': '12:00:00',
-                'mult_factor': 3,
-                'n_particles': 10000000,
-                'n_batches': 999,
+                'n_batches': 10,
                 'max_window_size': 32
             },
             '2d-beavrs': {
@@ -42,58 +28,14 @@ def generate_input_files(cluster, prob_type, run_file):
                 'tasks_per_node': 32,
                 'procs_per_node': 2,
                 'walltime': '12:00:00',
-                'mult_factor': 3,
+                'mult_factor': 4,
                 'n_particles': 10000000,
                 'n_batches': 199,
                 'max_window_size': 8
             }
         }
 
-    elif cluster == "LCRC Cluster":
-        param_dict = {
-            '1d-homog': {
-                'batch_file': "job.slurm",
-                'params_file': '1dh-params.cfg',
-                'partition': 'bdwall',
-                'run_command': "sbatch ",
-                'base_files': ['1dh-unif-settings.xml', '1dh-geometry.xml', '1dh-materials.xml'],
-                'tasks_per_node': 36,
-                'procs_per_node': 2,
-                'walltime': '12:00:00',
-                'mult_factor': 32,
-                'n_particles': 10000000,
-                'n_batches': 499,
-                'max_window_size': 32
-            },
-            '1d-homog-offset': {
-                'batch_file': "job.slurm",
-                'params_file': '1dh-params.cfg',
-                'partition': 'bdwall',
-                'run_command': "sbatch ",
-                'base_files': ['1dh-offset-settings.xml', '1dh-geometry.xml', '1dh-materials.xml'],
-                'tasks_per_node': 36,
-                'procs_per_node': 2,
-                'walltime': '12:00:00',
-                'mult_factor': 32,
-                'n_particles': 10000000,
-                'n_batches': 999,
-                'max_window_size': 32
-            },
-            '2d-beavrs': {
-                'batch_file': "job.slurm",
-                'params_file': '2db-params.cfg',
-                'partition': 'bdwall',
-                'run_command': "sbatch ",
-                'base_files': ['2db-settings.xml', '2db-geometry.xml', '2db-materials.xml'],
-                'tasks_per_node': 36,
-                'procs_per_node': 2,
-                'walltime': '12:00:00',
-                'mult_factor': 32,
-                'n_particles': 10000000,
-                'n_batches': 199,
-                'max_window_size': 8
-            }
-        }
+    #elif cluster == "LCRC Cluster":
 
     if prob_type not in param_dict:
         print('Problem type {} not recognized'.format(prob_type))
@@ -109,20 +51,27 @@ def generate_input_files(cluster, prob_type, run_file):
     with open('base/{}'.format(cluster_params['params_file']), 'r') as file:
         params_template = file.read()
 
+    os.system('mkdir -p performance_profiling')
+    os.chdir('performance_profiling')
+
     # Generate files for each problem type
     os.system('mkdir -p {}'.format(prob_type))
     os.chdir(prob_type)
 
     run_strats = [
-        {'particle_mult': False, 'seed_mult': True, 'test_num': 0, 'ea_run': False},          # test1-32seed-10M-noCMFD
-        {'particle_mult': True, 'seed_mult': False, 'test_num': 2, 'ea_run': False},          # test2-1seed-320M-CMFD-window32
-        {'particle_mult': False, 'seed_mult': True, 'ea_run': True, 'asynchronous': 'false'}, # test3-32seed-10M-bsCMFD-window32
-        {'particle_mult': False, 'seed_mult': True, 'ea_run': True, 'asynchronous': 'true'}   # test4-32seed-10M-eaCMFD-window32
+        {'particle_mult': False, 'seed_mult': True, 'test_num': 0, 'ea_run': False},                  # test1-32seed-10M-noCMFD
+        {'particle_mult': True, 'seed_mult': False, 'test_num': 2, 'ea_run': False},                  # test2-1seed-320M-CMFD-window32
+        {'particle_mult': False, 'seed_mult': True, 'ea_run': True, 'ea_run_strat': 'bulk-synch'},    # test3-32seed-10M-bsCMFD-window32
+        {'particle_mult': False, 'seed_mult': True, 'ea_run': True, 'ea_run_strat': 'rendez-asynch'}, # test4-32seed-10M-raCMFD-window32
+        {'particle_mult': False, 'seed_mult': True, 'ea_run': True, 'ea_run_strat': 'eager-asynch'}   # test5-32seed-10M-eaCMFD-window32
     ]
 
     test_num = 0
     for run_strat in run_strats:
         test_num += 1
+
+        if test_num == 5 and prob_type == '2d-beavrs':
+            continue
 
         run_strat['n_particles'] = cluster_params['mult_factor']*cluster_params['n_particles'] if run_strat['particle_mult'] else cluster_params['n_particles']
         run_strat['n_seeds'] = cluster_params['mult_factor'] if run_strat['seed_mult'] else 1
@@ -130,7 +79,7 @@ def generate_input_files(cluster, prob_type, run_file):
         if 'test_num' in run_strat:
             run_type = 'noCMFD' if run_strat['test_num'] == 0 else 'CMFD-window{}'.format(cluster_params['max_window_size'])
         else:
-            run_type = 'bsCMFD-window{}'.format(cluster_params['max_window_size']) if run_strat['asynchronous'] == 'false' else 'eaCMFD-window{}'.format(cluster_params['max_window_size'])
+            run_type = '{}-window{}'.format(run_strat['ea_run_strat'], cluster_params['max_window_size'])
 
         ea_run = run_strat['ea_run']
         dir_name = 'test{}-{}seed-{}M-{}'.format(test_num, run_strat['n_seeds'], int(run_strat['n_particles']/1000000), run_type)
@@ -140,12 +89,12 @@ def generate_input_files(cluster, prob_type, run_file):
         os.chdir(dir_name)
         for base_file in cluster_params['base_files']:
             new_file = base_file.split('-')[-1] if 'xml' in base_file else base_file
-            os.system('cp ./../../base/{} ./{}'.format(base_file, new_file))
+            os.system('cp ./../../../base/{} ./{}'.format(base_file, new_file))
 
         if ea_run:
-            os.system('cp ./../../base/run_openmc_ea.py ./run_openmc.py')
+            os.system('cp ./../../../base/run_openmc_ea.py ./run_openmc.py')
         else:
-            os.system('cp ./../../base/run_openmc_noea.py ./run_openmc.py')
+            os.system('cp ./../../../base/run_openmc_noea.py ./run_openmc.py')
              
         create_files(batch_template, params_template, cluster_params, prob_type, run_file, run_strat)
         os.chdir('./..')
@@ -171,23 +120,25 @@ def create_files(batch_template, params_template, cluster_params, prob_name, run
     batch_template = batch_template.replace('{tasks_per_node}', str(cluster_params['tasks_per_node']))
     batch_template = batch_template.replace('{walltime}', cluster_params['walltime'])
     batch_template = batch_template.replace('{partition}', cluster_params['partition'])
+    batch_template = batch_template.replace('{procs_per_node}', str(procs_per_node))
     batch_template = batch_template.replace('{nproc}', str(nprocs))
     if run_strat['ea_run']:
         openmc_args = prob_name
         params_template = params_template.replace('{n_seeds}', str(run_strat['n_seeds']))
         params_template = params_template.replace('{n_procs_per_seed}', str(procs_per_node))
-        params_template = params_template.replace('{asynchronous}', run_strat['asynchronous'])
+        params_template = params_template.replace('{ea_run_strat}', run_strat['ea_run_strat'])
         params_template = params_template.replace('{max_window_size}', str(cluster_params['max_window_size']))
         params_template = params_template.replace('{n_particles}', str(run_strat['n_particles']))
         params_template = params_template.replace('{threads_per_proc}', str(threads_per_proc))
         params_template = params_template.replace('{n_batches}', str(n_batches))
         params_template = params_template.replace('{n_inactive}', str(n_inactive))
+        params_template = params_template.replace('{use_logger}', 'true')
         with open('params.cfg', 'w') as f:
             f.write(params_template)
 
     else:
         max_window_size = cluster_params['max_window_size'] if run_strat['test_num'] == 2 else 0
-        openmc_args = "{} {} {} {} {}".format(run_strat['n_seeds'], threads_per_proc, prob_name, run_strat['test_num'], max_window_size)
+        openmc_args = "{} {} {} {} --log {}".format(run_strat['n_seeds'], threads_per_proc, prob_name, run_strat['test_num'], max_window_size)
     batch_template = batch_template.replace('{openmc_args}', openmc_args)
     with open(cluster_params['batch_file'], 'w') as f:
         f.write(batch_template)

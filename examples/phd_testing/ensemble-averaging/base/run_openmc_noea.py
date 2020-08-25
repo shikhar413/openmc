@@ -6,7 +6,7 @@ from mpi4py import MPI
 import openmc.lib as capi
 import numpy as np
 
-def init_openmc_run(problem_type, test_num, max_window_size):
+def init_openmc_run(problem_type, test_num, max_window_size, use_logger):
     test_num_dict = {
         '0': {
             'runtype': 'nocmfd',
@@ -112,6 +112,9 @@ def init_openmc_run(problem_type, test_num, max_window_size):
     cmfd_run.feedback = True
     cmfd_run.downscatter = True
     cmfd_run.gauss_seidel_tolerance = [1.e-15, 1.e-20]
+    if use_logger:
+        cmfd_run.use_logger = True
+
     if mesh_type in ['pincell', '0p4cm']:
         cmfd_run.use_all_threads = True
 
@@ -287,8 +290,11 @@ if __name__ == "__main__":
     # Get test number as command line argument
     test_num = sys.argv[4]
 
+    # Get use_logger as command line argument
+    use_logger = sys.argv[5] == '--log'
+
     # Get max window size as command line argument if provided
-    max_window_size = int(sys.argv[5]) if len(sys.argv) == 6 else None
+    max_window_size = int(sys.argv[6]) if len(sys.argv) == 7 else None
 
     labels, coeffs = init_fet_params(prob_type)
 
@@ -319,7 +325,7 @@ if __name__ == "__main__":
     statepoint_interval = 10
 
     # TODO Get OpenMC instance to run in memory
-    openmc_run = init_openmc_run(prob_type, test_num, max_window_size)
+    openmc_run = init_openmc_run(prob_type, test_num, max_window_size, use_logger)
 
     with openmc_run.run_in_memory(args=args, intracomm=local_comm, seed=seed):
         for _ in openmc_run.iter_batches():
@@ -333,6 +339,7 @@ if __name__ == "__main__":
                 if curr_gen == 1:
                     fet_data = np.empty((0,1+len(labels)), float)
                     entropy_data = np.empty((0,2+len(entropy_p)), float)
+                    os.system('mkdir -p npy_files')
 
                 # Compute scaled FET coefficients
                 a_n = np.product(coeffs, axis=1) * fet_tallies
@@ -345,8 +352,8 @@ if __name__ == "__main__":
             if curr_gen % statepoint_interval == 0:
                 #openmc_run.statepoint_write()
                 if local_comm.Get_rank() == 0:
-                    np.save("entropy_data_seed{}".format(seed), entropy_data)
-                    np.save("fet_data_seed{}".format(seed), fet_data)
+                    np.save("npy_files/entropy_data_seed{}".format(seed), entropy_data)
+                    np.save("npy_files/fet_data_seed{}".format(seed), fet_data)
                     '''
                     # Remove previous statepoint if more than one exists
                     if curr_gen != statepoint_interval:
@@ -357,5 +364,5 @@ if __name__ == "__main__":
 
     # End of simulation, save fet and entropy data
     if local_comm.Get_rank() == 0:
-        np.save("entropy_data_seed{}".format(seed), entropy_data)
-        np.save("fet_data_seed{}".format(seed), fet_data)
+        np.save("npy_files/entropy_data_seed{}".format(seed), entropy_data)
+        np.save("npy_files/fet_data_seed{}".format(seed), fet_data)

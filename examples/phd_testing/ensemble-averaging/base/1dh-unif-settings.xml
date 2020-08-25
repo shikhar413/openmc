@@ -1,9 +1,10 @@
 <?xml version='1.0' encoding='utf-8'?>
 <settings>
   <run_mode>eigenvalue</run_mode>
-  <particles>1000000</particles>
-  <batches>999</batches>
-  <inactive>998</inactive>
+  <particles>{n_particles}</particles>
+  <batches>{n_batches}</batches>
+  <inactive>{n_inactive}</inactive>
+  <seed>1</seed>
   <fet_convergence>
     <dimension>1</dimension>
     <axial_order>10</axial_order>
@@ -27,4 +28,5 @@
     <upper_right>5.0 5.0 200.0</upper_right>
   </mesh>
   <entropy_mesh>1</entropy_mesh>
+  <state_point batches="" />
 </settings>

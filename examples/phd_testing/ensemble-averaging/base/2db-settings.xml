@@ -27,4 +27,5 @@
     <upper_right> 182.78094 182.78094 240.0 </upper_right>
   </mesh>
   <entropy_mesh>2</entropy_mesh>
+  <state_point batches="" />
 </settings>
