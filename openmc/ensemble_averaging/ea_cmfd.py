@@ -380,7 +380,7 @@ class EnsAvgCMFDRun(object):
         self.global_comm.Barrier()
 
         # Create logger
-        if self._use_logger and self._local_comm.Get_rank() == 0:
+        if self._use_logger:
             self._create_logger()
 
     def finalize(self):
