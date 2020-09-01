@@ -348,6 +348,8 @@ class OpenMCNode(object):
         necessary CMFD parameters.
 
         """
+        if self._use_logger:
+            openmc.lib.settings.use_logger = True
         self._log_event('Started OpenMC node init')
 
         # Configure OpenMC parameters
