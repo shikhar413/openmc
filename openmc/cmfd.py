@@ -389,7 +389,6 @@ class CMFDRun(object):
         self._scatt_rate = None
         self._nfiss_rate = None
         self._current_rate = None
-        self._sourcecount_rate = None
         self._flux = None
         self._totalxs = None
         self._p1scattxs = None
@@ -1007,8 +1006,6 @@ class CMFDRun(object):
                                               data=self._scatt_rate)
                     cmfd_group.create_dataset('total_rate',
                                               data=self._total_rate)
-                    cmfd_group.create_dataset('sourcecount_rate', 
-                                              data=self._sourcecount_rate)
                 elif openmc.settings.verbosity >= 5:
                     print('  CMFD data not written to statepoint file'
                           'as it already exists in {}'.format(filename))
@@ -1065,6 +1062,11 @@ class CMFDRun(object):
                   "     Solving matrices              =  {:.5e} seconds\n")
         print(outstr.format(self._time_cmfd, self._time_cmfdbuild,
                             self._time_cmfdsolve))
+        print('CMFD Reweight')
+        print(self._time_cmfdreweight)
+        print(self._time_cmfdreweight1)
+        print(self._time_cmfdreweight2)
+        print(self._time_cmfdreweight3)
         sys.stdout.flush()
 
     def _configure_cmfd(self):
@@ -1164,12 +1166,15 @@ class CMFDRun(object):
             self._scatt_rate = np.zeros((nx, ny, nz, ng, ng, 0))
             self._nfiss_rate = np.zeros((nx, ny, nz, ng, ng, 0))
             self._current_rate = np.zeros((nx, ny, nz, 12, ng, 0))
-            self._sourcecount_rate = np.zeros((nx*ny*nz, ng, 0))
 
             # Initialize timers
             self._time_cmfd = 0.0
             self._time_cmfdbuild = 0.0
             self._time_cmfdsolve = 0.0
+            self._time_cmfdreweight = 0.0
+            self._time_cmfdreweight1 = 0.0
+            self._time_cmfdreweight2 = 0.0
+            self._time_cmfdreweight3 = 0.0
 
     def _reset_cmfd(self, filename):
         """Reset all CMFD parameters from statepoint
@@ -1236,7 +1241,6 @@ class CMFDRun(object):
                     self._p1scatt_rate = cmfd_group['p1scatt_rate'][()]
                     self._scatt_rate = cmfd_group['scatt_rate'][()]
                     self._total_rate = cmfd_group['total_rate'][()]
-                    self._sourcecount_rate = cmfd_group['sourcecount_rate'][()]
                     self._mat_dim = np.max(self._coremap) + 1
 
     def _set_tally_window(self):
@@ -1309,8 +1313,15 @@ class CMFDRun(object):
                 # Calculate fission source
                 self._calc_fission_source()
 
+            if openmc.lib.master():
+                # Start CMFD timer
+                time_start_reweight = time.time()
             # Calculate weight factors
             self._cmfd_reweight()
+            if openmc.lib.master():
+                # Stop CMFD timer
+                time_stop_reweight = time.time()
+                self._time_cmfdreweight += time_stop_reweight - time_start_reweight
 
         # Stop CMFD timer
         if openmc.lib.master():
@@ -1531,11 +1542,19 @@ class CMFDRun(object):
 
     def _cmfd_reweight(self):
         """Performs weighting of particles in source bank"""
+        if openmc.lib.master():
+            # Stop CMFD timer
+            time_start_reweight1 = time.time()
+
         # Get spatial dimensions and energy groups
         nx, ny, nz, ng = self._indices
 
         # Count bank site in mesh and reverse due to egrid structured
         outside = self._count_bank_sites()
+
+        if openmc.lib.master():
+            # Stop CMFD timer
+            time_start_reweight2 = time.time()
 
         # Check and raise error if source sites exist outside of CMFD mesh
         if openmc.lib.master() and outside:
@@ -1546,9 +1565,6 @@ class CMFDRun(object):
         # Have master compute weight factors, ignore any zeros in
         # sourcecounts or cmfd_src
         if openmc.lib.master():
-            # Aggregate sourcecounts over banked sourcecount_rate
-            self._sourcecounts = np.sum(self._sourcecount_rate, axis=-1)
-
             # Compute normalization factor
             norm = np.sum(self._sourcecounts) / np.sum(self._cmfd_src)
 
@@ -1578,6 +1594,10 @@ class CMFDRun(object):
 
         if not self._feedback:
             return
+
+        if openmc.lib.master():
+            # Stop CMFD timer
+            time_start_reweight3 = time.time()
 
         # Broadcast weight factors to all procs
         if have_mpi:
@@ -1616,6 +1636,13 @@ class CMFDRun(object):
         if np.any(source_energies > energy[-1]):
             warn_msg = 'Detected source point above energy grid'
             warnings.warn(warn_msg, RuntimeWarning)
+        if openmc.lib.master():
+            # Stop CMFD timer
+            time_start_reweight4 = time.time()
+            self._time_cmfdreweight1 += time_start_reweight2 - time_start_reweight1
+            self._time_cmfdreweight2 += time_start_reweight3 - time_start_reweight2
+            self._time_cmfdreweight3 += time_start_reweight4 - time_start_reweight3
+
 
     def _count_bank_sites(self):
         """Determines the number of fission bank sites in each cell of a given
@@ -1635,8 +1662,8 @@ class CMFDRun(object):
         ng = self._indices[3]
 
         outside = np.zeros(1, dtype=bool)
-        sourcecounts = np.zeros((nxnynz, ng))
-        count = np.zeros(sourcecounts.shape)
+        self._sourcecounts = np.zeros((nxnynz, ng))
+        count = np.zeros(self._sourcecounts.shape)
 
         # Get location and energy of each particle in source bank
         source_xyz = source_bank['r']
@@ -1701,32 +1728,26 @@ class CMFDRun(object):
 
         # Determine all unique combinations of mesh bin and energy bin, and
         # sum total weight of particles that belong to these combinations
+        idx, counts = np.unique(np.array([mesh_bins, energy_bins]), axis=1,
+                                return_counts=True)
+        '''
         idx, inverse = np.unique(np.array([mesh_bins, energy_bins]), axis=1,
                                 return_inverse=True)
         counts = np.bincount(inverse, weights=source_weights)
+        '''
 
         # Store counts to appropriate mesh-energy combination
         count[idx[0].astype(int), idx[1].astype(int)] = counts
 
         if have_mpi:
             # Collect values of count from all processors
-            self._intracomm.Reduce(count, sourcecounts, MPI.SUM)
+            self._intracomm.Reduce(count, self._sourcecounts, MPI.SUM)
             # Check if there were sites outside the mesh for any processor
             self._intracomm.Reduce(outside, sites_outside, MPI.LOR)
         # Deal with case if MPI not defined (only one proc)
         else:
             sites_outside = outside
-            sourcecounts = count
-
-        if openmc.lib.master():
-            # Discard sourcecounts from oldest batch if window limit reached
-            tally_windows = self._sourcecount_rate.shape[-1] + 1
-            if tally_windows > self._window_size:
-                self._sourcecount_rate = self._sourcecount_rate[...,1:]
-
-            # Bank sourcecounts to sourcecount_rate
-            self._sourcecount_rate = np.append(self._sourcecount_rate, 
-                                               sourcecounts[..., None], axis=2)
+            self._sourcecounts = count
 
         return sites_outside[0]
 
