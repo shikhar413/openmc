@@ -30,7 +30,7 @@ def generate_input_files(cluster, prob_type, run_file):
                 'walltime': '12:00:00',
                 'mult_factor': 4,
                 'n_particles': 10000000,
-                'n_batches': 199,
+                'n_batches': 10,
                 'max_window_size': 8
             }
         }
