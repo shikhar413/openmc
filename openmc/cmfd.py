@@ -892,7 +892,6 @@ class CMFDRun(object):
 
         # Perform CMFD calculations
         self._execute_cmfd()
-        self._log_event('Finished running CMFD')
 
         # Write CMFD data to statepoint
         if openmc.lib.is_statepoint_batch():
@@ -1062,11 +1061,6 @@ class CMFDRun(object):
                   "     Solving matrices              =  {:.5e} seconds\n")
         print(outstr.format(self._time_cmfd, self._time_cmfdbuild,
                             self._time_cmfdsolve))
-        print('CMFD Reweight')
-        print(self._time_cmfdreweight)
-        print(self._time_cmfdreweight1)
-        print(self._time_cmfdreweight2)
-        print(self._time_cmfdreweight3)
         sys.stdout.flush()
 
     def _configure_cmfd(self):
@@ -1171,10 +1165,6 @@ class CMFDRun(object):
             self._time_cmfd = 0.0
             self._time_cmfdbuild = 0.0
             self._time_cmfdsolve = 0.0
-            self._time_cmfdreweight = 0.0
-            self._time_cmfdreweight1 = 0.0
-            self._time_cmfdreweight2 = 0.0
-            self._time_cmfdreweight3 = 0.0
 
     def _reset_cmfd(self, filename):
         """Reset all CMFD parameters from statepoint
@@ -1291,6 +1281,7 @@ class CMFDRun(object):
             if openmc.lib.current_batch() >= self._tally_begin:
                 # Calculate all cross sections based on tally window averages
                 self._compute_xs()
+        self._log_event('Finished computing CMFD XS')
 
         # Execute CMFD algorithm if CMFD on for current batch
         if self._cmfd_on:
@@ -1313,16 +1304,12 @@ class CMFDRun(object):
                 # Calculate fission source
                 self._calc_fission_source()
 
-            if openmc.lib.master():
-                # Start CMFD timer
-                time_start_reweight = time.time()
+            self._log_event('Finished running CMFD solver')
+
             # Calculate weight factors
             self._cmfd_reweight()
-            if openmc.lib.master():
-                # Stop CMFD timer
-                time_stop_reweight = time.time()
-                self._time_cmfdreweight += time_stop_reweight - time_start_reweight
 
+        self._log_event('Finished CMFD reweight')
         # Stop CMFD timer
         if openmc.lib.master():
             time_stop_cmfd = time.time()
@@ -1542,10 +1529,6 @@ class CMFDRun(object):
 
     def _cmfd_reweight(self):
         """Performs weighting of particles in source bank"""
-        if openmc.lib.master():
-            # Stop CMFD timer
-            time_start_reweight1 = time.time()
-
         # Get spatial dimensions and energy groups
         nx, ny, nz, ng = self._indices
 
@@ -1636,13 +1619,6 @@ class CMFDRun(object):
         if np.any(source_energies > energy[-1]):
             warn_msg = 'Detected source point above energy grid'
             warnings.warn(warn_msg, RuntimeWarning)
-        if openmc.lib.master():
-            # Stop CMFD timer
-            time_start_reweight4 = time.time()
-            self._time_cmfdreweight1 += time_start_reweight2 - time_start_reweight1
-            self._time_cmfdreweight2 += time_start_reweight3 - time_start_reweight2
-            self._time_cmfdreweight3 += time_start_reweight4 - time_start_reweight3
-
 
     def _count_bank_sites(self):
         """Determines the number of fission bank sites in each cell of a given
@@ -1728,13 +1704,9 @@ class CMFDRun(object):
 
         # Determine all unique combinations of mesh bin and energy bin, and
         # sum total weight of particles that belong to these combinations
-        idx, counts = np.unique(np.array([mesh_bins, energy_bins]), axis=1,
-                                return_counts=True)
-        '''
         idx, inverse = np.unique(np.array([mesh_bins, energy_bins]), axis=1,
                                 return_inverse=True)
         counts = np.bincount(inverse, weights=source_weights)
-        '''
 
         # Store counts to appropriate mesh-energy combination
         count[idx[0].astype(int), idx[1].astype(int)] = counts
