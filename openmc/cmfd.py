@@ -1027,7 +1027,7 @@ class CMFDRun(object):
 
         args = temp_loss.indptr, len(temp_loss.indptr), \
             temp_loss.indices, len(temp_loss.indices), n, \
-            self._spectral, self._indices, coremap, self._use_all_threads
+            self._spectral, coremap, self._use_all_threads
         return openmc.lib._dll.openmc_initialize_linsolver(*args)
 
     def _write_cmfd_output(self):
@@ -1138,6 +1138,12 @@ class CMFDRun(object):
                 raise OpenMCError('Number of reference diffusion parameters '
                                   'must equal number of CMFD energy groups')
 
+        # Extract spatial and energy indices
+        nx, ny, nz, ng = self._indices
+
+        # Initialize CMFD source to all zeros
+        self._cmfd_src = np.zeros((nx, ny, nz, ng))
+
         # Define all variables that will exist only on master process
         if openmc.lib.master():
             # Set global albedo
@@ -1148,9 +1154,6 @@ class CMFDRun(object):
 
             # Set up CMFD coremap
             self._set_coremap()
-
-            # Extract spatial and energy indices
-            nx, ny, nz, ng = self._indices
 
             # Allocate parameters that need to be stored for tally window
             self._openmc_src_rate = np.zeros((nx, ny, nz, ng, 0))
@@ -1306,8 +1309,17 @@ class CMFDRun(object):
 
             self._log_event('Finished running CMFD solver')
 
-            # Calculate weight factors
-            self._cmfd_reweight()
+            # Calculate weightfactors and update source weights in C++
+            # Energy axis must be flipped and nx/nz axes must be
+            # swapped to match OpenMC C++ binning style
+            #'''
+            src_flipped = np.flip(self._cmfd_src, axis=3)
+            src_swapped = np.swapaxes(src_flipped, 0, 2)
+            args = self._feedback, src_swapped.flatten()
+            openmc.lib._dll.openmc_cmfd_reweight(*args)
+            #'''
+            #self._cmfd_reweight()
+
 
         self._log_event('Finished CMFD reweight')
         # Stop CMFD timer
@@ -3228,3 +3240,7 @@ class CMFDRun(object):
                 cmfd_tally.scores = ['scatter']
                 cmfd_tally.type = 'volume'
                 cmfd_tally.estimator = 'analog'
+
+        args = self._tally_ids[0], self._indices, self._norm, \
+               self._weight_clipping
+        openmc.lib._dll.openmc_initialize_mesh_egrid(*args)
