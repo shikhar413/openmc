@@ -192,6 +192,7 @@ class CMFDNode(object):
         # Variables defined by EnsAvgCMFDRun class
         self._mesh = None
         self._window_type = None
+        self._norm = None
         self._ref_d = None
         self._use_logger = None
         self._ea_run_strategy = None
@@ -307,10 +308,6 @@ class CMFDNode(object):
         return self._cmfd_ktol
 
     @property
-    def norm(self):
-        return self._norm
-
-    @property
     def window_size(self):
         return self._window_size
 
@@ -349,6 +346,10 @@ class CMFDNode(object):
     @property
     def window_type(self):
         return self._window_type
+
+    @property
+    def norm(self):
+        return self._norm
 
     @property
     def ref_d(self):
@@ -449,11 +450,6 @@ class CMFDNode(object):
         check_type('CMFD eigenvalue tolerance', cmfd_ktol, Real)
         self._cmfd_ktol = cmfd_ktol
 
-    @norm.setter
-    def norm(self, norm):
-        check_type('CMFD norm', norm, Real)
-        self._norm = norm
-
     @window_size.setter
     def window_size(self, window_size):
         check_type('CMFD window size', window_size, Integral)
@@ -544,6 +540,10 @@ class CMFDNode(object):
     @window_type.setter
     def window_type(self, window_type):
         self._window_type = window_type
+
+    @norm.setter
+    def norm(self, norm):
+        self._norm = norm
 
     @ref_d.setter
     def ref_d(self, ref_d):
@@ -683,10 +683,9 @@ class CMFDNode(object):
 
     def _write_summary(self):
         """ Write summary of CMFD node parameters """
-        cmfd_params = ['downscatter', 'cmfd_ktol', 'norm',
-                       'w_shift', 'stol', 'spectral', 'window_size',
-                       'gauss_seidel_tolerance', 'display', 'n_threads',
-                       'max_window_size', 'batch_lag']
+        cmfd_params = ['downscatter', 'cmfd_ktol', 'w_shift', 'stol',
+                       'spectral', 'window_size', 'gauss_seidel_tolerance',
+                       'display', 'n_threads', 'max_window_size', 'batch_lag']
         rank = self._global_comm.Get_rank()
         if self._global_comm.Get_rank() == 0:
             outstr = "********** PROCESS {}: CMFD NODE, ACTIVE **********\n"

@@ -42,6 +42,8 @@ class OpenMCNode(object):
         Batch number at which CMFD solver should start executing
     mesh : openmc.cmfd.CMFDMesh
         Structured mesh to be used for acceleration
+    norm : float
+        Normalization factor applied to the CMFD fission source distribution
     ref_d : list of floats
         List of reference diffusion coefficients to fix CMFD parameters to
     ea_run_strategy : {'bulk-synch', 'eager-asynch', 'redez-asynch'}
@@ -111,6 +113,7 @@ class OpenMCNode(object):
         # Variables defined by EnsAvgCMFDRun class
         self._tally_begin = None
         self._solver_begin = None
+        self._norm = None
         self._ref_d = None
         self._use_logger = None
         self._ea_run_strategy = None
@@ -148,6 +151,10 @@ class OpenMCNode(object):
     @property
     def solver_begin(self):
         return self._solver_begin
+
+    @property
+    def norm(self):
+        return self._norm
 
     @property
     def ref_d(self):
@@ -253,6 +260,10 @@ class OpenMCNode(object):
     @solver_begin.setter
     def solver_begin(self, begin):
         self._solver_begin = begin
+
+    @norm.setter
+    def norm(self, norm):
+        self._norm = norm
 
     @ref_d.setter
     def ref_d(self, ref_d):
@@ -420,15 +431,6 @@ class OpenMCNode(object):
                                            time_start_sendtallies)
 
         if self._current_batch >= self._solver_begin:
-            # Count bank sites in CMFD mesh
-            outside = self._count_bank_sites()
-
-            # Check and raise error if source sites exist outside of CMFD mesh
-            if openmc.lib.master() and outside:
-                raise OpenMCError('Source sites outside of the CMFD mesh')
-
-            self._log_event('Finished counting bank sites')
-
             # Receive updated weight factors from CMFD node and update source
             if self._ea_run_strategy != 'rendez-asynch' and openmc.lib.master():
                 time_start_recvcmfdsrc = time.time()
@@ -438,8 +440,16 @@ class OpenMCNode(object):
                 self._time_waitcmfdsrc += (time_stop_recvcmfdsrc -
                                            time_start_recvcmfdsrc)
 
-            # Reweight source based on updated weight factors
-            self._cmfd_reweight()
+            # Calculate weightfactors and update source weights in C++
+            # Energy axis must be flipped and nx/nz axes must be
+            # swapped to match OpenMC C++ binning style
+            src_flipped = np.flip(self._cmfd_src, axis=3)
+            src_swapped = np.swapaxes(src_flipped, 0, 2)
+            args = True, src_swapped.flatten()
+            openmc.lib._dll.openmc_cmfd_reweight(*args)
+
+            #self._cmfd_reweight()
+
             self._log_event('Finished CMFD reweight')
 
         # Stop timer for OpenMC node
@@ -534,6 +544,10 @@ class OpenMCNode(object):
 
         # Initialize parameters for CMFD tally windows
         self._set_tally_window()
+
+        # Create empty array for cmfd_src
+        nx, ny, nz, ng = self._indices
+        self._cmfd_src = np.zeros((nx, ny, nz, ng))
 
         # Set reference diffusion parameters
         if self._ref_d.size > 0:
@@ -935,3 +949,7 @@ class OpenMCNode(object):
                 cmfd_tally.scores = ['scatter']
                 cmfd_tally.type = 'volume'
                 cmfd_tally.estimator = 'analog'
+
+        args = self._tally_ids[0], self._indices, self._norm, \
+               self._weight_clipping
+        openmc.lib._dll.openmc_initialize_mesh_egrid(*args)
