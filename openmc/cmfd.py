@@ -411,6 +411,7 @@ class CMFDRun(object):
         self._resnb = None
         self._reset_every = None
         self._time_cmfd = None
+        self.cpp = True         # TODO remove for production
         self._time_cmfdbuild = None
         self._time_cmfdsolve = None
 
@@ -1025,9 +1026,10 @@ class CMFDRun(object):
         # Pass coremap as 1-d array of 32-bit integers
         coremap = np.swapaxes(self._coremap, 0, 2).flatten().astype(np.int32)
 
+        # TODO remove cmfd_indices for production
         args = temp_loss.indptr, len(temp_loss.indptr), \
             temp_loss.indices, len(temp_loss.indices), n, \
-            self._spectral, coremap, self._use_all_threads
+            self._spectral, self._indices, coremap, self._use_all_threads
         return openmc.lib._dll.openmc_initialize_linsolver(*args)
 
     def _write_cmfd_output(self):
@@ -1312,14 +1314,16 @@ class CMFDRun(object):
             # Calculate weightfactors and update source weights in C++
             # Energy axis must be flipped and nx/nz axes must be
             # swapped to match OpenMC C++ binning style
-            #'''
-            src_flipped = np.flip(self._cmfd_src, axis=3)
-            src_swapped = np.swapaxes(src_flipped, 0, 2)
-            args = self._feedback, src_swapped.flatten()
-            openmc.lib._dll.openmc_cmfd_reweight(*args)
-            #'''
-            #self._cmfd_reweight()
-
+            # TODO clean up for production
+            if openmc.lib.master():
+                reweight_start = time.time()
+            if self.cpp:
+                src_flipped = np.flip(self._cmfd_src, axis=3)
+                src_swapped = np.swapaxes(src_flipped, 0, 2)
+                args = self._feedback, src_swapped.flatten()
+                openmc.lib._dll.openmc_cmfd_reweight(*args)
+            else:
+                self._cmfd_reweight()
 
         self._log_event('Finished CMFD reweight')
         # Stop CMFD timer
@@ -1539,6 +1543,7 @@ class CMFDRun(object):
         self._src_cmp.append(np.sqrt(1.0 / self._norm
                              * np.sum((self._cmfd_src - self._openmc_src)**2)))
 
+    # TODO: delete sourcecounts, cmfd_reweight, count_bank_sites, weightfactors, egrid when merging cmfd_reweight-cpp in
     def _cmfd_reweight(self):
         """Performs weighting of particles in source bank"""
         # Get spatial dimensions and energy groups
@@ -1586,6 +1591,11 @@ class CMFDRun(object):
             self._weightfactors[self._weightfactors > ub] = ub
             lb = 1./(1. + self._weight_clipping)
             self._weightfactors[self._weightfactors < lb] = lb
+            print(self._cmfd_src)
+            print(sourcecounts)
+            print(self._weightfactors)
+            for i in self._weightfactors:
+                print(i)
 
         if not self._feedback:
             return

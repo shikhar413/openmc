@@ -264,10 +264,12 @@ int get_cmfd_energy_bin(const double E)
 {
   // Check if energy is out of grid bounds
   if (E < cmfd::egrid[0]) {
-    // TODO throw wanring message
+    // throw warning message
+    warning("Detected source point below energy grid");
     return 0;
-  } else if (E >= cmfd::egrid[cmfd::ng - 1]) {
-    // TODO throw warning message
+  } else if (E >= cmfd::egrid[cmfd::ng]) {
+    // throw warning message
+    warning("Detected source point above energy grid");
     return cmfd::ng - 1;
   } else {
     // Iterate through energy grid to find matching bin
@@ -300,12 +302,24 @@ xt::xtensor<double, 1> count_bank_sites(xt::xtensor<int, 1>& bins, bool* outside
     const auto& site = simulation::source_bank[i];
 
     // determine scoring bin for CMFD mesh
-    int mesh_bin = cmfd::mesh->get_bin(site.r);
+    //int mesh_bin = cmfd::mesh->get_bin(site.r);
+    int mesh_bin;   // TEMP
+    mesh_bin = cmfd::mesh->get_bin(site.r);    // TEMP
 
     // if outside mesh, skip particle
     if (mesh_bin < 0) {
       outside_ = true;
-      continue;
+      //continue;  TEMP BEGIN!
+      auto& site2 = simulation::source_bank[i];
+      auto dim = cmfd::mesh->shape_;
+      auto ll = cmfd::mesh->lower_left_;
+      auto width = cmfd::mesh->width_;
+      for (int j = 0; j < 3; j++) {
+        if (site.r[j] > cmfd::mesh->upper_right_[j] || site.r[j] < cmfd::mesh->lower_left_[j])
+          site2.r[j] = ll[j]+float(dim[j])/2*width[j];
+      }
+      mesh_bin = cmfd::mesh->get_bin(site.r);
+      // TEMP END!
     }
 
     // determine scoring bin for CMFD energy
@@ -474,8 +488,8 @@ void openmc_cmfd_reweight(const bool feedback, const double* cmfd_src)
   xt::xtensor<double, 1> weightfactors = xt::xtensor<double, 1>({src_size}, 1.);
   if (mpi::master) {
     if (sites_outside) {
-      // TODO don't exit
-      fatal_error("Source sites outside of the CMFD mesh");
+      //fatal_error("Source sites outside of the CMFD mesh");  TEMP
+      warning("Source sites outside of the CMFD mesh");
     }
 
     double norm = xt::sum(sourcecounts)()/cmfd::norm;
@@ -492,6 +506,7 @@ void openmc_cmfd_reweight(const bool feedback, const double* cmfd_src)
           weight = lb;
         }
         weightfactors[i] = weight;
+        std::cout << cmfd_src[i] << " " << sourcecounts[i] << " " << weight << "\n";
       }
     }
   }
@@ -520,8 +535,8 @@ void openmc_cmfd_reweight(const bool feedback, const double* cmfd_src)
 extern "C"
 void openmc_initialize_linsolver(const int* indptr, int len_indptr,
                                  const int* indices, int n_elements, int dim,
-                                 double spectral, const int* map,
-                                 bool use_all_threads)
+                                 double spectral, const int* cmfd_indices,
+                                 const int* map, bool use_all_threads)
 {
   // Store elements of indptr
   for (int i = 0; i < len_indptr; i++)
@@ -535,8 +550,17 @@ void openmc_initialize_linsolver(const int* indptr, int len_indptr,
   cmfd::dim = dim;
   cmfd::spectral = spectral;
 
+  // TEMP: Not necessary for production
+  // Set number of groups
+  cmfd::ng = cmfd_indices[3];
+
   // Set indexmap if 1 or 2 group problem
   if (cmfd::ng == 1 || cmfd::ng == 2) {
+    // TEMP: not necessary for production
+    cmfd::nx = cmfd_indices[0];
+    cmfd::ny = cmfd_indices[1];
+    cmfd::nz = cmfd_indices[2];
+
     // Resize indexmap and set its elements
     cmfd::indexmap.resize({static_cast<size_t>(dim), 3});
     set_indexmap(map);

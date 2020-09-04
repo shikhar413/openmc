@@ -52,7 +52,7 @@ _init_mesh_egrid_args = [c_int, _array_1d_int, c_double, c_double]
 _dll.openmc_initialize_mesh_egrid.argtypes = _init_mesh_egrid_args
 _dll.openmc_initialize_mesh_egrid.restype = None
 _init_linsolver_argtypes = [_array_1d_int, c_int, _array_1d_int, c_int, c_int,
-                            c_double, _array_1d_int, c_bool]
+                            c_double, _array_1d_int, _array_1d_int, c_bool]
 _dll.openmc_initialize_linsolver.argtypes = _init_linsolver_argtypes
 _dll.openmc_initialize_linsolver.restype = None
 _dll.openmc_is_statepoint_batch.restype = c_bool
