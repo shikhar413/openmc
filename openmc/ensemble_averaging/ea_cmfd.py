@@ -60,6 +60,8 @@ class EnsAvgCMFDRun(object):
         Batch number at which CMFD solver should start executing
     mesh : openmc.cmfd.CMFDMesh
         Structured mesh to be used for acceleration
+    norm : float
+        Normalization factor applied to the CMFD fission source distribution
     ref_d : list of floats
         List of reference diffusion coefficients to fix CMFD parameters to
     ea_run_strategy : {'bulk-synch', 'eager-asynch', 'redez-asynch'}
@@ -110,6 +112,7 @@ class EnsAvgCMFDRun(object):
         self._tally_begin = 1
         self._window_type = 'none'
         self._ref_d = np.array([])
+        self._norm = 1
         self._ea_run_strategy = 'bulk-synch'
         self._use_logger = False
         self._solver_begin = 1
@@ -174,6 +177,10 @@ class EnsAvgCMFDRun(object):
     @property
     def ref_d(self):
         return self._ref_d
+
+    @property
+    def norm(self):
+        return self._norm
 
     @property
     def use_logger(self):
@@ -257,6 +264,11 @@ class EnsAvgCMFDRun(object):
         check_type('Reference diffusion params', diff_params,
                    Iterable, Real)
         self._ref_d = np.array(diff_params)
+
+    @norm.setter
+    def norm(self, norm):
+        check_type('CMFD norm', norm, Real)
+        self._norm = norm
 
     @use_logger.setter
     def use_logger(self, use_logger):
@@ -414,15 +426,14 @@ class EnsAvgCMFDRun(object):
         """ Read config file and set all global, CMFD, and OpenMC parameters """
         openmc_params = ['n_threads', 'n_particles', 'n_inactive',
                          'weight_clipping']
-        cmfd_params = ['downscatter', 'cmfd_ktol', 'norm',
-                       'w_shift', 'stol', 'spectral', 'window_size',
-                       'gauss_seidel_tolerance', 'display', 'n_threads',
-                       'max_window_size', 'batch_lag']
+        cmfd_params = ['downscatter', 'cmfd_ktol', 'w_shift', 'stol',
+                       'spectral', 'window_size', 'gauss_seidel_tolerance',
+                       'display', 'n_threads', 'max_window_size', 'batch_lag']
         mesh_params = ['lower_left', 'upper_right', 'dimension', 'width',
                        'energy', 'albedo', 'map']
         self._global_params = ['n_seeds', 'n_procs_per_seed', 'verbosity',
                                'openmc_verbosity', 'n_batches', 'tally_begin',
-                               'solver_begin', 'window_type', 'ref_d',
+                               'solver_begin', 'window_type', 'ref_d', 'norm',
                                'ea_run_strategy', 'use_logger', 'seed_begin']
 
         config = configparser.ConfigParser()
