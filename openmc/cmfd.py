@@ -17,6 +17,8 @@ import sys
 import time
 from ctypes import c_int
 import warnings
+import os
+import logging
 
 import numpy as np
 from scipy import sparse
@@ -291,6 +293,13 @@ class CMFDRun(object):
         window_type is set to "rolling"
     max_window_size: int
         TODO
+    use_logger : bool
+        Whether or not to log events to log file
+    weight_clipping : float
+        Weight clipping to control the maximum allowed change in weight in
+        the presence of CMFD feedback. During prolongation, the weight factor
+        in any CMFD mesh cell is clipped to
+        [1/(1+weight_clipping), 1+weight_clipping]
     indices : numpy.ndarray
         Stores spatial and group dimensions as [nx, ny, nz, ng]
     cmfd_src : numpy.ndarray
@@ -347,12 +356,13 @@ class CMFDRun(object):
         self._reset = []
         self._write_matrices = False
         self._spectral = 0.0
-        self._damping_factor = 1.0
+        self._weight_clipping = 0.2
         self._gauss_seidel_tolerance = [1.e-10, 1.e-5]
         self._adjoint_type = 'physical'
         self._window_type = 'none'
         self._window_size = 10
         self._max_window_size = sys.maxsize
+        self._use_logger = False
         self._intracomm = None
         self._use_all_threads = False
 
@@ -401,6 +411,7 @@ class CMFDRun(object):
         self._resnb = None
         self._reset_every = None
         self._time_cmfd = None
+        self.cpp = True         # TODO remove for production
         self._time_cmfdbuild = None
         self._time_cmfdsolve = None
 
@@ -492,6 +503,10 @@ class CMFDRun(object):
         return self._max_window_size
 
     @property
+    def use_logger(self):
+        return self._use_logger
+
+    @property
     def power_monitor(self):
         return self._power_monitor
 
@@ -512,8 +527,8 @@ class CMFDRun(object):
         return self._spectral
 
     @property
-    def damping_factor(self):
-        return self._damping_factor
+    def weight_clipping(self):
+        return self._weight_clipping
 
     @property
     def reset(self):
@@ -694,6 +709,11 @@ class CMFDRun(object):
             warnings.warn(warn_msg, RuntimeWarning)
         self._max_window_size = window_size
 
+    @use_logger.setter
+    def use_logger(self, use_logger):
+        check_type('CMFD use logger', use_logger, bool)
+        self._use_logger = use_logger
+
     @power_monitor.setter
     def power_monitor(self, power_monitor):
         check_type('CMFD power monitor', power_monitor, bool)
@@ -719,12 +739,12 @@ class CMFDRun(object):
         check_type('CMFD spectral radius', spectral, Real)
         self._spectral = spectral
 
-    @damping_factor.setter
-    def damping_factor(self, damping_factor):
-        check_type('CMFD damping factor', damping_factor, Real)
-        check_greater_than('CMFD damping factor', damping_factor, 0, True)
-        check_less_than('CMFD damping factor', damping_factor, 1, True)
-        self._damping_factor = damping_factor
+    @weight_clipping.setter
+    def weight_clipping(self, weight_clipping):
+        check_type('CMFD damping factor', weight_clipping, Real)
+        check_greater_than('CMFD damping factor', weight_clipping, 0, True)
+        check_less_than('CMFD damping factor', weight_clipping, 1, True)
+        self._weight_clipping = weight_clipping
 
     @reset.setter
     def reset(self, reset):
@@ -793,8 +813,12 @@ class CMFDRun(object):
         elif have_mpi:
             self._intracomm = MPI.COMM_WORLD
 
+        openmc_seed = kwargs.pop('seed', None)
+
         # Run and pass arguments to C API run_in_memory function
         with openmc.lib.run_in_memory(**kwargs):
+            if openmc_seed is not None:
+                openmc.lib.settings.seed = openmc_seed
             self.init()
             yield
             self.finalize()
@@ -843,6 +867,12 @@ class CMFDRun(object):
         # Set cmfd_run variable to True through C API
         openmc.lib.settings.cmfd_run = True
 
+        # Create event logger
+        if self._use_logger:
+            openmc.lib.settings.use_logger = True
+            if openmc.lib.master():
+                self._create_logger()
+
     def next_batch(self):
         """ Run next batch for CMFDRun.
 
@@ -853,11 +883,13 @@ class CMFDRun(object):
             batches, 2=tally triggers reached)
 
         """
+        self._log_event('Started next batch, current batch {}'.format(openmc.lib.current_batch()))
         # Initialize CMFD batch
         self._cmfd_init_batch()
 
         # Run next batch
         status = openmc.lib.next_batch()
+        self._log_event('Finished OpenMC next batch')
 
         # Perform CMFD calculations
         self._execute_cmfd()
@@ -865,6 +897,7 @@ class CMFDRun(object):
         # Write CMFD data to statepoint
         if openmc.lib.is_statepoint_batch():
             self.statepoint_write()
+        self._log_event('Finished next batch, current batch {}'.format(openmc.lib.current_batch()))
         return status
 
     def finalize(self):
@@ -873,12 +906,14 @@ class CMFDRun(object):
         information.
 
         """
+        self._log_event('Started CMFD finalize')
         # Finalize simuation
         openmc.lib.simulation_finalize()
 
         if openmc.lib.master():
             # Print out CMFD timing statistics
             self._write_cmfd_timing_stats()
+        self._log_event('Finished CMFD finalize')
 
     def statepoint_write(self, filename=None):
         """Write all simulation parameters to statepoint
@@ -900,6 +935,24 @@ class CMFDRun(object):
 
         # Append CMFD data to statepoint file using h5py
         self._write_cmfd_statepoint(filename)
+
+    def _create_logger(self):
+        """ Create logger for logging events"""
+        rank = self._intracomm.Get_rank()
+        seed = openmc.lib.settings.seed
+        log_dir = 'logs/'
+        log_fname = log_dir + 'seed{}process{}.log'.format(seed, rank)
+        log_dfmt = '%m/%d/%Y %I:%M:%S %p'
+        os.system('mkdir -p {}'.format(log_dir))
+
+        logging.basicConfig(format='%(asctime)s %(message)s', datefmt=log_dfmt,
+                            filename=log_fname, filemode='w',  level=logging.INFO)
+        logging.info('Log file created, CMFD initialization complete')
+
+    def _log_event(self, log_msg):
+        if self._use_logger and openmc.lib.master():
+            current_time = time.time()
+            logging.info(log_msg + ", time={}".format(current_time))
 
     def _write_cmfd_statepoint(self, filename):
         """Append all CNFD simulation parameters to existing statepoint
@@ -973,6 +1026,7 @@ class CMFDRun(object):
         # Pass coremap as 1-d array of 32-bit integers
         coremap = np.swapaxes(self._coremap, 0, 2).flatten().astype(np.int32)
 
+        # TODO remove cmfd_indices for production
         args = temp_loss.indptr, len(temp_loss.indptr), \
             temp_loss.indices, len(temp_loss.indices), n, \
             self._spectral, self._indices, coremap, self._use_all_threads
@@ -1086,6 +1140,12 @@ class CMFDRun(object):
                 raise OpenMCError('Number of reference diffusion parameters '
                                   'must equal number of CMFD energy groups')
 
+        # Extract spatial and energy indices
+        nx, ny, nz, ng = self._indices
+
+        # Initialize CMFD source to all zeros
+        self._cmfd_src = np.zeros((nx, ny, nz, ng))
+
         # Define all variables that will exist only on master process
         if openmc.lib.master():
             # Set global albedo
@@ -1096,9 +1156,6 @@ class CMFDRun(object):
 
             # Set up CMFD coremap
             self._set_coremap()
-
-            # Extract spatial and energy indices
-            nx, ny, nz, ng = self._indices
 
             # Allocate parameters that need to be stored for tally window
             self._openmc_src_rate = np.zeros((nx, ny, nz, ng, 0))
@@ -1229,6 +1286,7 @@ class CMFDRun(object):
             if openmc.lib.current_batch() >= self._tally_begin:
                 # Calculate all cross sections based on tally window averages
                 self._compute_xs()
+        self._log_event('Finished computing CMFD XS')
 
         # Execute CMFD algorithm if CMFD on for current batch
         if self._cmfd_on:
@@ -1251,9 +1309,23 @@ class CMFDRun(object):
                 # Calculate fission source
                 self._calc_fission_source()
 
-            # Calculate weight factors
-            self._cmfd_reweight()
+            self._log_event('Finished running CMFD solver')
 
+            # Calculate weightfactors and update source weights in C++
+            # Energy axis must be flipped and nx/nz axes must be
+            # swapped to match OpenMC C++ binning style
+            # TODO clean up for production
+            if openmc.lib.master():
+                reweight_start = time.time()
+            if self.cpp:
+                src_flipped = np.flip(self._cmfd_src, axis=3)
+                src_swapped = np.swapaxes(src_flipped, 0, 2)
+                args = self._feedback, src_swapped.flatten()
+                openmc.lib._dll.openmc_cmfd_reweight(*args)
+            else:
+                self._cmfd_reweight()
+
+        self._log_event('Finished CMFD reweight')
         # Stop CMFD timer
         if openmc.lib.master():
             time_stop_cmfd = time.time()
@@ -1471,6 +1543,7 @@ class CMFDRun(object):
         self._src_cmp.append(np.sqrt(1.0 / self._norm
                              * np.sum((self._cmfd_src - self._openmc_src)**2)))
 
+    # TODO: delete sourcecounts, cmfd_reweight, count_bank_sites, weightfactors, egrid when merging cmfd_reweight-cpp in
     def _cmfd_reweight(self):
         """Performs weighting of particles in source bank"""
         # Get spatial dimensions and energy groups
@@ -1478,6 +1551,10 @@ class CMFDRun(object):
 
         # Count bank site in mesh and reverse due to egrid structured
         outside = self._count_bank_sites()
+
+        if openmc.lib.master():
+            # Stop CMFD timer
+            time_start_reweight2 = time.time()
 
         # Check and raise error if source sites exist outside of CMFD mesh
         if openmc.lib.master() and outside:
@@ -1510,11 +1587,22 @@ class CMFDRun(object):
                                    sourcecounts, where=div_condition,
                                    out=np.ones_like(self._cmfd_src),
                                    dtype=np.float32))
-            self._weightfactors = (1.0 - (1.0 - self._weightfactors) *
-                                   self._damping_factor)
+            ub = 1. + self._weight_clipping
+            self._weightfactors[self._weightfactors > ub] = ub
+            lb = 1./(1. + self._weight_clipping)
+            self._weightfactors[self._weightfactors < lb] = lb
+            print(self._cmfd_src)
+            print(sourcecounts)
+            print(self._weightfactors)
+            for i in self._weightfactors:
+                print(i)
 
         if not self._feedback:
             return
+
+        if openmc.lib.master():
+            # Stop CMFD timer
+            time_start_reweight3 = time.time()
 
         # Broadcast weight factors to all procs
         if have_mpi:
@@ -1523,7 +1611,6 @@ class CMFDRun(object):
 
         m = openmc.lib.meshes[self._mesh_id]
         energy = self._egrid
-        ng = self._indices[3]
 
         # Get locations and energies of all particles in source bank
         source_xyz = openmc.lib.source_bank()['r']
@@ -3163,3 +3250,7 @@ class CMFDRun(object):
                 cmfd_tally.scores = ['scatter']
                 cmfd_tally.type = 'volume'
                 cmfd_tally.estimator = 'analog'
+
+        args = self._tally_ids[0], self._indices, self._norm, \
+               self._weight_clipping
+        openmc.lib._dll.openmc_initialize_mesh_egrid(*args)

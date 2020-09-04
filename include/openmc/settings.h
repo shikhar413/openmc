@@ -46,6 +46,7 @@ extern bool survival_biasing;         //!< use survival biasing?
 extern bool temperature_multipole;    //!< use multipole data?
 extern "C" bool trigger_on;           //!< tally triggers enabled?
 extern bool trigger_predict;          //!< predict batches for triggers?
+extern "C" bool use_logger;           //!< use logger to time batches?
 extern bool ufs_on;                   //!< uniform fission site method on?
 extern bool urr_ptables_on;           //!< use unresolved resonance prob. tables?
 extern bool write_all_tracks;         //!< write track files for every particle?

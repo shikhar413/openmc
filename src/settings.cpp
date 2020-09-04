@@ -63,6 +63,7 @@ bool trigger_on              {false};
 bool trigger_predict         {false};
 bool ufs_on                  {false};
 bool urr_ptables_on          {true};
+bool use_logger              {false};
 bool write_all_tracks        {false};
 bool write_initial_source    {false};
 
@@ -340,6 +341,13 @@ void read_settings_xml()
     } else if (n_particles <= 0) {
       fatal_error("Number of particles must be greater than zero.");
     }
+  }
+
+  // Set use_logger if specified
+  if (check_for_node(root, "use_logger")) {
+    std::string temp_str = get_node_value(root, "use_logger", true, true);
+    if (temp_str == "true")
+      settings::use_logger = true;
   }
 
   // Copy random number seed if specified
