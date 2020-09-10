@@ -40,7 +40,7 @@ def init_openmc_run(problem_type, mesh_type, window_size):
             cmfd_mesh.use_all_threads = True
         elif mesh_type == '20cm':
             cmfd_mesh.dimension = [1, 1, 20]
-        elif mesh_type == 'none'
+        elif mesh_type == 'none':
             cmfd_mesh.dimension = [1, 1, 1]
         else:
             print('Unrecognized mesh type {}'.format(mesh_type))
@@ -195,7 +195,7 @@ def get_2db_mesh_properties(mesh_type):
 ]).reshape(n_assembly_x, n_assembly_y)
 
     if mesh_type == 'none':
-        return [1, 1, 1], None:
+        return [1, 1, 1], None
     if mesh_type not in mesh_properties:
         err_msg = 'Logic for 2D mesh type {} has not been defined yet'
         print(err_msg.format(mesh_type))

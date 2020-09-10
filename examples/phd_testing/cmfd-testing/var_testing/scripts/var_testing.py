@@ -13,6 +13,15 @@ def generate_input_files(cluster, prob_type, run_file):
                 'nodes': 4,
                 'walltime': '48:00:00',
                 'partition': 'neup'
+            },
+            '2d-beavrs': {
+                'batch_file': "job-inl.qsub",
+                'run_command': "qsub ",
+                'base_files': ['2db-settings.xml', '2db-geometry.xml', '2db-materials.xml', 'run_openmc.py'],
+                'ppn': 36,
+                'nodes': 1,
+                'walltime': '48:00:00',
+                'partition': 'neup'
             }
         }
 
