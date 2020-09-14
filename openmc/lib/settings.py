@@ -31,6 +31,7 @@ class _Settings(object):
     run_CE = _DLLGlobal(c_bool, 'run_CE')
     verbosity = _DLLGlobal(c_int, 'verbosity')
     output_summary = _DLLGlobal(c_bool, 'output_summary')
+    use_logger = _DLLGlobal(c_bool, 'use_logger')
 
     @property
     def run_mode(self):

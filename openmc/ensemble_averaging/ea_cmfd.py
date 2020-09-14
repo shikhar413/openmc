@@ -21,6 +21,8 @@ from numbers import Integral, Real
 import configparser
 import json
 import sys
+import logging
+import os
 
 import numpy as np
 
@@ -40,9 +42,6 @@ except ImportError:
 
 
 class EnsAvgCMFDRun(object):
-    # TODO display output
-    # TODO error checking so program will exit if parameters not configured properly in self._node.run_in_memory()
-    # TODO add any relevant timing stats
     r"""Class for running CMFD with ensemble averaging.
 
     Attributes
@@ -55,12 +54,20 @@ class EnsAvgCMFDRun(object):
         Specifies the type of node running on MPI process
     tally_begin : int
         Batch number at which CMFD tallies should begin accummulating
+    seed_begin: int
+        Seed number at which to start independent OpenMC runs
     solver_begin: int
         Batch number at which CMFD solver should start executing
     mesh : openmc.cmfd.CMFDMesh
         Structured mesh to be used for acceleration
+    norm : float
+        Normalization factor applied to the CMFD fission source distribution
     ref_d : list of floats
         List of reference diffusion coefficients to fix CMFD parameters to
+    ea_run_strategy : {'bulk-synch', 'eager-asynch', 'redez-asynch'}
+        Specifies type of ensemble averaging run strategy to employ
+    use_logger : bool
+        Whether or not to log events to log file
     window_type : {'expanding', 'rolling', 'none'}
         Specifies type of tally window scheme to use to accumulate CMFD
         tallies. Options are:
@@ -105,7 +112,11 @@ class EnsAvgCMFDRun(object):
         self._tally_begin = 1
         self._window_type = 'none'
         self._ref_d = np.array([])
+        self._norm = 1
+        self._ea_run_strategy = 'bulk-synch'
+        self._use_logger = False
         self._solver_begin = 1
+        self._seed_begin = 1
         self._mesh = None
 
         # External variables used during runtime but users cannot control
@@ -156,12 +167,28 @@ class EnsAvgCMFDRun(object):
         return self._solver_begin
 
     @property
+    def seed_begin(self):
+        return self._seed_begin
+
+    @property
     def window_type(self):
         return self._window_type
 
     @property
     def ref_d(self):
         return self._ref_d
+
+    @property
+    def norm(self):
+        return self._norm
+
+    @property
+    def use_logger(self):
+        return self._use_logger
+
+    @property
+    def ea_run_strategy(self):
+        return self._ea_run_strategy
 
     @property
     def mesh(self):
@@ -226,11 +253,34 @@ class EnsAvgCMFDRun(object):
         check_greater_than('CMFD solver begin batch', begin, 0)
         self._solver_begin = begin
 
+    @seed_begin.setter
+    def seed_begin(self, begin):
+        check_type('CMFD seed begin', begin, Integral)
+        check_greater_than('CMFD seed begin', begin, 0)
+        self._seed_begin = begin
+
     @ref_d.setter
     def ref_d(self, diff_params):
         check_type('Reference diffusion params', diff_params,
                    Iterable, Real)
         self._ref_d = np.array(diff_params)
+
+    @norm.setter
+    def norm(self, norm):
+        check_type('CMFD norm', norm, Real)
+        self._norm = norm
+
+    @use_logger.setter
+    def use_logger(self, use_logger):
+        check_type('Use Logger', use_logger, bool)
+        self._use_logger = use_logger
+
+    @ea_run_strategy.setter
+    def ea_run_strategy(self, ea_run_strategy):
+        check_type('Ensemble averaging run strategy', ea_run_strategy, str)
+        check_value('Ensemble averaging run strategy', ea_run_strategy,
+                    ['bulk-synch', 'eager-asynch', 'rendez-asynch'])
+        self._ea_run_strategy = ea_run_strategy
 
     @window_type.setter
     def window_type(self, window_type):
@@ -341,10 +391,13 @@ class EnsAvgCMFDRun(object):
             self._write_summary()
         self.global_comm.Barrier()
 
+        # Create logger
+        if self._use_logger and self._local_comm.Get_rank() == 0:
+            self._create_logger()
+
     def finalize(self):
         """ Finalize ensemble averaging simulation """
         pass
-        # TODO print out timing stats
 
     def iter_batches(self):
         """ Iterator over batches.
@@ -363,23 +416,25 @@ class EnsAvgCMFDRun(object):
                 rank = self.global_comm.Get_rank()
                 print("{:>11s}Process {} finished batch".format('', rank))
                 sys.stdout.flush()
-            # Put barrier to synchronize processes
-            self.global_comm.Barrier()
+            if (self.current_batch >= self._tally_begin and 
+                    self._ea_run_strategy == 'bulk-synch'):
+                # Put barrier to synchronize processes
+                self.global_comm.Barrier()
             yield
 
     def _read_cfg_file(self):
         """ Read config file and set all global, CMFD, and OpenMC parameters """
-        openmc_params = ['n_threads', 'seed_begin', 'n_particles',
-                         'n_inactive']
-        cmfd_params = ['downscatter', 'cmfd_ktol', 'norm',
-                       'w_shift', 'stol', 'spectral', 'window_size',
-                       'gauss_seidel_tolerance', 'display', 'n_threads',
-                       'damping_factor', 'max_window_size']
+        openmc_params = ['n_threads', 'n_particles', 'n_inactive',
+                         'weight_clipping']
+        cmfd_params = ['downscatter', 'cmfd_ktol', 'w_shift', 'stol',
+                       'spectral', 'window_size', 'gauss_seidel_tolerance',
+                       'display', 'n_threads', 'max_window_size', 'batch_lag']
         mesh_params = ['lower_left', 'upper_right', 'dimension', 'width',
                        'energy', 'albedo', 'map']
         self._global_params = ['n_seeds', 'n_procs_per_seed', 'verbosity',
                                'openmc_verbosity', 'n_batches', 'tally_begin',
-                               'solver_begin', 'window_type', 'ref_d']
+                               'solver_begin', 'window_type', 'ref_d', 'norm',
+                               'ea_run_strategy', 'use_logger', 'seed_begin']
 
         config = configparser.ConfigParser()
         config.read(self._cfg_file)
@@ -414,6 +469,23 @@ class EnsAvgCMFDRun(object):
                 if param in config[section]:
                     value = json.loads(config.get(section, param))
                     self._cmfd_args[param] = value
+
+    def _create_logger(self):
+        """ Create logger for logging events"""
+        global_rank = self._global_comm.Get_rank()
+        seed = self._seed_begin + int((global_rank-self._n_procs_per_seed)/self._n_procs_per_seed)
+        local_rank = self._local_comm.Get_rank()
+        log_dir = 'logs/'
+        if self._node_type == "CMFD":
+            log_fname = log_dir + 'cmfdnode.log'
+        else:
+            log_fname = log_dir + 'seed{}process{}.log'.format(seed, local_rank)
+        log_dfmt = '%m/%d/%Y %I:%M:%S %p'
+        os.system('mkdir -p {}'.format(log_dir))
+
+        logging.basicConfig(format='%(asctime)s %(message)s', datefmt=log_dfmt,
+                            filename=log_fname, filemode='w',  level=logging.INFO)
+        logging.info('Log file created, EA initialization complete')
 
     def _write_summary(self):
         """ Write summary of global ensemble averaging parameters """

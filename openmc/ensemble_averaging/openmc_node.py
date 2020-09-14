@@ -13,9 +13,10 @@ References
 """
 
 from contextlib import contextmanager
-from numbers import Integral
+from numbers import Integral, Real
 import sys
 import time
+import logging
 
 import numpy as np
 import h5py
@@ -41,8 +42,14 @@ class OpenMCNode(object):
         Batch number at which CMFD solver should start executing
     mesh : openmc.cmfd.CMFDMesh
         Structured mesh to be used for acceleration
+    norm : float
+        Normalization factor applied to the CMFD fission source distribution
     ref_d : list of floats
         List of reference diffusion coefficients to fix CMFD parameters to
+    ea_run_strategy : {'bulk-synch', 'eager-asynch', 'redez-asynch'}
+        Specifies type of ensemble averaging run strategy to employ
+    use_logger : bool
+        Whether or not to log events to log file
     window_type : {'expanding', 'rolling', 'none'}
         Specifies type of tally window scheme to use to accumulate CMFD
         tallies. Options are:
@@ -55,6 +62,11 @@ class OpenMCNode(object):
           * "none" - Don't use a windowing scheme so that all tallies from last
             time they were reset are used for the CMFD algorithm.
 
+    weight_clipping : float
+        Weight clipping to control the maximum allowed change in weight in
+        the presence of CMFD feedback. During prolongation, the weight factor
+        in any CMFD mesh cell is clipped to
+        [1/(1+weight_clipping), 1+weight_clipping]
     n_threads : int
         Number of threads per process allocated to run OpenMC
     indices : numpy.ndarray
@@ -83,9 +95,7 @@ class OpenMCNode(object):
         Time in OpenMC node, in seconds
     time_sendtallies : float
         Time taken to send tallies to CMFD node, in seconds
-    time_sendsrccnts : float
-        Time taken to send source counts to CMFD node, in seconds
-    time_waitweightfactors : float
+    time_waitcmfdsrc : float
         Time waiting for weightfactors from CMFD node
     """
 
@@ -98,16 +108,20 @@ class OpenMCNode(object):
         self._n_threads = 1
         self._n_particles = 1000
         self._n_inactive = 10
-        self._seed_begin = 1
+        self._weight_clipping = 0.2
 
         # Variables defined by EnsAvgCMFDRun class
         self._tally_begin = None
         self._solver_begin = None
+        self._norm = None
         self._ref_d = None
+        self._use_logger = None
+        self._ea_run_strategy = None
         self._window_type = None
         self._mesh = None
         self._n_procs_per_seed = None
         self._n_seeds = None
+        self._seed_begin = None
         self._openmc_verbosity = None
         self._verbosity = None
         self._n_batches = None
@@ -125,10 +139,10 @@ class OpenMCNode(object):
         self._weightfactors = None
         self._reset_every = None
         self._current_batch = 0
+        self._cmfd_src = None
         self._time_openmcnode = None
         self._time_sendtallies = None
-        self._time_sendsrccnts = None
-        self._time_waitweightfactors = None
+        self._time_waitcmfdsrc = None
 
     @property
     def tally_begin(self):
@@ -139,8 +153,20 @@ class OpenMCNode(object):
         return self._solver_begin
 
     @property
+    def norm(self):
+        return self._norm
+
+    @property
     def ref_d(self):
         return self._ref_d
+
+    @property
+    def ea_run_strategy(self):
+        return self._ea_run_strategy
+
+    @property
+    def use_logger(self):
+        return self._use_logger
 
     @property
     def window_type(self):
@@ -149,6 +175,10 @@ class OpenMCNode(object):
     @property
     def mesh(self):
         return self._mesh
+
+    @property
+    def weight_clipping(self):
+        return self._weight_clipping
 
     @property
     def n_threads(self):
@@ -171,6 +201,10 @@ class OpenMCNode(object):
         return self._n_seeds
 
     @property
+    def seed_begin(self):
+        return self._seed_begin
+
+    @property
     def verbosity(self):
         return self._verbosity
 
@@ -187,16 +221,18 @@ class OpenMCNode(object):
         return self._n_batches
 
     @property
-    def seed_begin(self):
-        return self._seed_begin
-
-    @property
     def n_inactive(self):
         return self._n_inactive
 
     @property
     def n_particles(self):
         return self._n_particles
+
+    @weight_clipping.setter
+    def weight_clipping(self, weight_clipping):
+        check_type('CMFD weight clipping', weight_clipping, Real)
+        check_greater_than('CMFD weight clipping', weight_clipping, 0., True)
+        self._weight_clipping = weight_clipping
 
     @n_threads.setter
     def n_threads(self, threads):
@@ -216,12 +252,6 @@ class OpenMCNode(object):
         check_greater_than('Number of inactive batches', n_inactive, 0)
         self._n_inactive = n_inactive
 
-    @seed_begin.setter
-    def seed_begin(self, begin):
-        check_type('Seed begin', begin, Integral)
-        check_greater_than('Seed begin', begin, 0)
-        self._seed_begin = begin
-
     # All error checking for following methods done in EnsAvgCMFDRun class
     @tally_begin.setter
     def tally_begin(self, begin):
@@ -231,9 +261,21 @@ class OpenMCNode(object):
     def solver_begin(self, begin):
         self._solver_begin = begin
 
+    @norm.setter
+    def norm(self, norm):
+        self._norm = norm
+
     @ref_d.setter
     def ref_d(self, ref_d):
         self._ref_d = ref_d
+
+    @ea_run_strategy.setter
+    def ea_run_strategy(self, ea_run_strategy):
+        self._ea_run_strategy = ea_run_strategy
+
+    @use_logger.setter
+    def use_logger(self, use_logger):
+        self._use_logger = use_logger
 
     @window_type.setter
     def window_type(self, window_type):
@@ -255,6 +297,10 @@ class OpenMCNode(object):
     def n_seeds(self, n_seeds):
         self._n_seeds = n_seeds
 
+    @seed_begin.setter
+    def seed_begin(self, begin):
+        self._seed_begin = begin
+
     @verbosity.setter
     def verbosity(self, verbosity):
         self._verbosity = verbosity
@@ -270,10 +316,6 @@ class OpenMCNode(object):
     @n_batches.setter
     def n_batches(self, batches):
         self._n_batches = batches
-
-    @seed_begin.setter
-    def seed_begin(self, begin):
-        self._seed_begin = begin
 
     @contextmanager
     def run_in_memory(self, **kwargs):
@@ -317,6 +359,10 @@ class OpenMCNode(object):
         necessary CMFD parameters.
 
         """
+        if self._use_logger:
+            openmc.lib.settings.use_logger = True
+        self._log_event('Started OpenMC node init')
+
         # Configure OpenMC parameters
         self._configure_openmc()
 
@@ -332,6 +378,8 @@ class OpenMCNode(object):
         # Set cmfd_run variable to True through C API
         openmc.lib.settings.cmfd_run = True
 
+        self._log_event('Finished OpenMC node init')
+
     def next_batch(self):
         """ Run next batch for OpenMCNode.
 
@@ -342,12 +390,17 @@ class OpenMCNode(object):
             batches, 2=tally triggers reached)
 
         """
+        self._log_event('Started next batch, current batch {}'.format(self._current_batch))
+
         # Start timer for OpenMC node
         if openmc.lib.master():
             time_start_openmc = time.time()
 
         # Increment current batch
         self._current_batch += 1
+
+        if self._current_batch > self._n_batches:
+            return 1
 
         # Check to set CMFD tallies as active
         if self._tally_begin == self._current_batch:
@@ -362,48 +415,49 @@ class OpenMCNode(object):
         # Aggregate CMFD tallies by running next batch in OpenMC
         status = openmc.lib.next_batch()
 
+        self._log_event('Finished running OpenMC'.format(self._current_batch))
+
         # Broadcast CMFD tallies to CMFD node
         if openmc.lib.master():
             if self._current_batch >= self._tally_begin:
                 time_start_sendtallies = time.time()
                 self._send_tallies_to_cmfd_node()
+                log_str = 'Sent tallies to CMFD'
+                if self._ea_run_strategy == 'rendez-asynch' and self._current_batch >= self._solver_begin:
+                    log_str += ' and received CMFD source'
+                self._log_event(log_str)
                 time_stop_sendtallies = time.time()
                 self._time_sendtallies += (time_stop_sendtallies -
                                            time_start_sendtallies)
 
         if self._current_batch >= self._solver_begin:
-            # Count bank sites in CMFD mesh
-            outside = self._count_bank_sites()
-
-            # Check and raise error if source sites exist outside of CMFD mesh
-            if openmc.lib.master() and outside:
-                raise OpenMCError('Source sites outside of the CMFD mesh')
-
-            # Send sourcecounts to CMFD node and wait for CMFD node to send
-            # updated weight factors
-            if openmc.lib.master():
-                time_start_sendsrccnts = time.time()
-                self._send_sourcecounts_to_cmfd_node()
-                time_stop_sendsrccnts = time.time()
-                self._time_sendsrccnts += (time_stop_sendsrccnts -
-                                           time_start_sendsrccnts)
-
             # Receive updated weight factors from CMFD node and update source
-            if openmc.lib.master():
-                time_start_recv_weightfactors = time.time()
-            self._recv_weightfactors_from_cmfd_node()
-            if openmc.lib.master():
-                time_stop_recv_weightfactors = time.time()
-                self._time_waitweightfactors += (time_stop_recv_weightfactors -
-                                                 time_start_recv_weightfactors)
+            if self._ea_run_strategy != 'rendez-asynch' and openmc.lib.master():
+                time_start_recvcmfdsrc = time.time()
+                self._recv_cmfdsrc_from_cmfd_node()
+                self._log_event('Finished recieving CMFD source')
+                time_stop_recvcmfdsrc = time.time()
+                self._time_waitcmfdsrc += (time_stop_recvcmfdsrc -
+                                           time_start_recvcmfdsrc)
 
-            # Reweight source based on updated weight factors
-            self._cmfd_reweight()
+            # Calculate weightfactors and update source weights in C++
+            # Energy axis must be flipped and nx/nz axes must be
+            # swapped to match OpenMC C++ binning style
+            src_flipped = np.flip(self._cmfd_src, axis=3)
+            src_swapped = np.swapaxes(src_flipped, 0, 2)
+            args = True, src_swapped.flatten()
+            openmc.lib._dll.openmc_cmfd_reweight(*args)
+
+            #self._cmfd_reweight()
+
+            self._log_event('Finished CMFD reweight')
 
         # Stop timer for OpenMC node
         if openmc.lib.master():
             time_stop_openmc = time.time()
             self._time_openmcnode += time_stop_openmc - time_start_openmc
+
+        self._log_event('Finished next batch, current batch {}'.format(self._current_batch))
         return status
 
     def finalize(self):
@@ -411,10 +465,14 @@ class OpenMCNode(object):
         :func:`openmc.lib.simulation_finalize`.
 
         """
+        self._log_event('Started OpenMC node finalize')
+
         # Finalize simuation
         openmc.lib.simulation_finalize()
         if openmc.lib.master():
             self._send_timing_stats_to_cmfd_node()
+
+        self._log_event('Finished OpenMC node finalize')
 
     def _initialize_ea_params(self, global_args, openmc_args):
         """ Initialize global parameters inherited from EnsAvgCMFDRun class """
@@ -432,8 +490,8 @@ class OpenMCNode(object):
 
     def _write_summary(self):
         """ Write summary of OpenMC node parameters """
-        openmc_params = ['n_threads', 'seed_begin', 'n_particles',
-                         'n_inactive']
+        openmc_params = ['n_threads', 'n_particles', 'n_inactive',
+                         'weight_clipping']
         rank = self._global_comm.Get_rank()
         outstr = "********* PROCESS {}: OPENMC NODE, SEED {} *********\n".format(rank,
                                                                        self._seed_num)
@@ -455,8 +513,7 @@ class OpenMCNode(object):
         # Initialize timers
         self._time_openmcnode = 0.0
         self._time_sendtallies = 0.0
-        self._time_sendsrccnts = 0.0
-        self._time_waitweightfactors = 0.0
+        self._time_waitcmfdsrc = 0.0
 
     def _configure_cmfd(self):
         """ Configure CMFD parameters and set CMFD input variables """
@@ -487,6 +544,10 @@ class OpenMCNode(object):
 
         # Initialize parameters for CMFD tally windows
         self._set_tally_window()
+
+        # Create empty array for cmfd_src
+        nx, ny, nz, ng = self._indices
+        self._cmfd_src = np.zeros((nx, ny, nz, ng))
 
         # Set reference diffusion parameters
         if self._ref_d.size > 0:
@@ -528,7 +589,7 @@ class OpenMCNode(object):
         """
         # Initialize variables
         m = openmc.lib.meshes[self._mesh_id]
-        bank = openmc.lib.source_bank()
+        source_bank = openmc.lib.source_bank()
         energy = self._egrid
         sites_outside = np.zeros(1, dtype=bool)
         nxnynz = np.prod(self._indices[0:3])
@@ -539,8 +600,9 @@ class OpenMCNode(object):
         count = np.zeros(self._sourcecounts.shape)
 
         # Get location and energy of each particle in source bank
-        source_xyz = openmc.lib.source_bank()['r']
-        source_energies = openmc.lib.source_bank()['E']
+        source_xyz = source_bank['r']
+        source_energies = source_bank['E']
+        source_weights = source_bank['wgt']
 
         # Convert xyz location to mesh index and ravel index to scalar
         mesh_locations = np.floor((source_xyz - m.lower_left) / m.width)
@@ -549,7 +611,40 @@ class OpenMCNode(object):
 
         # Check if any source locations lie outside of defined CMFD mesh
         if np.any(mesh_bins < 0) or np.any(mesh_bins >= np.prod(m.dimension)):
+            idx = np.where((mesh_locations >= m.dimension) | (mesh_locations < 0))
+            unique_locs = []
+            new_locs = []
+            for i in idx[0]:
+                source_loc = openmc.lib.source_bank()['r'][i]
+                if list(source_loc) in unique_locs:
+                    openmc.lib.source_bank()['r'][i] = new_locs[unique_locs.index(list(source_loc))]
+                else:
+                    new_loc = np.zeros((3,))
+                    for j in range(3):
+                        loc = source_loc[j]
+                        if loc < m.lower_left[j]:
+                            new_loc[j] = np.random.uniform(m.lower_left[j], m.lower_left[j] + m.width[j])
+                        elif loc > m.upper_right[j]:
+                            new_loc[j] = np.random.uniform(m.upper_right[j] - m.width[j], m.upper_right[j])
+                        else:
+                            new_loc[j] = loc
+                    unique_locs.append(list(source_loc))
+                    new_locs.append(new_loc)
+                    prev_loc = source_loc
+                    print("Source location changed from", source_loc, "to", new_loc)
+                    openmc.lib.source_bank()['r'][i] = new_loc
+                    sys.stdout.flush()
             outside[0] = True
+
+            # Get location and energy of each particle in source bank
+            source_xyz = source_bank['r']
+            source_energies = source_bank['E']
+            source_weights = source_bank['wgt']
+
+            # Convert xyz location to mesh index and ravel index to scalar
+            mesh_locations = np.floor((source_xyz - m.lower_left) / m.width)
+            mesh_bins = mesh_locations[:,2] * m.dimension[1] * m.dimension[0] + \
+            mesh_locations[:,1] * m.dimension[0] + mesh_locations[:,0]
 
         # Determine which energy bin each particle's energy belongs to
         # Separate into cases bases on where source energies lies on egrid
@@ -564,8 +659,9 @@ class OpenMCNode(object):
 
         # Determine all unique combinations of mesh bin and energy bin, and
         # count number of particles that belong to these combinations
-        idx, counts = np.unique(np.array([mesh_bins, energy_bins]), axis=1,
-                                return_counts=True)
+        idx, inverse = np.unique(np.array([mesh_bins, energy_bins]), axis=1,
+                                 return_inverse=True)
+        counts = np.bincount(inverse, weights=source_weights)
 
         # Store counts to appropriate mesh-energy combination
         count[idx[0].astype(int), idx[1].astype(int)] = counts
@@ -576,6 +672,11 @@ class OpenMCNode(object):
         self._local_comm.Reduce(outside, sites_outside, MPI.LOR)
 
         return sites_outside[0]
+
+    def _log_event(self, log_msg):
+        if self._use_logger and openmc.lib.master():
+            current_time = time.time()
+            logging.info(log_msg + ", time={}".format(current_time))
 
     def _send_tallies_to_cmfd_node(self):
         """ Aggregate CMFD tallies and transfer to CMFD node """
@@ -604,9 +705,12 @@ class OpenMCNode(object):
         tally_id = self._tally_ids[2]
         current = tallies[tally_id].results[:,0,1]
 
+        current_batch = self._current_batch
+
         if self._set_reference_params:
             tally_data = np.concatenate((flux, totalrr, scattrr, nfissrr,
-                                         current, [num_realizations, keff]))
+                                         current, [num_realizations, keff,
+                                                   current_batch]))
         else:
             # Get p1 scatter rr from CMFD tally 3
             tally_id = self._tally_ids[3]
@@ -614,51 +718,104 @@ class OpenMCNode(object):
 
             tally_data = np.concatenate((flux, totalrr, scattrr, nfissrr,
                                          current, p1scattrr,
-                                         [num_realizations, keff]))
+                                         [num_realizations, keff,
+                                          current_batch]))
 
-        self._global_comm.Send(tally_data, dest=0, tag=0)
+        if self._ea_run_strategy == 'eager-asynch':
+            self._global_comm.Isend(tally_data, dest=0, tag=0)
+        else:
+            self._global_comm.Send(tally_data, dest=0, tag=0)
+
         if self._verbosity >= 2:
             source = self._global_comm.Get_rank()
-            outstr = "{:>11s}Sending tally data from process {} to {}"
-            print(outstr.format('', source, 0))
+            outstr = "{:>11s}Sending tally data for batch {} from process {} to {}"
+            print(outstr.format('', self._current_batch, source, 0))
             sys.stdout.flush()
 
-    def _send_sourcecounts_to_cmfd_node(self):
-        """ Transfer sourcecounts to CMFD node for reweight calculation """
-        self._global_comm.Send(self._sourcecounts, dest=0, tag=1)
-        if self._verbosity >= 2:
-            source = self._global_comm.Get_rank()
-            outstr = "{:>11s}Sending source data from process {} to {}"
-            print(outstr.format('', source, 0))
-            sys.stdout.flush()
+        if self._ea_run_strategy == 'rendez-asynch' and self._current_batch >= self._solver_begin:
+            self._recv_cmfdsrc_from_cmfd_node()
 
     def _send_timing_stats_to_cmfd_node(self):
         """ Transfer timing stats to CMFD node for printing """
         timing_data = np.array([self._time_openmcnode, self._time_sendtallies,
-                                self._time_sendsrccnts,
-                                self._time_waitweightfactors])
-        self._global_comm.Send(timing_data, dest=0, tag=2)
+                                self._time_waitcmfdsrc])
+        if self._ea_run_strategy == 'eager-asynch':
+            self._global_comm.Isend(timing_data, dest=0, tag=1)
+        else:
+            self._global_comm.Send(timing_data, dest=0, tag=1)
         if self._verbosity >= 2:
             source = self._global_comm.Get_rank()
             outstr = "{:>11s}Sending timing data from process {} to {}"
             print(outstr.format('', source, 0))
             sys.stdout.flush()
 
-    def _recv_weightfactors_from_cmfd_node(self):
+    def _recv_cmfdsrc_from_cmfd_node(self):
         """ Receive weightfactors from CMFD node and update source """
-        self._weightfactors = np.empty(self._indices, dtype=np.float64)
-        self._global_comm.Recv(self._weightfactors, source=0)
+        self._cmfd_src = np.empty(self._indices, dtype=np.float64)
+        if self._ea_run_strategy == 'eager-asynch':
+            # Wait for CMFD source from CMFD node on first data transfer
+            if self._current_batch == self._solver_begin:
+                req = self._global_comm.Irecv(self._cmfd_src, source=0)
+                req.Wait()
+            # Otherwise keep requesting for newest available CMFD source
+            else:
+                new_req_avail = True
+                while (new_req_avail):
+                    req = self._global_comm.Irecv(self._cmfd_src, source=0)
+                    new_req_avail = req.Test()
+                    if new_req_avail:
+                        req.Wait()
+                    else:
+                        # One too many requests submitted by this point
+                        # The most recent request must be cancelled
+                        req.Cancel()
+        else:
+            self._global_comm.Recv(self._cmfd_src, source=0)
+
         if self._verbosity >= 2:
             dest = self._global_comm.Get_rank()
-            outstr = "{:>11s}Process {} received weight factors from process {}"
+            outstr = "{:>11s}Process {} received CMFD source from process {}"
             print(outstr.format('', dest, 0))
             sys.stdout.flush()
 
     def _cmfd_reweight(self):
         """ Perform weighting of particles in source bank """
+        nx, ny, nz, ng = self._indices
+
+        if openmc.lib.master():
+            with np.errstate(divide='ignore', invalid='ignore'):
+                norm = np.sum(self._sourcecounts) / np.sum(self._cmfd_src)
+
+            # Define target reshape dimensions for sourcecounts. This
+            # defines how self._sourcecounts is ordered by dimension
+            target_shape = [nz, ny, nx, ng]
+
+            # Reshape sourcecounts to target shape. Swap x and z axes so
+            # that the shape is now [nx, ny, nz, ng]
+            sourcecounts = np.swapaxes(
+                    self._sourcecounts.reshape(target_shape), 0, 2)
+
+            # Flip index of energy dimension
+            sourcecounts = np.flip(sourcecounts, axis=3)
+
+            # Compute weight factors
+            div_condition = np.logical_and(sourcecounts > 0,
+                                           self._cmfd_src > 0)
+            with np.errstate(divide='ignore', invalid='ignore'):
+                self._weightfactors = (np.divide(self._cmfd_src * norm,
+                                       sourcecounts, where=div_condition,
+                                       out=np.ones_like(self._cmfd_src),
+                                       dtype=np.float32))
+            ub = 1. + self._weight_clipping
+            self._weightfactors[self._weightfactors > ub] = ub
+            lb = 1./(1. + self._weight_clipping)
+            self._weightfactors[self._weightfactors < lb] = lb
+
+        self._weightfactors = self.local_comm.bcast(
+                              self._weightfactors)
+
         m = openmc.lib.meshes[self._mesh_id]
         energy = self._egrid
-        ng = self._indices[3]
 
         # Get locations and energies of all particles in source bank
         source_xyz = openmc.lib.source_bank()['r']
@@ -683,10 +840,10 @@ class OpenMCNode(object):
         openmc.lib.source_bank()['wgt'] *= self._weightfactors[
                 mesh_ijk[:,0], mesh_ijk[:,1], mesh_ijk[:,2], energy_bins]
 
-        if openmc.lib.master() and np.any(source_energies < energy[0]):
+        if np.any(source_energies < energy[0]):
             print(' WARNING: Source point below energy grid')
             sys.stdout.flush()
-        if openmc.lib.master() and np.any(source_energies > energy[-1]):
+        if np.any(source_energies > energy[-1]):
             print(' WARNING: Source point above energy grid')
             sys.stdout.flush()
 
@@ -792,3 +949,7 @@ class OpenMCNode(object):
                 cmfd_tally.scores = ['scatter']
                 cmfd_tally.type = 'volume'
                 cmfd_tally.estimator = 'analog'
+
+        args = self._tally_ids[0], self._indices, self._norm, \
+               self._weight_clipping
+        openmc.lib._dll.openmc_initialize_mesh_egrid(*args)
