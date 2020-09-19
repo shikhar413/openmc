@@ -40,7 +40,7 @@ def init_openmc_run(problem_type, mesh_type, window_size):
             cmfd_mesh.use_all_threads = True
         elif mesh_type == '20cm':
             cmfd_mesh.dimension = [1, 1, 20]
-        elif mesh_type == 'none':
+        elif mesh_type == 'nocmfd':
             cmfd_mesh.dimension = [1, 1, 1]
         else:
             print('Unrecognized mesh type {}'.format(mesh_type))
@@ -66,7 +66,7 @@ def init_openmc_run(problem_type, mesh_type, window_size):
     # Set all runtime parameters (cmfd_mesh, tolerances, tally_resets, etc)
     # All error checking done under the hood when setter function called
     cmfd_run.mesh = cmfd_mesh
-    if mesh_type != 'none':
+    if mesh_type != 'nocmfd':
         cmfd_run.tally_begin = 2
         cmfd_run.solver_begin = 3
     else:
@@ -194,7 +194,7 @@ def get_2db_mesh_properties(mesh_type):
 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 ]).reshape(n_assembly_x, n_assembly_y)
 
-    if mesh_type == 'none':
+    if mesh_type == 'nocmfd':
         return [1, 1, 1], None
     if mesh_type not in mesh_properties:
         err_msg = 'Logic for 2D mesh type {} has not been defined yet'
@@ -291,8 +291,8 @@ if __name__ == "__main__":
                         os.system('rm {}'.format(prev_sp))
                     # Update previous statepoint
                     prev_sp = glob.glob(os.path.join("statepoint.*.h5"))[0]
-            if capi.master() and curr_gen in [8, 16, 32, 64, 128, 256, 512, 1024, 2048]:
-                save_cmfd_data(openmc_run)
+            #if capi.master() and curr_gen in [8, 16, 32, 64, 128, 256, 512, 1024, 2048]:
+            #    save_cmfd_data(openmc_run)
 
     # End of simulation, save fet and entropy data
     if comm.Get_rank() == 0:

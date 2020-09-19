@@ -6,32 +6,33 @@ from mpi4py import MPI
 import openmc.lib as capi
 import numpy as np
 
-def init_run(problem_type, test_num):
+def init_openmc_run(problem_type, test_num, max_window_size, use_logger):
     test_num_dict = {
         '0': {
             'runtype': 'nocmfd',
             'cmfd-attrs': {
+                'window_type': 'expanding'
             }
         },
         '1': {
             'runtype': 'cmfd',
             'cmfd-attrs': {
                 'window_type': 'expanding'
-            }
+            },
+            'solver_end': True
         },
         '2': {
             'runtype': 'cmfd',
             'cmfd-attrs': {
                 'window_type': 'expanding',
-                'use_all_threads': True
-            }
-        },
-        '3': {
-            'runtype': 'cmfd',
-            'cmfd-attrs': {
-                'window_type': 'expanding',
             }
         }
+    }
+
+    solver_end_dict = {
+        '1d-homog': 150,
+        '1d-homog-offset': 150,
+        '2d-beavrs': 150,
     }
 
     if test_num not in test_num_dict:
@@ -40,16 +41,27 @@ def init_run(problem_type, test_num):
 
     params = test_num_dict[test_num]
 
+    if 'solver_end' in params:
+        params['cmfd-attrs']['solver_end'] = solver_end_dict[problem_type]
+
+    if test_num in ['1', '2']:
+        if max_window_size is not None:
+            params['cmfd-attrs']['max_window_size'] = max_window_size
+        if '1d-homog' in problem_type:
+            mesh_type = '20cm'
+        else:
+            mesh_type = 'qassembly'
+    else:
+        mesh_type = 'none'
+
     # Define CMFD parameters
     cmfd_mesh = cmfd.CMFDMesh()
     if '1d-homog' in problem_type:
         cmfd_mesh.lower_left = [-5., -5., -200.]
         cmfd_mesh.upper_right = [5., 5., 200.]
         cmfd_mesh.albedo = [1., 1., 1., 1., 0., 0.]
-        if test_num == 2:
-            cmfd_mesh.dimension = [1, 1, 1000]
-        if test_num == 3:
-            cmfd_mesh.dimension = [1, 1, 20]
+        mesh_dim, mesh_map = get_mesh_properties(mesh_type)
+        cmfd_mesh.dimension = mesh_dim
 
     elif problem_type == '2d-beavrs':
         cmfd_mesh.lower_left = [-182.78094, -182.78094, 220.0]
@@ -57,10 +69,9 @@ def init_run(problem_type, test_num):
         cmfd_mesh.albedo = [0., 0., 0., 0., 1., 1.]
         cmfd_mesh.energy = [0.0, 0.625, 20000000]
 
-        mesh_dim, mesh_map = get_2db_mesh_properties('qassembly')
+        mesh_dim, mesh_map = get_mesh_properties(mesh_type, is_1d=False)
         cmfd_mesh.dimension = mesh_dim
         cmfd_mesh.map = mesh_map
-
     else:
         err_msg = 'Logic for problem type {} has not been defined yet'
         print(err_msg.format(problem_type))
@@ -72,28 +83,47 @@ def init_run(problem_type, test_num):
     # Set all runtime parameters (cmfd_mesh, tolerances, tally_resets, etc)
     # All error checking done under the hood when setter function called
     cmfd_run.mesh = cmfd_mesh
-    if '1d-homog' in problem_type:
+    if problem_type == '1d-homog':
         cmfd_run.ref_d = []
+        if params['runtype'] == 'nocmfd':
+            cmfd_run.tally_begin = 2000
+            cmfd_run.solver_begin = 2000
+        else:
+            cmfd_run.tally_begin = 1
+            cmfd_run.solver_begin = 1
+    elif problem_type == '1d-homog-offset':
+        cmfd_run.ref_d = []
+        if params['runtype'] == 'nocmfd':
+            cmfd_run.tally_begin = 2000
+            cmfd_run.solver_begin = 2000
+        else:
+            cmfd_run.tally_begin = 1
+            cmfd_run.solver_begin = 1
     else:
         cmfd_run.ref_d = [1.42669, 0.400433]
-    if params['runtype'] == 'cmfd':
-        cmfd_run.tally_begin = 2
-        cmfd_run.solver_begin = 3
-    else:
-        cmfd_run.tally_begin = sys.maxsize - 1
-        cmfd_run.solver_begin = sys.maxsize
+        if params['runtype'] == 'nocmfd':
+            cmfd_run.tally_begin = 2000
+            cmfd_run.solver_begin = 2000
+        else:
+            cmfd_run.tally_begin = 1
+            cmfd_run.solver_begin = 1
 
-    cmfd_run.display = {'balance': True, 'dominance': False, 'entropy': True, 'source': False}
+    cmfd_run.display = {'balance': True, 'dominance': True, 'entropy': False, 'source': True}
     cmfd_run.feedback = True
     cmfd_run.downscatter = True
     cmfd_run.gauss_seidel_tolerance = [1.e-15, 1.e-20]
+    if use_logger:
+        cmfd_run.use_logger = True
+
+    if mesh_type in ['pincell', '0p4cm']:
+        cmfd_run.use_all_threads = True
 
     for attr in params['cmfd-attrs']:
         setattr(cmfd_run, attr, params['cmfd-attrs'][attr])
 
     return cmfd_run
 
-def init_prob_params(problem_type):
+def init_fet_params(problem_type):
     if '1d-homog' in problem_type:
         n_modes = 10
         labels = np.array(['P{}'.format(str(i)) for i in range(n_modes+1)])
@@ -140,24 +170,44 @@ def init_prob_params(problem_type):
 
     return labels, coeffs
 
-def get_2db_mesh_properties(mesh_type):
-    n_assembly_x = 17
-    n_assembly_y = 17
-    mesh_properties = {
-        'assembly': {
-            'mesh_refinement_x': 1,
-            'mesh_refinement_y': 1,
-            'assembly_map_layout': [1]
-        },
-        'qassembly': {
-            'mesh_refinement_x': 2,
-            'mesh_refinement_y': 2,
-            'assembly_map_layout': [1, 1, 1, 1]
-        },
-        'pincell': {
-            'mesh_refinement_x': 17,
-            'mesh_refinement_y': 17,
-            'assembly_map_layout': [
+def get_mesh_properties(mesh_type, is_1d=True):
+    if is_1d:
+        mesh_dims = {
+            'none': [1, 1, 1],
+            '4cm': [1, 1, 100],
+            '1cm': [1, 1, 400],
+            '20cm': [1, 1, 20],
+            '0p4cm': [1, 1, 1000],
+        }
+        if mesh_type not in mesh_dims:
+            err_msg = 'Logic for 1D mesh type {} has not been defined yet'
+            print(err_msg.format(mesh_type))
+            sys.exit()
+        return mesh_dims[mesh_type], None
+            
+    else:
+        n_assembly_x = 17
+        n_assembly_y = 17
+        mesh_properties = {
+            'none': {
+                'mesh_refinement_x': 1,
+                'mesh_refinement_y': 1,
+                'assembly_map_layout': [1]
+            },
+            'assembly': {
+                'mesh_refinement_x': 1,
+                'mesh_refinement_y': 1,
+                'assembly_map_layout': [1]
+            },
+            'qassembly': {
+                'mesh_refinement_x': 2,
+                'mesh_refinement_y': 2,
+                'assembly_map_layout': [1, 1, 1, 1]
+            },
+            'pincell': {
+                'mesh_refinement_x': 17,
+                'mesh_refinement_y': 17,
+                'assembly_map_layout': [
 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1,
@@ -175,10 +225,10 @@ def get_2db_mesh_properties(mesh_type):
 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1,
 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
-            ]
-        },
-    }
-    assembly_map = np.array([
+                ]
+            },
+        }
+        assembly_map = np.array([
 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0,
 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0,
@@ -197,41 +247,58 @@ def get_2db_mesh_properties(mesh_type):
 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0,
 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 ]).reshape(n_assembly_x, n_assembly_y)
-    if mesh_type not in mesh_properties:
-        err_msg = 'Logic for 2D mesh type {} has not been defined yet'
-        print(err_msg.format(mesh_type))
-        sys.exit()
+        if mesh_type not in mesh_properties:
+            err_msg = 'Logic for 2D mesh type {} has not been defined yet'
+            print(err_msg.format(mesh_type))
+            sys.exit()
 
-    mesh_refinement_x = mesh_properties[mesh_type]['mesh_refinement_x']
-    mesh_refinement_y = mesh_properties[mesh_type]['mesh_refinement_y']
-    assembly_mesh_map = np.array(mesh_properties[mesh_type]['assembly_map_layout']).reshape(mesh_refinement_x, mesh_refinement_y)
-    mesh_map = np.zeros((n_assembly_x*mesh_refinement_x, 
-                         n_assembly_y*mesh_refinement_y),
-                        dtype=int)
-    mesh_dim = mesh_map.shape + (1,)
+        mesh_refinement_x = mesh_properties[mesh_type]['mesh_refinement_x']
+        mesh_refinement_y = mesh_properties[mesh_type]['mesh_refinement_y']
+        assembly_mesh_map = np.array(mesh_properties[mesh_type]['assembly_map_layout']).reshape(mesh_refinement_x, mesh_refinement_y)
+        mesh_map = np.zeros((n_assembly_x*mesh_refinement_x, 
+                             n_assembly_y*mesh_refinement_y),
+                            dtype=int)
+        mesh_dim = mesh_map.shape + (1,)
 
-    for i in range(n_assembly_x):
-        for j in range(n_assembly_y):
-            if assembly_map[i, j]:
-                mesh_map[i*mesh_refinement_x:(i+1)*mesh_refinement_y, j*mesh_refinement_x:(j+1)*mesh_refinement_y] = assembly_mesh_map
+        for i in range(n_assembly_x):
+            for j in range(n_assembly_y):
+                if assembly_map[i, j]:
+                    mesh_map[i*mesh_refinement_x:(i+1)*mesh_refinement_y, j*mesh_refinement_x:(j+1)*mesh_refinement_y] = assembly_mesh_map
 
-    return mesh_dim, mesh_map.flatten()
+        return mesh_dim, mesh_map.flatten()
 
 if __name__ == "__main__":
-    # Define MPI communicator
-    comm = MPI.COMM_WORLD
+    # Define global MPI communicator
+    global_comm = MPI.COMM_WORLD
+
+    # Get number of seeds and procs per seed  as command line args
+    n_seeds = int(sys.argv[1])
+
+    # Define local MPI communicator
+    available_procs = global_comm.Get_size()
+    n_procs_per_seed = int(available_procs/n_seeds)
+    color = int(global_comm.Get_rank()/n_procs_per_seed)
+    seed = color + 1
+    local_comm =  MPI.Comm.Split(global_comm, color=color)
 
     # Get number of OpenMP threads as command line arg
-    n_threads = sys.argv[1]
+    n_threads = sys.argv[2]
 
     # Get problem type as command line argument
-    prob_type = sys.argv[2]
+    prob_type = sys.argv[3]
 
     # Get test number as command line argument
-    test_num = sys.argv[3]
+    test_num = sys.argv[4]
 
-    labels, coeffs = init_prob_params(prob_type)
+    # Get use_logger as command line argument
+    use_logger = sys.argv[5] == '--log'
 
+    # Get max window size as command line argument if provided
+    max_window_size = int(sys.argv[6]) if len(sys.argv) == 7 else None
+
+    labels, coeffs = init_fet_params(prob_type)
+
+    '''
     # Find restart file
     statepoints = glob.glob(os.path.join("statepoint.*.h5")) 
 
@@ -243,7 +310,7 @@ if __name__ == "__main__":
         # Load all simulation variables from disk
         prev_sp = res_file
         fet_data = np.load('fet_data.npy')
-        entropy_data = np.load('entropy_data.npy')
+        #entropy_data = np.load('entropy_data.npy')
 
     # Restart file doesn't exist
     elif len(statepoints) == 0:
@@ -252,43 +319,15 @@ if __name__ == "__main__":
     else:
         print("Multiple statepoint files found. Please retry")
         sys.exit()
+    '''
 
+    args=['-s', n_threads]
     statepoint_interval = 10
 
     # TODO Get OpenMC instance to run in memory
-    cmfd_run = init_run(prob_type, test_num)
+    openmc_run = init_openmc_run(prob_type, test_num, max_window_size, use_logger)
 
-    with cmfd_run.run_in_memory(args=args):
-        for _ in cmfd_run.iter_batches():
-            curr_gen = capi.current_batch()
-            
-            if comm.Get_rank() == 0:
-                entropy_p = capi.entropy_p()
-                positive_entropy = entropy_p[entropy_p > 0]
-                entropy = np.sum(np.log(positive_entropy)/(np.log(2)) * positive_entropy)*-1
-                fet_tallies = capi.convergence_tally()
-
-                if curr_gen == 1:
-                    fet_data = np.empty((0,1+len(labels)), float)
-                    entropy_data = np.empty((0,2+len(positive_entropy)), float)
-                    np.save('pos_idx', np.where(entropy_p > 0))
-                    np.save('zero_idx', np.where(entropy_p == 0))
-
-                # Compute scaled FET coefficients
-                a_n = np.product(coeffs, axis=1) * fet_tallies
-
-                # Store a_n, curr_gen, and entropy to numpy array
-                fet_data = np.vstack((fet_data, [curr_gen] + list(a_n)))
-                entropy_data = np.vstack((entropy_data, [curr_gen] + [entropy] + list(positive_entropy.flatten())))
-
-            # Create new statepoint, remove previous one and save numpy arrays
-            if curr_gen % statepoint_interval == 0:
-                if comm.Get_rank() == 0:
-                    np.save("entropy_data", entropy_data)
-                    np.save("fet_data", fet_data)
-                    # Remove previous statepoint if more than one exists
-
-    # End of simulation, save fet and entropy data
-    if comm.Get_rank() == 0:
-        np.save("entropy_data", entropy_data)
-        np.save("fet_data", fet_data)
+    with openmc_run.run_in_memory(args=args, intracomm=local_comm, seed=seed):
+        global_comm.Barrier()
+        for _ in openmc_run.iter_batches():
+            pass

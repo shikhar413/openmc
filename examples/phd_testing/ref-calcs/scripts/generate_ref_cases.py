@@ -11,12 +11,13 @@ def generate_input_files(seed_begin, seed_end, prob_type, run_strat, run_file):
         'ppn': 36,
         'nodes': 10,
         'walltime': {'1d-homog': '24:00:00',
-                     '2d-beavrs': '12:00:00'}
+                     '2d-beavrs': '18:00:00'}
     }
     strat_dirname_dict = {
         0: 'nocmfd',
         1: 'cmfd-qassembly',
-        2: 'cmfd-0p4cm'
+        2: 'cmfd-0p4cm',
+        3: 'cmfd-20cm'
     }
     if prob_type == '1d-homog':
         prob_prefix = '1dh'
@@ -31,7 +32,7 @@ def generate_input_files(seed_begin, seed_end, prob_type, run_strat, run_file):
 
     # Generate files for each problem type
     prob_dirname = '{}-{}'.format(prob_type, strat_dirname_dict[run_strat])
-    if prob_dirname not in ['1d-homog-nocmfd', '2d-beavrs-nocmfd', '2d-beavrs-cmfd-qassembly']:
+    if prob_dirname not in ['1d-homog-nocmfd', '1d-homog-cmfd-20cm', '2d-beavrs-nocmfd', '2d-beavrs-cmfd-qassembly']:
         print('Invalid combination of problem type and run strategy')
         sys.exit()
 
