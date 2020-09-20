@@ -605,9 +605,11 @@ class CMFDNode(object):
         with openmc.lib.run_in_memory(args=args, intracomm=self._local_comm):
             if openmc.lib.master():
                 self.init()
+                self._global_comm.Barrier()
                 yield
                 self.finalize()
             else:
+                self._global_comm.Barrier()
                 yield
 
     def init(self):
@@ -926,7 +928,7 @@ class CMFDNode(object):
 
             all_tally_data[seed_idx,:] = tally_data
 
-            if self._ea_run_strategy == 'rendez-asynch' and self._current_batch >= self._solver_begin:
+            if self._ea_run_strategy == 'rendez-asynch' and tally_batch >= self._solver_begin:
                 self._global_comm.Send(self._cmfd_src, dest=source)
 
                 if self._verbosity >= 2:
@@ -1205,15 +1207,15 @@ class CMFDNode(object):
         time_start_cmfd = time.time()
 
         openmc_tallies, skip_batch = self._recv_tallies_from_openmc()
+        tally_batch = int(openmc_tallies[-1])
         log_str = 'Received tallies from OpenMC'
-        if self._ea_run_strategy == 'rendez-asynch' and self._current_batch >= self._solver_begin:
+        if self._ea_run_strategy == 'rendez-asynch' and tally_batch >= self._solver_begin:
             log_str += ' and sent CMFD source'
         self._log_event(log_str)
 
         time_stop_wait_tallies = time.time()
         self._time_waittallies += time_stop_wait_tallies - time_start_cmfd
 
-        tally_batch = int(openmc_tallies[-1])
         if tally_batch >= self._tally_begin and not skip_batch:
             self._compute_xs(openmc_tallies)
             self._log_event('Finished computing CMFD cross sections')
@@ -1584,8 +1586,13 @@ class CMFDNode(object):
         for i in range(maxits):
             # Check if reach max number of iterations
             if i == maxits - 1:
-                raise OpenMCError('Reached maximum iterations in CMFD power '
-                                  'iteration solver.')
+                warn_msg = 'Reached maximum  iterations in CMFD power ' \
+                           'iteration solver'
+                warnings.warn(warn_msg, RuntimeWarning)
+                dom = norm_n / norm_o
+                return phi_n, k_n, dom
+                #raise OpenMCError('Reached maximum iterations in CMFD power '
+                #                  'iteration solver.')
 
             # Compute source vector
             s_o = prod.dot(phi_o)
