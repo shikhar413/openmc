@@ -506,7 +506,6 @@ void openmc_cmfd_reweight(const bool feedback, const double* cmfd_src)
           weight = lb;
         }
         weightfactors[i] = weight;
-        std::cout << cmfd_src[i] << " " << sourcecounts[i] << " " << weight << "\n";
       }
     }
   }
