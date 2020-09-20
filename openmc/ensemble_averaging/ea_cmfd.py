@@ -389,7 +389,6 @@ class EnsAvgCMFDRun(object):
         # Write summary of ensemble averaging parameters
         if self._verbosity >= 1 and self._global_comm.Get_rank() == 0:
             self._write_summary()
-        self.global_comm.Barrier()
 
         # Create logger
         if self._use_logger and self._local_comm.Get_rank() == 0:

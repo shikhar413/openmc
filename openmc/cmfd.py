@@ -1948,8 +1948,13 @@ class CMFDRun(object):
         for i in range(maxits):
             # Check if reach max number of iterations
             if i == maxits - 1:
-                raise OpenMCError('Reached maximum iterations in CMFD power '
-                                  'iteration solver.')
+                warn_msg = 'Reached maximum iterations in CMFD power ' \
+                           'iteration solver.'
+                warnings.warn(warn_msg, RuntimeWarning)
+                dom = norm_n / norm_o
+                return phi_n, k_n, dom
+                #raise OpenMCError('Reached maximum iterations in CMFD power '
+                #                  'iteration solver.')
 
             # Compute source vector
             s_o = prod.dot(phi_o)

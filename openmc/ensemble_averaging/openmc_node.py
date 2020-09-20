@@ -351,6 +351,7 @@ class OpenMCNode(object):
         args = ['-s', str(self._n_threads)]
         with openmc.lib.run_in_memory(args=args, intracomm=self._local_comm):
             self.init()
+            self.global_comm.Barrier()
             yield
             self.finalize()
 
