@@ -43,7 +43,7 @@ def generate_input_files(cluster, prob_type, run_file):
         sys.exit()
     cluster_params = param_dict[prob_type]
 
-    run_strats = {
+    window_run_strats = {
         '2d-beavrs': [
             'nocmfd',
             'pincell nolim',
@@ -77,6 +77,34 @@ def generate_input_files(cluster, prob_type, run_file):
         ]
     }
 
+    particle_run_strats = {
+        '2d-beavrs': [
+            'nocmfd 5M',
+            'nocmfd 2p5M',
+            'nocmfd 1p25M',
+            'pincell 128 5M',
+            'pincell 128 2p5M',
+            'pincell 128 1p25M',
+            'qassembly 128 5M',
+            'qassembly 128 2p5M',
+            'qassembly 128 1p25M',
+            'assembly 128 5M',
+            'assembly 128 2p5M',
+            'assembly 128 1p25M'
+        ],
+        '1d-homog': [
+            'nocmfd 5M',
+            'nocmfd 2p5M',
+            'nocmfd 1p25M',
+            '0p4cm 128 5M',
+            '0p4cm 128 2p5M',
+            '0p4cm 128 1p25M',
+            '20cm 128 5M',
+            '20cm 128 2p5M',
+            '20cm 128 1p25M'
+        ]
+    }
+
     os.chdir('./../')
 
     # Generate file templates
@@ -86,8 +114,7 @@ def generate_input_files(cluster, prob_type, run_file):
     # Generate files for each problem type
     os.system('mkdir -p {}'.format(prob_type))
     os.chdir(prob_type)
-
-    for run_strat in run_strats[prob_type]:
+    for run_strat in window_run_strats[prob_type]:
         if run_strat == 'nocmfd':
             os.system('mkdir -p {}'.format(run_strat))
             os.chdir(run_strat)
@@ -112,7 +139,41 @@ def generate_input_files(cluster, prob_type, run_file):
             create_files(batch_template, cluster_params, prob_type, run_file, run_strat)
 
             os.chdir('./../..')
-            
+
+    for run_strat in particle_run_strats[prob_type]:
+        cmfd_mesh = run_strat.split(' ')[0]
+        n_particles = run_strat.split(' ')[-1]
+        if cmfd_mesh == 'nocmfd':
+            run_strat_dir = '{}-{}'.format(cmfd_mesh, n_particles)
+            os.system('mkdir -p {}'.format(run_strat_dir))
+            os.chdir(run_strat_dir)
+            for base_file in cluster_params['base_files']:
+                new_file = base_file.split('-')[-1] if 'xml' in base_file else base_file
+                os.system('cp ./../../base/{} ./{}'.format(base_file, new_file))
+            int_particles = int(float(n_particles.split('M')[0].replace('p', '.'))*1000000)
+            os.system("sed -i 's-10000000"+"-{}-g' settings.xml".format(int_particles))
+            run_strat = ' '.join(run_strat.split(' ')[:-1])
+            create_files(batch_template, cluster_params, prob_type, run_file, run_strat)
+            os.chdir('./..')
+
+        else:
+            window_size = run_strat.split(' ')[1]
+            mesh_dir = 'cmfd-{}-mesh'.format(cmfd_mesh)
+            os.system('mkdir -p {}'.format(mesh_dir))
+            os.chdir(mesh_dir)
+            window_dir = 'expwindow-{}-{}'.format(window_size, n_particles)
+            os.system('mkdir -p {}'.format(window_dir))
+            os.chdir(window_dir)
+            for base_file in cluster_params['base_files']:
+                new_file = base_file.split('-')[-1] if 'xml' in base_file else base_file
+                os.system('cp ./../../../base/{} ./{}'.format(base_file, new_file))
+            int_particles = int(float(n_particles.split('M')[0].replace('p', '.'))*1000000)
+            os.system("sed -i 's-10000000"+"-{}-g' settings.xml".format(int_particles))
+            run_strat = ' '.join(run_strat.split(' ')[:-1])
+            create_files(batch_template, cluster_params, prob_type, run_file, run_strat)
+
+            os.chdir('./../..')
+
     os.chdir('./..')
 
 
