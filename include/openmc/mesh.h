@@ -40,6 +40,8 @@ public:
 
   // Methods
 
+  virtual std::string type() const = 0;
+
   //! Determine which bins were crossed by a particle
   //
   //! \param[in] p Particle to check
@@ -123,6 +125,8 @@ public:
 
   // Overriden methods
 
+  std::string type() const override {return "regular";}
+
   void bins_crossed(const Particle* p, std::vector<int>& bins,
                     std::vector<double>& lengths) const override;
 
@@ -180,9 +184,12 @@ class RectilinearMesh : public Mesh
 {
 public:
   // Constructors
+  RectilinearMesh() = default;
   RectilinearMesh(pugi::xml_node node);
 
   // Overriden methods
+
+  std::string type() const override {return "rectilinear";}
 
   void bins_crossed(const Particle* p, std::vector<int>& bins,
                     std::vector<double>& lengths) const override;

@@ -28,7 +28,8 @@ extern "C" {
   int openmc_extend_cells(int32_t n, int32_t* index_start, int32_t* index_end);
   int openmc_extend_filters(int32_t n, int32_t* index_start, int32_t* index_end);
   int openmc_extend_materials(int32_t n, int32_t* index_start, int32_t* index_end);
-  int openmc_extend_meshes(int32_t n, int32_t* index_start, int32_t* index_end);
+  int openmc_extend_meshes(int32_t n, const char* type, int32_t* index_start,
+                           int32_t* index_end);
   int openmc_extend_tallies(int32_t n, int32_t* index_start, int32_t* index_end);
   int openmc_filter_get_id(int32_t index, int32_t* id);
   int openmc_filter_get_type(int32_t index, char* type);

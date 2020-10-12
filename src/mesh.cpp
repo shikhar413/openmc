@@ -780,7 +780,7 @@ void RegularMesh::to_hdf5(hid_t group) const
 {
   hid_t mesh_group = create_group(group, "mesh " + std::to_string(id_));
 
-  write_dataset(mesh_group, "type", "regular");
+  write_dataset(mesh_group, "type", type());
   write_dataset(mesh_group, "dimension", shape_);
   write_dataset(mesh_group, "lower_left", lower_left_);
   write_dataset(mesh_group, "upper_right", upper_right_);
@@ -1228,7 +1228,7 @@ void RectilinearMesh::to_hdf5(hid_t group) const
 {
   hid_t mesh_group = create_group(group, "mesh " + std::to_string(id_));
 
-  write_dataset(mesh_group, "type", "rectilinear");
+  write_dataset(mesh_group, "type", type());
   write_dataset(mesh_group, "x_grid", grid_[0]);
   write_dataset(mesh_group, "y_grid", grid_[1]);
   write_dataset(mesh_group, "z_grid", grid_[2]);
@@ -1377,13 +1377,32 @@ check_regular_mesh(int32_t index, RegularMesh** mesh)
 // C API functions
 //==============================================================================
 
+// Return the type of mesh as a C string
+extern "C" int
+openmc_mesh_get_type(int32_t index, char* type)
+{
+  if (int err = check_mesh(index)) return err;
+
+  std::strcpy(type, model::meshes[index]->type().c_str());
+  return 0;
+}
+
 //! Extend the meshes array by n elements
 extern "C" int
-openmc_extend_meshes(int32_t n, int32_t* index_start, int32_t* index_end)
+openmc_extend_meshes(int32_t n, const char* type, int32_t* index_start,
+                       int32_t* index_end)
 {
   if (index_start) *index_start = model::meshes.size();
   for (int i = 0; i < n; ++i) {
-    model::meshes.push_back(std::make_unique<RegularMesh>());
+    if (std::strcmp(type, "regular") == 0)
+    {
+      model::meshes.push_back(std::make_unique<RegularMesh>());
+    } else if (std::strcmp(type, "rectilinear") == 0)
+    {
+      model::meshes.push_back(std::make_unique<RectilinearMesh>());
+    } else {
+      throw std::runtime_error{"Unknown mesh type: " + std::string(type)};
+    }
   }
   if (index_end) *index_end = model::meshes.size() - 1;
 
@@ -1422,9 +1441,9 @@ openmc_mesh_set_id(int32_t index, int32_t id)
   return 0;
 }
 
-//! Get the dimension of a mesh
+//! Get the dimension of a regular mesh
 extern "C" int
-openmc_mesh_get_dimension(int32_t index, int** dims, int* n)
+openmc_regular_mesh_get_dimension(int32_t index, int** dims, int* n)
 {
   RegularMesh* mesh;
   if (int err = check_regular_mesh(index, &mesh)) return err;
@@ -1433,9 +1452,9 @@ openmc_mesh_get_dimension(int32_t index, int** dims, int* n)
   return 0;
 }
 
-//! Set the dimension of a mesh
+//! Set the dimension of a regular mesh
 extern "C" int
-openmc_mesh_set_dimension(int32_t index, int n, const int* dims)
+openmc_regular_mesh_set_dimension(int32_t index, int n, const int* dims)
 {
   RegularMesh* mesh;
   if (int err = check_regular_mesh(index, &mesh)) return err;
@@ -1448,9 +1467,10 @@ openmc_mesh_set_dimension(int32_t index, int n, const int* dims)
   return 0;
 }
 
-//! Get the mesh parameters
+//! Get the regular mesh parameters
 extern "C" int
-openmc_mesh_get_params(int32_t index, double** ll, double** ur, double** width, int* n)
+openmc_regular_mesh_get_params(int32_t index, double** ll, double** ur,
+                       double** width, int* n)
 {
   RegularMesh* m;
   if (int err = check_regular_mesh(index, &m)) return err;
@@ -1467,10 +1487,10 @@ openmc_mesh_get_params(int32_t index, double** ll, double** ur, double** width, 
   return 0;
 }
 
-//! Set the mesh parameters
+//! Set the regular mesh parameters
 extern "C" int
-openmc_mesh_set_params(int32_t index, int n, const double* ll, const double* ur,
-                       const double* width)
+openmc_regular_mesh_set_params(int32_t index, int n, const double* ll,
+                       const double* ur, const double* width)
 {
   RegularMesh* m;
   if (int err = check_regular_mesh(index, &m)) return err;
