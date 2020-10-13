@@ -851,7 +851,7 @@ RectilinearMesh::RectilinearMesh(pugi::xml_node node)
 {
   n_dimension_ = 3;
 
-  grid_.resize(3);
+  grid_.resize(n_dimension_);
   grid_[0] = get_node_array<double>(node, "x_grid");
   grid_[1] = get_node_array<double>(node, "y_grid");
   grid_[2] = get_node_array<double>(node, "z_grid");
@@ -1362,12 +1362,12 @@ check_mesh(int32_t index)
 }
 
 int
-check_regular_mesh(int32_t index, RegularMesh** mesh)
+check_mesh_type(int32_t index, const std::string& mesh_compare_type)
 {
   if (int err = check_mesh(index)) return err;
-  *mesh = dynamic_cast<RegularMesh*>(model::meshes[index].get());
-  if (!*mesh) {
-    set_errmsg("This function is only valid for regular meshes.");
+  auto mesh_type = model::meshes[index]->type();
+  if (mesh_compare_type != mesh_type) {
+    set_errmsg("This function is only valid for " + mesh_type + " meshes.");
     return OPENMC_E_INVALID_TYPE;
   }
   return 0;
@@ -1445,8 +1445,8 @@ openmc_mesh_set_id(int32_t index, int32_t id)
 extern "C" int
 openmc_regular_mesh_get_dimension(int32_t index, int** dims, int* n)
 {
-  RegularMesh* mesh;
-  if (int err = check_regular_mesh(index, &mesh)) return err;
+  if (int err = check_mesh_type(index, "regular")) return err;
+  RegularMesh* mesh = dynamic_cast<RegularMesh*>(model::meshes[index].get());
   *dims = mesh->shape_.data();
   *n = mesh->n_dimension_;
   return 0;
@@ -1456,8 +1456,8 @@ openmc_regular_mesh_get_dimension(int32_t index, int** dims, int* n)
 extern "C" int
 openmc_regular_mesh_set_dimension(int32_t index, int n, const int* dims)
 {
-  RegularMesh* mesh;
-  if (int err = check_regular_mesh(index, &mesh)) return err;
+  if (int err = check_mesh_type(index, "regular")) return err;
+  RegularMesh* mesh = dynamic_cast<RegularMesh*>(model::meshes[index].get());
 
   // Copy dimension
   std::vector<std::size_t> shape = {static_cast<std::size_t>(n)};
@@ -1472,8 +1472,8 @@ extern "C" int
 openmc_regular_mesh_get_params(int32_t index, double** ll, double** ur,
                        double** width, int* n)
 {
-  RegularMesh* m;
-  if (int err = check_regular_mesh(index, &m)) return err;
+  if (int err = check_mesh_type(index, "regular")) return err;
+  RegularMesh* m = dynamic_cast<RegularMesh*>(model::meshes[index].get());
 
   if (m->lower_left_.dimension() == 0) {
     set_errmsg("Mesh parameters have not been set.");
@@ -1492,8 +1492,8 @@ extern "C" int
 openmc_regular_mesh_set_params(int32_t index, int n, const double* ll,
                        const double* ur, const double* width)
 {
-  RegularMesh* m;
-  if (int err = check_regular_mesh(index, &m)) return err;
+  if (int err = check_mesh_type(index, "regular")) return err;
+  RegularMesh* m = dynamic_cast<RegularMesh*>(model::meshes[index].get());
 
   std::vector<std::size_t> shape = {static_cast<std::size_t>(n)};
   if (ll && ur) {
@@ -1512,6 +1512,77 @@ openmc_regular_mesh_set_params(int32_t index, int n, const double* ll,
     set_errmsg("At least two parameters must be specified.");
     return OPENMC_E_INVALID_ARGUMENT;
   }
+
+  return 0;
+}
+
+//! Get the rectilinear mesh grid
+extern "C" int
+openmc_rectilinear_mesh_get_grid(int32_t index, double** grid_x, int* nx,
+                       double** grid_y, int * ny, double** grid_z, int* nz)
+{
+  if (int err = check_mesh_type(index, "rectilinear")) return err;
+  RectilinearMesh* m = dynamic_cast<RectilinearMesh*>(model::meshes[index].get());
+
+  if (m->lower_left_.dimension() == 0) {
+    set_errmsg("Mesh parameters have not been set.");
+    return OPENMC_E_ALLOCATE;
+  }
+
+  *grid_x = m->grid_[0].data();
+  *nx = m->grid_[0].size();
+  *grid_y = m->grid_[1].data();
+  *ny = m->grid_[1].size();
+  *grid_z = m->grid_[2].data();
+  *nz = m->grid_[2].size();
+
+  return 0;
+}
+
+//! Set the regular mesh parameters
+extern "C" int
+openmc_rectilinear_mesh_set_grid(int32_t index, const double* grid_x,
+                       const int nx, const double* grid_y, const int ny,
+                       const double* grid_z, const int nz)
+{
+  if (int err = check_mesh_type(index, "rectilinear")) return err;
+  RectilinearMesh* m = dynamic_cast<RectilinearMesh*>(model::meshes[index].get());
+
+  m->n_dimension_ = 3;
+  m->grid_.resize(m->n_dimension_);
+
+  for (int i = 0; i < nx; i++) {
+    m->grid_[0].push_back(grid_x[i]);
+  }
+  for (int i = 0; i < ny; i++) {
+    m->grid_[1].push_back(grid_y[i]);
+  }
+  for (int i = 0; i < nz; i++) {
+    m->grid_[2].push_back(grid_z[i]);
+  }
+
+  m->shape_ = {static_cast<int>(m->grid_[0].size()) - 1,
+               static_cast<int>(m->grid_[1].size()) - 1,
+               static_cast<int>(m->grid_[2].size()) - 1};
+
+  for (const auto& g : m->grid_) {
+    if (g.size() < 2) {
+      set_errmsg("x-, y-, and z- grids for rectilinear meshes "
+        "must each have at least 2 points");
+      return OPENMC_E_INVALID_ARGUMENT;
+    }
+    for (int i = 1; i < g.size(); ++i) {
+      if (g[i] <= g[i-1]) {
+        std::cout << g[i] << " " << g[i-1] << "\n";
+        set_errmsg("Values in for x-, y-, and z- grids for "
+          "rectilinear meshes must be sorted and unique.");
+        return OPENMC_E_INVALID_ARGUMENT;
+      }
+    }
+  }
+
+  m->lower_left_ = {m->grid_[0].front(), m->grid_[1].front(), m->grid_[2].front()};
+  m->upper_right_ = {m->grid_[0].back(), m->grid_[1].back(), m->grid_[2].back()};
 
   return 0;
 }

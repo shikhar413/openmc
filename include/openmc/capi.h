@@ -74,11 +74,7 @@ extern "C" {
   int openmc_mesh_filter_get_mesh(int32_t index, int32_t* index_mesh);
   int openmc_mesh_filter_set_mesh(int32_t index, int32_t index_mesh);
   int openmc_mesh_get_id(int32_t index, int32_t* id);
-  int openmc_mesh_get_dimension(int32_t index, int** id, int* n);
-  int openmc_mesh_get_params(int32_t index, double** ll, double** ur, double** width, int* n);
   int openmc_mesh_set_id(int32_t index, int32_t id);
-  int openmc_mesh_set_dimension(int32_t index, int n, const int* dims);
-  int openmc_mesh_set_params(int32_t index, int n, const double* ll, const double* ur, const double* width);
   int openmc_meshsurface_filter_get_mesh(int32_t index, int32_t* index_mesh);
   int openmc_meshsurface_filter_set_mesh(int32_t index, int32_t index_mesh);
   int openmc_new_filter(const char* type, int32_t* index);
@@ -87,6 +83,15 @@ extern "C" {
   int openmc_plot_geometry();
   int openmc_id_map(const void* slice, int32_t* data_out);
   int openmc_property_map(const void* slice, double* data_out);
+  int openmc_rectilinear_mesh_get_grid(int32_t index, double** grid_x, int* nx,
+                       double** grid_y, int * ny, double** grid_z, int* nz);
+  int openmc_rectilinear_mesh_set_grid(int32_t index, const double* grid_x,
+                       const int nx, const double* grid_y, const int ny,
+                       const double* grid_z, const int nz);
+  int openmc_regular_mesh_get_dimension(int32_t index, int** id, int* n);
+  int openmc_regular_mesh_get_params(int32_t index, double** ll, double** ur, double** width, int* n);
+  int openmc_regular_mesh_set_dimension(int32_t index, int n, const int* dims);
+  int openmc_regular_mesh_set_params(int32_t index, int n, const double* ll, const double* ur, const double* width);
   int openmc_reset();
   int openmc_run();
   void openmc_set_seed(int64_t new_seed);

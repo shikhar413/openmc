@@ -110,6 +110,7 @@ public:
   int n_dimension_; //!< Number of dimensions
   xt::xtensor<double, 1> lower_left_; //!< Lower-left coordinates of mesh
   xt::xtensor<double, 1> upper_right_; //!< Upper-right coordinates of mesh
+  xt::xtensor<int, 1> shape_; //!< Number of mesh elements in each dimension
 };
 
 //==============================================================================
@@ -171,7 +172,6 @@ public:
   // Data members
 
   double volume_frac_; //!< Volume fraction of each mesh element
-  xt::xtensor<int, 1> shape_; //!< Number of mesh elements in each dimension
   xt::xtensor<double, 1> width_; //!< Width of each mesh element
 
 private:
@@ -226,9 +226,6 @@ public:
 
   // Data members
 
-  xt::xtensor<int, 1> shape_; //!< Number of mesh elements in each dimension
-
-private:
   std::vector<std::vector<double>> grid_;
 };
 
