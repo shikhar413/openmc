@@ -40,7 +40,7 @@ xt::xtensor<int, 2> indexmap;
 
 int use_all_threads;
 
-RegularMesh* mesh;
+Mesh* mesh;
 
 std::vector<double> egrid;
 
@@ -311,12 +311,11 @@ xt::xtensor<double, 1> count_bank_sites(xt::xtensor<int, 1>& bins, bool* outside
       outside_ = true;
       //continue;  TEMP BEGIN!
       auto& site2 = simulation::source_bank[i];
-      auto dim = cmfd::mesh->shape_;
       auto ll = cmfd::mesh->lower_left_;
-      auto width = cmfd::mesh->width_;
+      auto ur = cmfd::mesh->upper_right_;
       for (int j = 0; j < 3; j++) {
         if (site.r[j] > cmfd::mesh->upper_right_[j] || site.r[j] < cmfd::mesh->lower_left_[j])
-          site2.r[j] = ll[j]+float(dim[j])/2*width[j];
+          site2.r[j] = (ll[j]+ur[j])/2.;
       }
       mesh_bin = cmfd::mesh->get_bin(site.r);
       // TEMP END!
@@ -451,8 +450,8 @@ void openmc_initialize_mesh_egrid(const int meshtally_id, const int* cmfd_indice
   auto mesh_index = meshfilt->mesh();
 
   // Get mesh from mesh index
-  cmfd::mesh = dynamic_cast<RegularMesh*>(model::meshes[mesh_index].get());
-  
+  cmfd::mesh = model::meshes[mesh_index].get();
+
   // Get energy bins from energy index, otherwise use default
   if (energy_index != -1)
   {
