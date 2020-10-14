@@ -1589,8 +1589,7 @@ class CMFDRun(object):
 
         # Compute fission source
         cmfd_src = (np.sum(self._nfissxs[:,:,:,:,:] *
-                    cmfd_flux[:,:,:,:,np.newaxis], axis=3) *
-                    vol[:,:,:,np.newaxis])
+                    cmfd_flux[:,:,:,:,np.newaxis], axis=3))
 
         # Normalize source such that it sums to 1.0
         self._cmfd_src = cmfd_src / np.sum(cmfd_src)
