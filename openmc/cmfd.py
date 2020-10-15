@@ -15,7 +15,7 @@ from collections.abc import Iterable, Mapping
 from numbers import Real, Integral
 import sys
 import time
-from ctypes import c_int
+from ctypes import c_int, c_char_p
 import warnings
 import os
 import logging
@@ -353,6 +353,9 @@ class CMFDRun(object):
         the presence of CMFD feedback. During prolongation, the weight factor
         in any CMFD mesh cell is clipped to
         [1/(1+weight_clipping), 1+weight_clipping]
+    linprolong_axis : {None, 'x', 'y', 'z'}
+        Axis to use for linear prolongation step. Value of None uses a flat
+        source prolongation step.
     indices : numpy.ndarray
         Stores spatial and group dimensions as [nx, ny, nz, ng]
     cmfd_src : numpy.ndarray
@@ -418,6 +421,7 @@ class CMFDRun(object):
         self._use_logger = False
         self._intracomm = None
         self._use_all_threads = False
+        self._linprolong_axis = None
 
         # External variables used during runtime but users cannot control
         self._set_reference_params = False
@@ -582,6 +586,10 @@ class CMFDRun(object):
     @property
     def weight_clipping(self):
         return self._weight_clipping
+
+    @property
+    def linprolong_axis(self):
+        return self._linprolong_axis
 
     @property
     def reset(self):
@@ -806,6 +814,12 @@ class CMFDRun(object):
         check_greater_than('CMFD damping factor', weight_clipping, 0, True)
         check_less_than('CMFD damping factor', weight_clipping, 1, True)
         self._weight_clipping = weight_clipping
+
+    @linprolong_axis.setter
+    def linprolong_axis(self, axis):
+        check_value('CMFD linear prolongation axis', axis,
+                    [None, 'x', 'y', 'z'])
+        self._linprolong_axis = axis
 
     @reset.setter
     def reset(self, reset):
@@ -3330,6 +3344,9 @@ class CMFDRun(object):
                 cmfd_tally.type = 'volume'
                 cmfd_tally.estimator = 'analog'
 
+        if self._linprolong_axis is not None:
+            self._linprolong_axis = c_char_p(self._linprolong_axis.encode())
+
         args = self._tally_ids[0], self._indices, self._norm, \
-               self._weight_clipping
+               self._weight_clipping, self._linprolong_axis
         openmc.lib._dll.openmc_initialize_mesh_egrid(*args)

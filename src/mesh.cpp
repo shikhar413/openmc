@@ -206,6 +206,17 @@ int RegularMesh::get_bin_from_indices(const int* ijk) const
   }
 }
 
+int RegularMesh::get_bin_boundaries(const int bin, std::vector<double>& boundaries) const
+{
+  std::vector<int> ijk(n_dimension_);
+  get_indices_from_bin(bin, ijk.data());
+  for (int i = 0; i < n_dimension_; i++) {
+    auto lb = lower_left_[i] + (ijk[i]-1)*width_[i];
+    auto ub = lower_left_[i] + (ijk[i])*width_[i];
+    boundaries.insert(boundaries.end(), {lb, ub});
+  }
+}
+
 void RegularMesh::get_indices(Position r, int* ijk, bool* in_mesh) const
 {
   // Find particle in mesh
@@ -1159,6 +1170,17 @@ int RectilinearMesh::get_bin(Position r) const
 int RectilinearMesh::get_bin_from_indices(const int* ijk) const
 {
   return ((ijk[2] - 1)*shape_[1] + (ijk[1] - 1))*shape_[0] + ijk[0] - 1;
+}
+
+int RectilinearMesh::get_bin_boundaries(const int bin, std::vector<double>& boundaries) const
+{
+  std::vector<int> ijk(3);
+  get_indices_from_bin(bin, ijk.data());
+  for (int i = 0; i < 3; i++) {
+    auto lb = grid_[i][ijk[i]-1];
+    auto ub = grid_[i][ijk[i]];
+    boundaries.insert(boundaries.end(), {lb, ub});
+  }
 }
 
 void RectilinearMesh::get_indices(Position r, int* ijk, bool* in_mesh) const

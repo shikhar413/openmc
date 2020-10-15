@@ -69,6 +69,12 @@ public:
   //! \return Mesh bin
   virtual int get_bin_from_indices(const int* ijk) const = 0;
 
+  //! Get mesh boundaries given a bin
+  //
+  //! \param[in] bin Mesh bin
+  //! \param[out] boundaries Mesh boundaries
+  virtual int get_bin_boundaries(const int bin, std::vector<double>& boundaries) const = 0;
+
   //! Get mesh indices given a position
   //
   //! \param[in] r Position to get indices for
@@ -138,6 +144,8 @@ public:
 
   int get_bin_from_indices(const int* ijk) const override;
 
+  int get_bin_boundaries(const int bin, std::vector<double>& boundaries) const override;
+
   void get_indices(Position r, int* ijk, bool* in_mesh) const override;
 
   void get_indices_from_bin(int bin, int* ijk) const override;
@@ -200,6 +208,8 @@ public:
   int get_bin(Position r) const override;
 
   int get_bin_from_indices(const int* ijk) const override;
+
+  int get_bin_boundaries(const int bin, std::vector<double>& boundaries) const override;
 
   void get_indices(Position r, int* ijk, bool* in_mesh) const override;
 

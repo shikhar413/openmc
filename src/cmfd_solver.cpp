@@ -46,6 +46,8 @@ std::vector<double> egrid;
 
 double norm, weight_clipping;
 
+int prolongation_axis, next_bin_stride;
+
 } // namespace cmfd
 
 //==============================================================================
@@ -419,7 +421,8 @@ int cmfd_linsolver_ng(const double* A_data, const double* b, double* x,
 
 extern "C"
 void openmc_initialize_mesh_egrid(const int meshtally_id, const int* cmfd_indices,
-                                  const double norm, const double weight_clipping)
+                                  const double norm, const double weight_clipping,
+                                  const char* linprolong_axis)
 {
   // Set CMFD indices
   cmfd::nx = cmfd_indices[0];
@@ -451,6 +454,21 @@ void openmc_initialize_mesh_egrid(const int meshtally_id, const int* cmfd_indice
 
   // Get mesh from mesh index
   cmfd::mesh = model::meshes[mesh_index].get();
+
+  // Define prolongation axis and adjacent cell stride for that axis
+  if (!linprolong_axis) {
+    cmfd::prolongation_axis = -1;
+  }
+  else {
+    cmfd::prolongation_axis = linprolong_axis[0] - 'x';
+  }
+
+  cmfd::next_bin_stride = 1;
+  for (int i = 1; i < 3; i++) {
+    if (cmfd::prolongation_axis >= i) {
+      cmfd::next_bin_stride *= cmfd::mesh->shape_[i-1];
+    }
+  }
 
   // Get energy bins from energy index, otherwise use default
   if (energy_index != -1)
@@ -521,7 +539,40 @@ void openmc_cmfd_reweight(const bool feedback, const double* cmfd_src)
   // Iterate through fission bank and update particle weights
   for (int64_t i = 0; i < bank_size; i++) {
     auto& site = simulation::source_bank[i];
-    site.wgt *= weightfactors(bank_bins(i));
+    if (cmfd::prolongation_axis >= 0) {
+      // Use linear prolongation
+      std::vector<double> boundary;
+      cmfd::mesh->get_bin_boundaries(bank_bins[i], boundary);
+
+      // Get mesh lower and upper boundaries
+      auto lb = boundary[cmfd::prolongation_axis*2];
+      auto ub = boundary[cmfd::prolongation_axis*2+1];
+
+      // Get lower and upper boundaries of weightfactors
+      double lb_weight, ub_weight;
+      if (lb == cmfd::mesh->lower_left_[cmfd::prolongation_axis]) {
+        lb_weight = weightfactors[bank_bins[i]];
+      } else {
+        lb_weight = (weightfactors[bank_bins[i]] +
+                     weightfactors[bank_bins[i]-cmfd::next_bin_stride]) / 2.;
+      }
+      if (ub == cmfd::mesh->upper_right_[cmfd::prolongation_axis]) {
+        ub_weight = weightfactors[bank_bins[i]];
+      } else {
+        ub_weight = (weightfactors[bank_bins[i]] +
+                     weightfactors[bank_bins[i]+cmfd::next_bin_stride]) / 2.;
+      }
+
+      // Apply linear prolongation
+      auto dx = site.r[cmfd::prolongation_axis] - lb;
+      auto total_dx = ub - lb;
+      auto total_dy = ub_weight - lb_weight;
+      auto weightfactor = lb_weight + (dx*total_dy/total_dx);
+      site.wgt *= weightfactor;
+    } else {
+      // Use flat source prolongation
+      site.wgt *= weightfactors[bank_bins[i]];
+    }
   }
 }
 
