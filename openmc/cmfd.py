@@ -12,6 +12,7 @@ References
 
 from contextlib import contextmanager
 from collections.abc import Iterable, Mapping
+from enum import Enum
 from numbers import Real, Integral
 import sys
 import time
@@ -55,6 +56,13 @@ _CURRENTS = {
     'out_back':   4, 'in_back':   5, 'out_front': 6, 'in_front': 7,
     'out_bottom': 8, 'in_bottom': 9, 'out_top':  10, 'in_top':  11
 }
+
+
+class ProlongationAxis(Enum):
+    NONE = -1
+    X = 0
+    Y = 1
+    Z = 2
 
 
 class CMFDMesh(object):
@@ -421,7 +429,7 @@ class CMFDRun(object):
         self._use_logger = False
         self._intracomm = None
         self._use_all_threads = False
-        self._linprolong_axis = None
+        self._linprolong_axis = ProlongationAxis.NONE
 
         # External variables used during runtime but users cannot control
         self._set_reference_params = False
@@ -819,7 +827,14 @@ class CMFDRun(object):
     def linprolong_axis(self, axis):
         check_value('CMFD linear prolongation axis', axis,
                     [None, 'x', 'y', 'z'])
-        self._linprolong_axis = axis
+        if axis == 'x':
+            self._linprolong_axis = ProlongationAxis.X
+        elif axis == 'y':
+            self._linprolong_axis = ProlongationAxis.Y
+        elif axis == 'z':
+            self._linprolong_axis = ProlongationAxis.Z
+        else:
+            self._linprolong_axis = ProlongationAxis.NONE
 
     @reset.setter
     def reset(self, reset):
@@ -3344,9 +3359,6 @@ class CMFDRun(object):
                 cmfd_tally.type = 'volume'
                 cmfd_tally.estimator = 'analog'
 
-        if self._linprolong_axis is not None:
-            self._linprolong_axis = c_char_p(self._linprolong_axis.encode())
-
         args = self._tally_ids[0], self._indices, self._norm, \
-               self._weight_clipping, self._linprolong_axis
+               self._weight_clipping, self._linprolong_axis.value
         openmc.lib._dll.openmc_initialize_mesh_egrid(*args)

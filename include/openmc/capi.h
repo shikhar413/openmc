@@ -143,7 +143,7 @@ extern "C" {
   //! \param[in] CMFD linear prolongation axis
   extern "C" void openmc_initialize_mesh_egrid(const int meshtally_id, const int* cmfd_indices,
                                                const double norm, const double weight_clipping,
-                                               const char* linprolong_axis);
+                                               const int linprolong_axis);
 
   //! Sets the mesh and energy grid for CMFD reweight
   //! \param[in] whether or not to run CMFD feedback

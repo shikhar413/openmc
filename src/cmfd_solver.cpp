@@ -422,7 +422,7 @@ int cmfd_linsolver_ng(const double* A_data, const double* b, double* x,
 extern "C"
 void openmc_initialize_mesh_egrid(const int meshtally_id, const int* cmfd_indices,
                                   const double norm, const double weight_clipping,
-                                  const char* linprolong_axis)
+                                  const int linprolong_axis)
 {
   // Set CMFD indices
   cmfd::nx = cmfd_indices[0];
@@ -456,13 +456,7 @@ void openmc_initialize_mesh_egrid(const int meshtally_id, const int* cmfd_indice
   cmfd::mesh = model::meshes[mesh_index].get();
 
   // Define prolongation axis and adjacent cell stride for that axis
-  if (!linprolong_axis) {
-    cmfd::prolongation_axis = -1;
-  }
-  else {
-    cmfd::prolongation_axis = linprolong_axis[0] - 'x';
-  }
-
+  cmfd::prolongation_axis = linprolong_axis;
   cmfd::next_bin_stride = 1;
   for (int i = 1; i < 3; i++) {
     if (cmfd::prolongation_axis >= i) {
