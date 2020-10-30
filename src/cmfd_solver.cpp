@@ -543,25 +543,25 @@ void openmc_cmfd_reweight(const bool feedback, const double* cmfd_src)
       auto ub = boundary[cmfd::prolongation_axis*2+1];
 
       // Get lower and upper boundaries of weightfactors
-      double lb_weight, ub_weight;
+      double left_weight, right_weight, center_weight;
+      center_weight = weightfactors[bank_bins[i]];
       if (lb == cmfd::mesh->lower_left_[cmfd::prolongation_axis]) {
-        lb_weight = weightfactors[bank_bins[i]];
+        left_weight = weightfactors[bank_bins[i]];
       } else {
-        lb_weight = (weightfactors[bank_bins[i]] +
-                     weightfactors[bank_bins[i]-cmfd::next_bin_stride]) / 2.;
+        left_weight = weightfactors[bank_bins[i]-cmfd::next_bin_stride];
       }
       if (ub == cmfd::mesh->upper_right_[cmfd::prolongation_axis]) {
-        ub_weight = weightfactors[bank_bins[i]];
+        right_weight = weightfactors[bank_bins[i]];
       } else {
-        ub_weight = (weightfactors[bank_bins[i]] +
-                     weightfactors[bank_bins[i]+cmfd::next_bin_stride]) / 2.;
+        right_weight = weightfactors[bank_bins[i]+cmfd::next_bin_stride];
       }
 
       // Apply linear prolongation
       auto dx = site.r[cmfd::prolongation_axis] - lb;
       auto total_dx = ub - lb;
-      auto total_dy = ub_weight - lb_weight;
-      auto weightfactor = lb_weight + (dx*total_dy/total_dx);
+      auto slope = (right_weight - left_weight) / total_dx;
+      auto intercept = center_weight - slope * total_dx / 2.;
+      auto weightfactor = intercept + slope * dx;
       site.wgt *= weightfactor;
     } else {
       // Use flat source prolongation
