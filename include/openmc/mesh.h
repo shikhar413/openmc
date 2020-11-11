@@ -40,6 +40,14 @@ public:
 
   // Methods
 
+  //! Count number of bank sites in each mesh bin / energy bin
+  //
+  //! \param[in] bank Array of bank sites
+  //! \param[out] Whether any bank sites are outside the mesh
+  //! \return Array indicating number of sites in each mesh/energy bin
+  xt::xtensor<double, 1> count_sites(const std::vector<Particle::Bank>& bank,
+    bool* outside) const;
+
   virtual std::string type() const = 0;
 
   //! Determine which bins were crossed by a particle
@@ -168,14 +176,6 @@ public:
   //! \param[out] ijk Indices of the mesh bin containing the intersection point
   //! \return Whether the line segment connecting r0 and r1 intersects mesh
   bool intersects(Position& r0, Position r1, int* ijk) const;
-
-  //! Count number of bank sites in each mesh bin / energy bin
-  //
-  //! \param[in] bank Array of bank sites
-  //! \param[out] Whether any bank sites are outside the mesh
-  //! \return Array indicating number of sites in each mesh/energy bin
-  xt::xtensor<double, 1> count_sites(const std::vector<Particle::Bank>& bank,
-    bool* outside) const;
 
   // Data members
 

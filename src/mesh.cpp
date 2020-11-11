@@ -81,6 +81,59 @@ Mesh::Mesh(pugi::xml_node node)
   }
 }
 
+xt::xtensor<double, 1>
+Mesh::count_sites(const std::vector<Particle::Bank>& bank,
+  bool* outside) const
+{
+  // Determine shape of array for counts
+  std::size_t m = xt::prod(shape_)();
+  std::vector<std::size_t> shape = {m};
+
+  // Create array of zeros
+  xt::xarray<double> cnt {shape, 0.0};
+  bool outside_ = false;
+
+  for (const auto& site : bank) {
+    // determine scoring bin for entropy mesh
+    int mesh_bin = get_bin(site.r);
+
+    // if outside mesh, skip particle
+    if (mesh_bin < 0) {
+      outside_ = true;
+      continue;
+    }
+
+    // Add to appropriate bin
+    cnt(mesh_bin) += site.wgt;
+  }
+
+  // Create copy of count data. Since ownership will be acquired by xtensor,
+  // std::allocator must be used to avoid Valgrind mismatched free() / delete
+  // warnings.
+  int total = cnt.size();
+  double* cnt_reduced = std::allocator<double>{}.allocate(total);
+
+#ifdef OPENMC_MPI
+  // collect values from all processors
+  MPI_Reduce(cnt.data(), cnt_reduced, total, MPI_DOUBLE, MPI_SUM, 0,
+    mpi::intracomm);
+
+  // Check if there were sites outside the mesh for any processor
+  if (outside) {
+    MPI_Reduce(&outside_, outside, 1, MPI_C_BOOL, MPI_LOR, 0, mpi::intracomm);
+  }
+#else
+  std::copy(cnt.data(), cnt.data() + total, cnt_reduced);
+  if (outside) *outside = outside_;
+#endif
+
+  // Adapt reduced values in array back into an xarray
+  auto arr = xt::adapt(cnt_reduced, total, xt::acquire_ownership(), shape);
+  xt::xarray<double> counts = arr;
+
+  return counts;
+}
+
 //==============================================================================
 // RegularMesh implementation
 //==============================================================================
@@ -798,59 +851,6 @@ void RegularMesh::to_hdf5(hid_t group) const
   write_dataset(mesh_group, "width", width_);
 
   close_group(mesh_group);
-}
-
-xt::xtensor<double, 1>
-RegularMesh::count_sites(const std::vector<Particle::Bank>& bank,
-  bool* outside) const
-{
-  // Determine shape of array for counts
-  std::size_t m = xt::prod(shape_)();
-  std::vector<std::size_t> shape = {m};
-
-  // Create array of zeros
-  xt::xarray<double> cnt {shape, 0.0};
-  bool outside_ = false;
-
-  for (const auto& site : bank) {
-    // determine scoring bin for entropy mesh
-    int mesh_bin = get_bin(site.r);
-
-    // if outside mesh, skip particle
-    if (mesh_bin < 0) {
-      outside_ = true;
-      continue;
-    }
-
-    // Add to appropriate bin
-    cnt(mesh_bin) += site.wgt;
-  }
-
-  // Create copy of count data. Since ownership will be acquired by xtensor,
-  // std::allocator must be used to avoid Valgrind mismatched free() / delete
-  // warnings.
-  int total = cnt.size();
-  double* cnt_reduced = std::allocator<double>{}.allocate(total);
-
-#ifdef OPENMC_MPI
-  // collect values from all processors
-  MPI_Reduce(cnt.data(), cnt_reduced, total, MPI_DOUBLE, MPI_SUM, 0,
-    mpi::intracomm);
-
-  // Check if there were sites outside the mesh for any processor
-  if (outside) {
-    MPI_Reduce(&outside_, outside, 1, MPI_C_BOOL, MPI_LOR, 0, mpi::intracomm);
-  }
-#else
-  std::copy(cnt.data(), cnt.data() + total, cnt_reduced);
-  if (outside) *outside = outside_;
-#endif
-
-  // Adapt reduced values in array back into an xarray
-  auto arr = xt::adapt(cnt_reduced, total, xt::acquire_ownership(), shape);
-  xt::xarray<double> counts = arr;
-
-  return counts;
 }
 
 //==============================================================================
