@@ -515,11 +515,13 @@ void read_settings_xml()
   }
 
   if (index_entropy_mesh >= 0) {
-    auto* m = dynamic_cast<RegularMesh*>(
-      model::meshes[index_entropy_mesh].get());
-    if (!m) fatal_error("Only regular meshes can be used as an entropy mesh");
+    auto* m = model::meshes[index_entropy_mesh].get();
+    //if (!m) fatal_error("Only regular meshes can be used as an entropy mesh");
     simulation::entropy_mesh = m;
 
+    // TODO make sure this part of the loop only enters if mesh type is regular
+    // TODO how to define mesh width_ if m is Mesh*? This section is commented out for now
+    /*
     if (m->shape_.size() == 0) {
       // If the user did not specify how many mesh cells are to be used in
       // each direction, we automatically determine an appropriate number of
@@ -531,6 +533,7 @@ void read_settings_xml()
       // Calculate width
       m->width_ = (m->upper_right_ - m->lower_left_) / m->shape_;
     }
+    */
 
     // Turn on Shannon entropy calculation
     entropy_on = true;
