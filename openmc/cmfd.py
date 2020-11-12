@@ -16,7 +16,6 @@ from enum import Enum
 from numbers import Real, Integral
 import sys
 import time
-from ctypes import c_int, c_char_p
 import warnings
 import os
 import logging
