@@ -289,7 +289,7 @@ int total_gen {0};
 double total_weight;
 int64_t work_per_rank;
 
-const RegularMesh* entropy_mesh {nullptr};
+const Mesh* entropy_mesh {nullptr};
 const RegularMesh* ufs_mesh {nullptr};
 
 std::unique_ptr<ConvergenceTally> conv_tally {nullptr};

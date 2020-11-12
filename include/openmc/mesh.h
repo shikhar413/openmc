@@ -40,6 +40,16 @@ public:
 
   // Methods
 
+  //! Count number of bank sites in each mesh bin / energy bin
+  //
+  //! \param[in] bank Array of bank sites
+  //! \param[out] Whether any bank sites are outside the mesh
+  //! \return Array indicating number of sites in each mesh/energy bin
+  xt::xtensor<double, 1> count_sites(const std::vector<Particle::Bank>& bank,
+    bool* outside) const;
+
+  virtual std::string type() const = 0;
+
   //! Determine which bins were crossed by a particle
   //
   //! \param[in] p Particle to check
@@ -66,6 +76,12 @@ public:
   //! \param[in] Array of mesh indices
   //! \return Mesh bin
   virtual int get_bin_from_indices(const int* ijk) const = 0;
+
+  //! Get mesh boundaries given a bin
+  //
+  //! \param[in] bin Mesh bin
+  //! \param[out] boundaries Mesh boundaries
+  virtual int get_bin_boundaries(const int bin, std::vector<double>& boundaries) const = 0;
 
   //! Get mesh indices given a position
   //
@@ -108,6 +124,7 @@ public:
   int n_dimension_; //!< Number of dimensions
   xt::xtensor<double, 1> lower_left_; //!< Lower-left coordinates of mesh
   xt::xtensor<double, 1> upper_right_; //!< Upper-right coordinates of mesh
+  xt::xtensor<int, 1> shape_; //!< Number of mesh elements in each dimension
 };
 
 //==============================================================================
@@ -123,6 +140,8 @@ public:
 
   // Overriden methods
 
+  std::string type() const override {return "regular";}
+
   void bins_crossed(const Particle* p, std::vector<int>& bins,
                     std::vector<double>& lengths) const override;
 
@@ -132,6 +151,8 @@ public:
   int get_bin(Position r) const override;
 
   int get_bin_from_indices(const int* ijk) const override;
+
+  int get_bin_boundaries(const int bin, std::vector<double>& boundaries) const override;
 
   void get_indices(Position r, int* ijk, bool* in_mesh) const override;
 
@@ -156,18 +177,9 @@ public:
   //! \return Whether the line segment connecting r0 and r1 intersects mesh
   bool intersects(Position& r0, Position r1, int* ijk) const;
 
-  //! Count number of bank sites in each mesh bin / energy bin
-  //
-  //! \param[in] bank Array of bank sites
-  //! \param[out] Whether any bank sites are outside the mesh
-  //! \return Array indicating number of sites in each mesh/energy bin
-  xt::xtensor<double, 1> count_sites(const std::vector<Particle::Bank>& bank,
-    bool* outside) const;
-
   // Data members
 
   double volume_frac_; //!< Volume fraction of each mesh element
-  xt::xtensor<int, 1> shape_; //!< Number of mesh elements in each dimension
   xt::xtensor<double, 1> width_; //!< Width of each mesh element
 
 private:
@@ -180,9 +192,12 @@ class RectilinearMesh : public Mesh
 {
 public:
   // Constructors
+  RectilinearMesh() = default;
   RectilinearMesh(pugi::xml_node node);
 
   // Overriden methods
+
+  std::string type() const override {return "rectilinear";}
 
   void bins_crossed(const Particle* p, std::vector<int>& bins,
                     std::vector<double>& lengths) const override;
@@ -193,6 +208,8 @@ public:
   int get_bin(Position r) const override;
 
   int get_bin_from_indices(const int* ijk) const override;
+
+  int get_bin_boundaries(const int bin, std::vector<double>& boundaries) const override;
 
   void get_indices(Position r, int* ijk, bool* in_mesh) const override;
 
@@ -219,9 +236,6 @@ public:
 
   // Data members
 
-  xt::xtensor<int, 1> shape_; //!< Number of mesh elements in each dimension
-
-private:
   std::vector<std::vector<double>> grid_;
 };
 
