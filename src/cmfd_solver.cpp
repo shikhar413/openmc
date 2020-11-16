@@ -319,7 +319,7 @@ xt::xtensor<double, 1> count_bank_sites(xt::xtensor<int, 1>& bins, bool* outside
         if (site.r[j] > cmfd::mesh->upper_right_[j] || site.r[j] < cmfd::mesh->lower_left_[j])
           site2.r[j] = (ll[j]+ur[j])/2.;
       }
-      mesh_bin = cmfd::mesh->get_bin(site.r);
+      mesh_bin = cmfd::mesh->get_bin(site2.r);
       // TEMP END!
     }
 
@@ -456,8 +456,9 @@ void openmc_initialize_mesh_egrid(const int meshtally_id, const int* cmfd_indice
   cmfd::mesh = model::meshes[mesh_index].get();
 
   // Define prolongation axis and adjacent cell stride for that axis
+  // Stride is multiplied by number of groups to account for energy dimension
   cmfd::prolongation_axis = linprolong_axis;
-  cmfd::next_bin_stride = 1;
+  cmfd::next_bin_stride = cmfd::ng;
   for (int i = 1; i < 3; i++) {
     if (cmfd::prolongation_axis >= i) {
       cmfd::next_bin_stride *= cmfd::mesh->shape_[i-1];
@@ -495,8 +496,8 @@ void openmc_cmfd_reweight(const bool feedback, const double* cmfd_src)
   xt::xtensor<double, 1> sourcecounts = count_bank_sites(bank_bins,
                                                          &sites_outside);
 
-  // Compute CMFD weightfactors
-  xt::xtensor<double, 1> weightfactors = xt::xtensor<double, 1>({src_size}, 1.);
+  // Compute CMFD weightfactors, all initialized to 0
+  xt::xtensor<double, 1> weightfactors = xt::xtensor<double, 1>({src_size}, 0.); 
   if (mpi::master) {
     if (sites_outside) {
       //fatal_error("Source sites outside of the CMFD mesh");  TEMP
@@ -536,7 +537,7 @@ void openmc_cmfd_reweight(const bool feedback, const double* cmfd_src)
     if (cmfd::prolongation_axis >= 0) {
       // Use linear prolongation
       std::vector<double> boundary;
-      cmfd::mesh->get_bin_boundaries(bank_bins[i], boundary);
+      cmfd::mesh->get_bin_boundaries(int(bank_bins[i]/cmfd::ng), boundary);
 
       // Get mesh lower and upper boundaries
       auto lb = boundary[cmfd::prolongation_axis*2];
@@ -545,12 +546,18 @@ void openmc_cmfd_reweight(const bool feedback, const double* cmfd_src)
       // Get lower and upper boundaries of weightfactors
       double left_weight, right_weight, center_weight;
       center_weight = weightfactors[bank_bins[i]];
-      if (lb == cmfd::mesh->lower_left_[cmfd::prolongation_axis]) {
+      // Define left_weight only if cell is not on left boundary and its
+      // neighbor cell has non-zero weight 
+      if (lb == cmfd::mesh->lower_left_[cmfd::prolongation_axis] ||
+          weightfactors[bank_bins[i]-cmfd::next_bin_stride] == 0.0) {
         left_weight = weightfactors[bank_bins[i]];
       } else {
         left_weight = weightfactors[bank_bins[i]-cmfd::next_bin_stride];
       }
-      if (ub == cmfd::mesh->upper_right_[cmfd::prolongation_axis]) {
+      // Define right_weight only if cell is not on right boundary and its
+      // neighbor cell has non-zero weight 
+      if (ub == cmfd::mesh->upper_right_[cmfd::prolongation_axis] ||
+          weightfactors[bank_bins[i]+cmfd::next_bin_stride] == 0.0) {
         right_weight = weightfactors[bank_bins[i]];
       } else {
         right_weight = weightfactors[bank_bins[i]+cmfd::next_bin_stride];
