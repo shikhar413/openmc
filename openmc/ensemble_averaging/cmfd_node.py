@@ -1220,6 +1220,9 @@ class CMFDNode(object):
             self._compute_xs(openmc_tallies)
             self._log_event('Finished computing CMFD cross sections')
 
+        if self._ea_run_strategy == 'rendez-asynch' and self._n_cmfd_updates % self._n_seeds != 0:
+            skip_batch = True
+
         if tally_batch >= self._solver_begin and not skip_batch:
             # Create CMFD data based on OpenMC tallies
             self._set_up_cmfd()
