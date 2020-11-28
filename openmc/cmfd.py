@@ -1233,7 +1233,7 @@ class CMFDRun(object):
         nx, ny, nz, ng = self._indices
 
         # Initialize CMFD source to all zeros
-        self._cmfd_src = np.zeros((nx, ny, nz, ng))
+        self._cmfd_src = np.ones((nx, ny, nz, ng))
 
         # Define all variables that will exist only on master process
         if openmc.lib.master():
