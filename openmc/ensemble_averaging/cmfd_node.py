@@ -1820,7 +1820,7 @@ class CMFDNode(object):
         self._scattxs = np.zeros((nx, ny, nz, ng, ng))  # Incoming, outgoing
         self._nfissxs = np.zeros((nx, ny, nz, ng, ng))  # Incoming, outgoing
         self._diffcof = np.zeros((nx, ny, nz, ng))
-        self._cmfd_src = np.zeros((nx, ny, nz, ng))
+        self._cmfd_src = np.ones((nx, ny, nz, ng))
 
         # Allocate dtilde and dhat
         self._dtilde = np.zeros((nx, ny, nz, ng, 6))
