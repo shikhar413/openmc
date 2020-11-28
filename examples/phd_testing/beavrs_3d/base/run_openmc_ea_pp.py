@@ -208,7 +208,7 @@ def get_3db_mesh():
     cmfd_mesh.mesh_type = 'rectilinear'
     cmfd_mesh.grid = [x_grid, y_grid, z_grid]
     # Define map from 2D BEAVRS qassembly map
-    _, accel_map = get_beavrs_mesh_properties('assembly')
+    _, accel_map = get_mesh_properties('assembly', is_1d=False)
     n_2d_cells = len(accel_map)
     noaccel_map = np.zeros((n_2d_cells,), dtype=int)
 
