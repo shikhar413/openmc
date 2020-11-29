@@ -1,0 +1,389 @@
+<?xml version='1.0' encoding='utf-8'?>
+<plots>
+  <plot id="1" filename="bpra_positions" color_by="material" type="slice" basis="xy">
+    <origin>0 0 230.0</origin>
+    <width>482.6 482.6</width>
+    <pixels>1000 1000</pixels>
+    <mask components="14" />
+  </plot>
+  <plot id="2" filename="radial_cells_midplane" color_by="material" type="slice" basis="xy">
+    <origin>0 0 230.0</origin>
+    <width>482.6 482.6</width>
+    <pixels>1000 1000</pixels>
+    <color id="1" rgb="255 255 255" />
+    <color id="2" rgb="0 0 0" />
+    <color id="3" rgb="255 0 0" />
+    <color id="4" rgb="200 50 50" />
+    <color id="5" rgb="255 218 185" />
+    <color id="6" rgb="101 101 101" />
+    <color id="7" rgb="111 111 111" />
+    <color id="8" rgb="50 50 50" />
+    <color id="9" rgb="142 35 35" />
+    <color id="10" rgb="255 215 0" />
+    <color id="11" rgb="0 0 128" />
+    <color id="14" rgb="0 255 0" />
+    <color id="15" rgb="198 226 255" />
+    <color id="16" rgb="176 196 222" />
+    <color id="17" rgb="112 128 144" />
+  </plot>
+  <plot id="3" filename="radial_mats_midplane" color_by="material" type="slice" basis="xy">
+    <origin>0 0 230.0</origin>
+    <width>482.6 482.6</width>
+    <pixels>1000 1000</pixels>
+    <color id="1" rgb="255 255 255" />
+    <color id="2" rgb="0 0 0" />
+    <color id="3" rgb="255 0 0" />
+    <color id="4" rgb="200 50 50" />
+    <color id="5" rgb="255 218 185" />
+    <color id="6" rgb="101 101 101" />
+    <color id="7" rgb="111 111 111" />
+    <color id="8" rgb="50 50 50" />
+    <color id="9" rgb="142 35 35" />
+    <color id="10" rgb="255 215 0" />
+    <color id="11" rgb="0 0 128" />
+    <color id="14" rgb="0 255 0" />
+    <color id="15" rgb="198 226 255" />
+    <color id="16" rgb="176 196 222" />
+    <color id="17" rgb="112 128 144" />
+  </plot>
+  <plot id="4" filename="radial_mats_grid1_center" color_by="material" type="slice" basis="xy">
+    <origin>0 0 38.84105</origin>
+    <width>482.6 482.6</width>
+    <pixels>1000 1000</pixels>
+    <color id="1" rgb="255 255 255" />
+    <color id="2" rgb="0 0 0" />
+    <color id="3" rgb="255 0 0" />
+    <color id="4" rgb="200 50 50" />
+    <color id="5" rgb="255 218 185" />
+    <color id="6" rgb="101 101 101" />
+    <color id="7" rgb="111 111 111" />
+    <color id="8" rgb="50 50 50" />
+    <color id="9" rgb="142 35 35" />
+    <color id="10" rgb="255 215 0" />
+    <color id="11" rgb="0 0 128" />
+    <color id="14" rgb="0 255 0" />
+    <color id="15" rgb="198 226 255" />
+    <color id="16" rgb="176 196 222" />
+    <color id="17" rgb="112 128 144" />
+  </plot>
+  <plot id="5" filename="radial_mats_grid4_center" color_by="material" type="slice" basis="xy">
+    <origin>0 0 205.2765</origin>
+    <width>482.6 482.6</width>
+    <pixels>1000 1000</pixels>
+    <color id="1" rgb="255 255 255" />
+    <color id="2" rgb="0 0 0" />
+    <color id="3" rgb="255 0 0" />
+    <color id="4" rgb="200 50 50" />
+    <color id="5" rgb="255 218 185" />
+    <color id="6" rgb="101 101 101" />
+    <color id="7" rgb="111 111 111" />
+    <color id="8" rgb="50 50 50" />
+    <color id="9" rgb="142 35 35" />
+    <color id="10" rgb="255 215 0" />
+    <color id="11" rgb="0 0 128" />
+    <color id="14" rgb="0 255 0" />
+    <color id="15" rgb="198 226 255" />
+    <color id="16" rgb="176 196 222" />
+    <color id="17" rgb="112 128 144" />
+  </plot>
+  <plot id="6" filename="axial_mats_row_8" color_by="material" type="slice" basis="xz">
+    <origin>0 0 230.0</origin>
+    <width>460.0 460.0</width>
+    <pixels>1000 1000</pixels>
+    <color id="1" rgb="255 255 255" />
+    <color id="2" rgb="0 0 0" />
+    <color id="3" rgb="255 0 0" />
+    <color id="4" rgb="200 50 50" />
+    <color id="5" rgb="255 218 185" />
+    <color id="6" rgb="101 101 101" />
+    <color id="7" rgb="111 111 111" />
+    <color id="8" rgb="50 50 50" />
+    <color id="9" rgb="142 35 35" />
+    <color id="10" rgb="255 215 0" />
+    <color id="11" rgb="0 0 128" />
+    <color id="14" rgb="0 255 0" />
+    <color id="15" rgb="198 226 255" />
+    <color id="16" rgb="176 196 222" />
+    <color id="17" rgb="112 128 144" />
+  </plot>
+  <plot id="7" filename="axial_mats_row_8_topzoom" color_by="material" type="slice" basis="xz">
+    <origin>0 0 345.0</origin>
+    <width>230.0 230.0</width>
+    <pixels>1000 1000</pixels>
+    <color id="1" rgb="255 255 255" />
+    <color id="2" rgb="0 0 0" />
+    <color id="3" rgb="255 0 0" />
+    <color id="4" rgb="200 50 50" />
+    <color id="5" rgb="255 218 185" />
+    <color id="6" rgb="101 101 101" />
+    <color id="7" rgb="111 111 111" />
+    <color id="8" rgb="50 50 50" />
+    <color id="9" rgb="142 35 35" />
+    <color id="10" rgb="255 215 0" />
+    <color id="11" rgb="0 0 128" />
+    <color id="14" rgb="0 255 0" />
+    <color id="15" rgb="198 226 255" />
+    <color id="16" rgb="176 196 222" />
+    <color id="17" rgb="112 128 144" />
+  </plot>
+  <plot id="8" filename="axial_mats_row_8_topzoom2" color_by="material" type="slice" basis="xz">
+    <origin>0 0 383.33333333333337</origin>
+    <width>115.0 115.0</width>
+    <pixels>1000 1000</pixels>
+    <color id="1" rgb="255 255 255" />
+    <color id="2" rgb="0 0 0" />
+    <color id="3" rgb="255 0 0" />
+    <color id="4" rgb="200 50 50" />
+    <color id="5" rgb="255 218 185" />
+    <color id="6" rgb="101 101 101" />
+    <color id="7" rgb="111 111 111" />
+    <color id="8" rgb="50 50 50" />
+    <color id="9" rgb="142 35 35" />
+    <color id="10" rgb="255 215 0" />
+    <color id="11" rgb="0 0 128" />
+    <color id="14" rgb="0 255 0" />
+    <color id="15" rgb="198 226 255" />
+    <color id="16" rgb="176 196 222" />
+    <color id="17" rgb="112 128 144" />
+  </plot>
+  <plot id="9" filename="axial_mats_row_8_topzoom3" color_by="material" type="slice" basis="xz">
+    <origin>0 0 419.704</origin>
+    <width>57.5 57.5</width>
+    <pixels>1000 1000</pixels>
+    <color id="1" rgb="255 255 255" />
+    <color id="2" rgb="0 0 0" />
+    <color id="3" rgb="255 0 0" />
+    <color id="4" rgb="200 50 50" />
+    <color id="5" rgb="255 218 185" />
+    <color id="6" rgb="101 101 101" />
+    <color id="7" rgb="111 111 111" />
+    <color id="8" rgb="50 50 50" />
+    <color id="9" rgb="142 35 35" />
+    <color id="10" rgb="255 215 0" />
+    <color id="11" rgb="0 0 128" />
+    <color id="14" rgb="0 255 0" />
+    <color id="15" rgb="198 226 255" />
+    <color id="16" rgb="176 196 222" />
+    <color id="17" rgb="112 128 144" />
+  </plot>
+  <plot id="10" filename="axial_mats_row_8_botzoom" color_by="material" type="slice" basis="xz">
+    <origin>0 0 115.0</origin>
+    <width>230.0 230.0</width>
+    <pixels>1000 1000</pixels>
+    <color id="1" rgb="255 255 255" />
+    <color id="2" rgb="0 0 0" />
+    <color id="3" rgb="255 0 0" />
+    <color id="4" rgb="200 50 50" />
+    <color id="5" rgb="255 218 185" />
+    <color id="6" rgb="101 101 101" />
+    <color id="7" rgb="111 111 111" />
+    <color id="8" rgb="50 50 50" />
+    <color id="9" rgb="142 35 35" />
+    <color id="10" rgb="255 215 0" />
+    <color id="11" rgb="0 0 128" />
+    <color id="14" rgb="0 255 0" />
+    <color id="15" rgb="198 226 255" />
+    <color id="16" rgb="176 196 222" />
+    <color id="17" rgb="112 128 144" />
+  </plot>
+  <plot id="11" filename="axial_mats_row_8_botzoom2" color_by="material" type="slice" basis="xz">
+    <origin>0 0 76.66666666666666</origin>
+    <width>115.0 115.0</width>
+    <pixels>1000 1000</pixels>
+    <color id="1" rgb="255 255 255" />
+    <color id="2" rgb="0 0 0" />
+    <color id="3" rgb="255 0 0" />
+    <color id="4" rgb="200 50 50" />
+    <color id="5" rgb="255 218 185" />
+    <color id="6" rgb="101 101 101" />
+    <color id="7" rgb="111 111 111" />
+    <color id="8" rgb="50 50 50" />
+    <color id="9" rgb="142 35 35" />
+    <color id="10" rgb="255 215 0" />
+    <color id="11" rgb="0 0 128" />
+    <color id="14" rgb="0 255 0" />
+    <color id="15" rgb="198 226 255" />
+    <color id="16" rgb="176 196 222" />
+    <color id="17" rgb="112 128 144" />
+  </plot>
+  <plot id="12" filename="axial_mats_row_8_botzoom3" color_by="material" type="slice" basis="xz">
+    <origin>0 0 35.0</origin>
+    <width>57.5 57.5</width>
+    <pixels>1000 1000</pixels>
+    <color id="1" rgb="255 255 255" />
+    <color id="2" rgb="0 0 0" />
+    <color id="3" rgb="255 0 0" />
+    <color id="4" rgb="200 50 50" />
+    <color id="5" rgb="255 218 185" />
+    <color id="6" rgb="101 101 101" />
+    <color id="7" rgb="111 111 111" />
+    <color id="8" rgb="50 50 50" />
+    <color id="9" rgb="142 35 35" />
+    <color id="10" rgb="255 215 0" />
+    <color id="11" rgb="0 0 128" />
+    <color id="14" rgb="0 255 0" />
+    <color id="15" rgb="198 226 255" />
+    <color id="16" rgb="176 196 222" />
+    <color id="17" rgb="112 128 144" />
+  </plot>
+  <plot id="13" filename="grid5_mats_H7" color_by="material" type="slice" basis="xy">
+    <origin>0 21.50364 257.4735</origin>
+    <width>21.50364 21.50364</width>
+    <pixels>1000 1000</pixels>
+    <color id="1" rgb="255 255 255" />
+    <color id="2" rgb="0 0 0" />
+    <color id="3" rgb="255 0 0" />
+    <color id="4" rgb="200 50 50" />
+    <color id="5" rgb="255 218 185" />
+    <color id="6" rgb="101 101 101" />
+    <color id="7" rgb="111 111 111" />
+    <color id="8" rgb="50 50 50" />
+    <color id="9" rgb="142 35 35" />
+    <color id="10" rgb="255 215 0" />
+    <color id="11" rgb="0 0 128" />
+    <color id="14" rgb="0 255 0" />
+    <color id="15" rgb="198 226 255" />
+    <color id="16" rgb="176 196 222" />
+    <color id="17" rgb="112 128 144" />
+  </plot>
+  <plot id="14" filename="grid8_mats_J14" color_by="material" type="slice" basis="xy">
+    <origin>-14.33576 -121.85396 413.485</origin>
+    <width>21.50364 21.50364</width>
+    <pixels>1000 1000</pixels>
+    <color id="1" rgb="255 255 255" />
+    <color id="2" rgb="0 0 0" />
+    <color id="3" rgb="255 0 0" />
+    <color id="4" rgb="200 50 50" />
+    <color id="5" rgb="255 218 185" />
+    <color id="6" rgb="101 101 101" />
+    <color id="7" rgb="111 111 111" />
+    <color id="8" rgb="50 50 50" />
+    <color id="9" rgb="142 35 35" />
+    <color id="10" rgb="255 215 0" />
+    <color id="11" rgb="0 0 128" />
+    <color id="14" rgb="0 255 0" />
+    <color id="15" rgb="198 226 255" />
+    <color id="16" rgb="176 196 222" />
+    <color id="17" rgb="112 128 144" />
+  </plot>
+  <plot id="15" filename="grid5_mats_J14" color_by="material" type="slice" basis="xy">
+    <origin>-14.33576 -121.85396 257.4735</origin>
+    <width>21.50364 21.50364</width>
+    <pixels>1000 1000</pixels>
+    <color id="1" rgb="255 255 255" />
+    <color id="2" rgb="0 0 0" />
+    <color id="3" rgb="255 0 0" />
+    <color id="4" rgb="200 50 50" />
+    <color id="5" rgb="255 218 185" />
+    <color id="6" rgb="101 101 101" />
+    <color id="7" rgb="111 111 111" />
+    <color id="8" rgb="50 50 50" />
+    <color id="9" rgb="142 35 35" />
+    <color id="10" rgb="255 215 0" />
+    <color id="11" rgb="0 0 128" />
+    <color id="14" rgb="0 255 0" />
+    <color id="15" rgb="198 226 255" />
+    <color id="16" rgb="176 196 222" />
+    <color id="17" rgb="112 128 144" />
+  </plot>
+  <plot id="16" filename="midplane_mats_J14" color_by="material" type="slice" basis="xy">
+    <origin>-14.33576 -121.85396 230.0</origin>
+    <width>21.50364 21.50364</width>
+    <pixels>1000 1000</pixels>
+    <color id="1" rgb="255 255 255" />
+    <color id="2" rgb="0 0 0" />
+    <color id="3" rgb="255 0 0" />
+    <color id="4" rgb="200 50 50" />
+    <color id="5" rgb="255 218 185" />
+    <color id="6" rgb="101 101 101" />
+    <color id="7" rgb="111 111 111" />
+    <color id="8" rgb="50 50 50" />
+    <color id="9" rgb="142 35 35" />
+    <color id="10" rgb="255 215 0" />
+    <color id="11" rgb="0 0 128" />
+    <color id="14" rgb="0 255 0" />
+    <color id="15" rgb="198 226 255" />
+    <color id="16" rgb="176 196 222" />
+    <color id="17" rgb="112 128 144" />
+  </plot>
+  <plot id="17" filename="J8_axial_bot" color_by="material" type="slice" basis="xz">
+    <origin>0 21.50364 35.0</origin>
+    <width>21.50364 2.7902252827893324</width>
+    <pixels>1000 2790</pixels>
+    <color id="1" rgb="255 255 255" />
+    <color id="2" rgb="0 0 0" />
+    <color id="3" rgb="255 0 0" />
+    <color id="4" rgb="200 50 50" />
+    <color id="5" rgb="255 218 185" />
+    <color id="6" rgb="101 101 101" />
+    <color id="7" rgb="111 111 111" />
+    <color id="8" rgb="50 50 50" />
+    <color id="9" rgb="142 35 35" />
+    <color id="10" rgb="255 215 0" />
+    <color id="11" rgb="0 0 128" />
+    <color id="14" rgb="0 255 0" />
+    <color id="15" rgb="198 226 255" />
+    <color id="16" rgb="176 196 222" />
+    <color id="17" rgb="112 128 144" />
+  </plot>
+  <plot id="18" filename="J8_axial_top" color_by="material" type="slice" basis="xz">
+    <origin>0 21.50364 419.704</origin>
+    <width>21.50364 2.264174809474111</width>
+    <pixels>1000 2264</pixels>
+    <color id="1" rgb="255 255 255" />
+    <color id="2" rgb="0 0 0" />
+    <color id="3" rgb="255 0 0" />
+    <color id="4" rgb="200 50 50" />
+    <color id="5" rgb="255 218 185" />
+    <color id="6" rgb="101 101 101" />
+    <color id="7" rgb="111 111 111" />
+    <color id="8" rgb="50 50 50" />
+    <color id="9" rgb="142 35 35" />
+    <color id="10" rgb="255 215 0" />
+    <color id="11" rgb="0 0 128" />
+    <color id="14" rgb="0 255 0" />
+    <color id="15" rgb="198 226 255" />
+    <color id="16" rgb="176 196 222" />
+    <color id="17" rgb="112 128 144" />
+  </plot>
+  <plot id="19" filename="J8_nozzle" color_by="material" type="slice" basis="xy">
+    <origin>0 21.50364 22.0</origin>
+    <width>21.50364 21.50364</width>
+    <pixels>1000 1000</pixels>
+    <color id="1" rgb="255 255 255" />
+    <color id="2" rgb="0 0 0" />
+    <color id="3" rgb="255 0 0" />
+    <color id="4" rgb="200 50 50" />
+    <color id="5" rgb="255 218 185" />
+    <color id="6" rgb="101 101 101" />
+    <color id="7" rgb="111 111 111" />
+    <color id="8" rgb="50 50 50" />
+    <color id="9" rgb="142 35 35" />
+    <color id="10" rgb="255 215 0" />
+    <color id="11" rgb="0 0 128" />
+    <color id="14" rgb="0 255 0" />
+    <color id="15" rgb="198 226 255" />
+    <color id="16" rgb="176 196 222" />
+    <color id="17" rgb="112 128 144" />
+  </plot>
+  <plot id="20" filename="H8_axial_top" color_by="material" type="slice" basis="xz">
+    <origin>0 21.50364 419.704</origin>
+    <width>24.343999999999937 24.343999999999937</width>
+    <pixels>1000 1000</pixels>
+    <color id="1" rgb="255 255 255" />
+    <color id="2" rgb="0 0 0" />
+    <color id="3" rgb="255 0 0" />
+    <color id="4" rgb="200 50 50" />
+    <color id="5" rgb="255 218 185" />
+    <color id="6" rgb="101 101 101" />
+    <color id="7" rgb="111 111 111" />
+    <color id="8" rgb="50 50 50" />
+    <color id="9" rgb="142 35 35" />
+    <color id="10" rgb="255 215 0" />
+    <color id="11" rgb="0 0 128" />
+    <color id="14" rgb="0 255 0" />
+    <color id="15" rgb="198 226 255" />
+    <color id="16" rgb="176 196 222" />
+    <color id="17" rgb="112 128 144" />
+  </plot>
+</plots>

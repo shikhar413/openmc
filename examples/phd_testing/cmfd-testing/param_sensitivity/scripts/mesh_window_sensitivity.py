@@ -116,6 +116,14 @@ def generate_input_files(cluster, seed_begin, seed_end, prob_type, run_file):
                         os.system('cp ./../../../../../../base/{} ./{}'.format(xml_file, xml_file.split('-')[-1]))
                     create_files(cmfd_template, batch_template, particle, cluster_params, seed, cmfd_prob, run_file, prob_type, mesh=mesh)
                     os.chdir('./..')
+                    # Test linear prolongation
+                    if mesh == '20cm':
+                        os.system('mkdir -p {}-linprolong'.format(cmfd_prob))
+                        os.chdir('{}-linprolong'.format(cmfd_prob))
+                        for xml_file in cluster_params['xml_files']:
+                            os.system('cp ./../../../../../../base/{} ./{}'.format(xml_file, xml_file.split('-')[-1]))
+                        create_files(cmfd_template, batch_template, particle, cluster_params, seed, cmfd_prob, run_file, prob_type, mesh=mesh, prolong_axis="'z'")
+                        os.chdir('./..')
                 os.chdir('./..')
 
             os.chdir('./..')
@@ -123,7 +131,7 @@ def generate_input_files(cluster, seed_begin, seed_end, prob_type, run_file):
     os.chdir('./..')
 
 
-def create_files(py_template, batch_template, nparticles, cluster_params, seed, prob_name, run_file, prob_type, mesh=None):
+def create_files(py_template, batch_template, nparticles, cluster_params, seed, prob_name, run_file, prob_type, mesh=None, prolong_axis=None):
     all_prob_params = {
         'nocmfd': {
             'solver_end': '',
@@ -196,6 +204,8 @@ def create_files(py_template, batch_template, nparticles, cluster_params, seed, 
     py_template = py_template.replace('{window_type}', prob_params['window_type'])
     py_template = py_template.replace('{window_size}', prob_params['window_size'])
     py_template = py_template.replace('{max_window_size}', prob_params['max_window_size'])
+    prolong_axis_str = 'cmfd_run.linprolong_axis = {}'.format(prolong_axis) if prolong_axis else ''
+    py_template = py_template.replace('{prolongation_axis}', prolong_axis_str)
 
     if mesh is not None:
         dims, map_str = get_mesh_strings(mesh, 'cm' in mesh)
@@ -217,7 +227,6 @@ def create_files(py_template, batch_template, nparticles, cluster_params, seed, 
 
     else:
         print('Created input files in {}'.format(print_str))
-
 
 def get_mesh_strings(mesh_type, is_1d):
     mesh_dims = {

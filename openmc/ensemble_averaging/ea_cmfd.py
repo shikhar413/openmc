@@ -293,48 +293,56 @@ class EnsAvgCMFDRun(object):
     def mesh(self, cmfd_mesh):
         check_type('CMFD mesh', cmfd_mesh, cmfd.CMFDMesh)
 
-        # Check dimension defined
-        if cmfd_mesh.dimension is None:
-            raise ValueError('CMFD mesh requires spatial '
-                             'dimensions to be specified')
+        if cmfd_mesh.mesh_type == 'regular':
+            # Check dimension defined
+            if cmfd_mesh.dimension is None:
+                raise ValueError('CMFD regular mesh requires spatial '
+                                 'dimensions to be specified')
 
-        # Check lower left defined
-        if cmfd_mesh.lower_left is None:
-            raise ValueError('CMFD mesh requires lower left coordinates '
-                             'to be specified')
+            # Check lower left defined
+            if cmfd_mesh.lower_left is None:
+                raise ValueError('CMFD regular mesh requires lower left '
+                                 'coordinates to be specified')
 
-        # Check that both upper right and width both not defined
-        if cmfd_mesh.upper_right is not None and cmfd_mesh.width is not None:
-            raise ValueError('Both upper right coordinates and width '
-                             'cannot be specified for CMFD mesh')
+            # Check that both upper right and width both not defined
+            if cmfd_mesh.upper_right is not None and cmfd_mesh.width is not None:
+                raise ValueError('Both upper right coordinates and width '
+                                 'cannot be specified for CMFD regular mesh')
 
-        # Check that at least one of width or upper right is defined
-        if cmfd_mesh.upper_right is None and cmfd_mesh.width is None:
-            raise ValueError('CMFD mesh requires either upper right '
-                             'coordinates or width to be specified')
+            # Check that at least one of width or upper right is defined
+            if cmfd_mesh.upper_right is None and cmfd_mesh.width is None:
+                raise ValueError('CMFD regular mesh requires either upper right '
+                                 'coordinates or width to be specified')
 
-        # Check width and lower length are same dimension and define
-        # upper_right
-        if cmfd_mesh.width is not None:
-            check_length('CMFD mesh width', cmfd_mesh.width,
-                         len(cmfd_mesh.lower_left))
-            cmfd_mesh.upper_right = np.array(cmfd_mesh.lower_left) + \
-                np.array(cmfd_mesh.width) * np.array(cmfd_mesh.dimension)
+            # Check width and lower length are same dimension and define
+            # upper_right
+            if cmfd_mesh.width is not None:
+                check_length('CMFD mesh width', cmfd_mesh.width,
+                             len(cmfd_mesh.lower_left))
+                cmfd_mesh.upper_right = np.array(cmfd_mesh.lower_left) + \
+                    np.array(cmfd_mesh.width) * np.array(cmfd_mesh.dimension)
 
-        # Check upper_right and lower length are same dimension and define
-        # width
-        elif cmfd_mesh.upper_right is not None:
-            check_length('CMFD mesh upper right', cmfd_mesh.upper_right,
-                         len(cmfd_mesh.lower_left))
-            # Check upper right coordinates are greater than lower left
-            if np.any(np.array(cmfd_mesh.upper_right) <=
-                      np.array(cmfd_mesh.lower_left)):
-                raise ValueError('CMFD mesh requires upper right '
-                                 'coordinates to be greater than lower '
-                                 'left coordinates')
-            cmfd_mesh.width = np.true_divide((np.array(cmfd_mesh.upper_right) -
-                                             np.array(cmfd_mesh.lower_left)),
-                                             np.array(cmfd_mesh.dimension))
+            # Check upper_right and lower length are same dimension and define
+            # width
+            elif cmfd_mesh.upper_right is not None:
+                check_length('CMFD mesh upper right', cmfd_mesh.upper_right,
+                             len(cmfd_mesh.lower_left))
+                # Check upper right coordinates are greater than lower left
+                if np.any(np.array(cmfd_mesh.upper_right) <=
+                          np.array(cmfd_mesh.lower_left)):
+                    raise ValueError('CMFD regular mesh requires upper right '
+                                     'coordinates to be greater than lower '
+                                     'left coordinates')
+                cmfd_mesh.width = np.true_divide((np.array(cmfd_mesh.upper_right) -
+                                                 np.array(cmfd_mesh.lower_left)),
+                                                 np.array(cmfd_mesh.dimension))
+        elif cmfd_mesh.mesh_type == 'rectilinear':
+            # Check dimension defined
+            if cmfd_mesh.grid is None:
+                raise ValueError('CMFD rectilinear mesh requires spatial '
+                                 'grid to be specified')
+            cmfd_mesh.dimension = [len(cmfd_mesh.grid[i]) - 1 for i in range(3)]
+
         self._mesh = cmfd_mesh
 
     def run(self):
@@ -424,12 +432,12 @@ class EnsAvgCMFDRun(object):
     def _read_cfg_file(self):
         """ Read config file and set all global, CMFD, and OpenMC parameters """
         openmc_params = ['n_threads', 'n_particles', 'n_inactive',
-                         'weight_clipping']
+                         'weight_clipping', 'linprolong_axis']
         cmfd_params = ['downscatter', 'cmfd_ktol', 'w_shift', 'stol',
                        'spectral', 'window_size', 'gauss_seidel_tolerance',
                        'display', 'n_threads', 'max_window_size', 'batch_lag']
         mesh_params = ['lower_left', 'upper_right', 'dimension', 'width',
-                       'energy', 'albedo', 'map']
+                       'energy', 'albedo', 'map', 'mesh_type', 'grid']
         self._global_params = ['n_seeds', 'n_procs_per_seed', 'verbosity',
                                'openmc_verbosity', 'n_batches', 'tally_begin',
                                'solver_begin', 'window_type', 'ref_d', 'norm',

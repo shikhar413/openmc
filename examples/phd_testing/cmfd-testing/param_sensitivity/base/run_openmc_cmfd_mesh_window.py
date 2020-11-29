@@ -42,6 +42,7 @@ def init_cmfd_params(problem_type):
     cmfd_run.downscatter = True
     cmfd_run.gauss_seidel_tolerance = [1.e-15, 1.e-20]
     cmfd_run.window_type = '{window_type}'      # VARIED PARAMETER
+    {prolongation_axis}
     {window_size}
     {max_window_size}
     return cmfd_run

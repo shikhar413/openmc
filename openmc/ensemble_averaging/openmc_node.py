@@ -22,6 +22,7 @@ import numpy as np
 import h5py
 from mpi4py import MPI
 
+from openmc import cmfd
 import openmc.lib
 from openmc.checkvalue import check_type, check_greater_than
 from openmc.exceptions import OpenMCError
@@ -67,6 +68,9 @@ class OpenMCNode(object):
         the presence of CMFD feedback. During prolongation, the weight factor
         in any CMFD mesh cell is clipped to
         [1/(1+weight_clipping), 1+weight_clipping]
+    linprolong_axis : {None, 'x', 'y', 'z'}
+        Axis to use for linear prolongation step. Value of None uses a flat
+        source prolongation step.
     n_threads : int
         Number of threads per process allocated to run OpenMC
     indices : numpy.ndarray
@@ -109,6 +113,7 @@ class OpenMCNode(object):
         self._n_particles = 1000
         self._n_inactive = 10
         self._weight_clipping = 0.2
+        self._linprolong_axis = cmfd.ProlongationAxis.NONE
 
         # Variables defined by EnsAvgCMFDRun class
         self._tally_begin = None
@@ -181,6 +186,10 @@ class OpenMCNode(object):
         return self._weight_clipping
 
     @property
+    def linprolong_axis(self):
+        return self._linprolong_axis
+
+    @property
     def n_threads(self):
         return self._n_threads
 
@@ -233,6 +242,19 @@ class OpenMCNode(object):
         check_type('CMFD weight clipping', weight_clipping, Real)
         check_greater_than('CMFD weight clipping', weight_clipping, 0., True)
         self._weight_clipping = weight_clipping
+
+    @linprolong_axis.setter
+    def linprolong_axis(self, axis):
+        check_value('CMFD linear prolongation axis', axis,
+                    [None, 'x', 'y', 'z'])
+        if axis == 'x':
+            self._linprolong_axis = cmfd.ProlongationAxis.X
+        elif axis == 'y':
+            self._linprolong_axis = cmfd.ProlongationAxis.Y
+        elif axis == 'z':
+            self._linprolong_axis = cmfd.ProlongationAxis.Z
+        else:
+            self._linprolong_axis = cmfd.ProlongationAxis.NONE
 
     @n_threads.setter
     def n_threads(self, threads):
@@ -850,15 +872,22 @@ class OpenMCNode(object):
 
     def _create_cmfd_tally(self):
         """ Create all tallies in-memory used to solve CMFD problem """
-        # Create Mesh object based on CMFDMesh, stored internally
-        cmfd_mesh = openmc.lib.RegularMesh()
+        # Create Mesh object based on CMFDMesh mesh_type, stored internally
+        if self._mesh.mesh_type == 'regular':
+            cmfd_mesh = openmc.lib.RegularMesh()
+            # Set dimension and parameters of mesh object
+            cmfd_mesh.dimension = self._mesh.dimension
+            cmfd_mesh.set_parameters(lower_left=self._mesh.lower_left,
+                                     upper_right=self._mesh.upper_right,
+                                     width=self._mesh.width)
+        elif self._mesh.mesh_type == 'rectilinear':
+            cmfd_mesh = openmc.lib.RectilinearMesh()
+            # Set grid of mesh object
+            x_grid, y_grid, z_grid = self._mesh.grid
+            cmfd_mesh.set_grid(x_grid, y_grid, z_grid)
+
         # Store id of mesh object
         self._mesh_id = cmfd_mesh.id
-        # Set dimension and parameters of mesh object
-        cmfd_mesh.dimension = self._mesh.dimension
-        cmfd_mesh.set_parameters(lower_left=self._mesh.lower_left,
-                                 upper_right=self._mesh.upper_right,
-                                 width=self._mesh.width)
 
         # Create mesh Filter object, stored internally
         mesh_filter = openmc.lib.MeshFilter()
@@ -952,5 +981,5 @@ class OpenMCNode(object):
                 cmfd_tally.estimator = 'analog'
 
         args = self._tally_ids[0], self._indices, self._norm, \
-               self._weight_clipping
+               self._weight_clipping, self._linprolong_axis.value
         openmc.lib._dll.openmc_initialize_mesh_egrid(*args)

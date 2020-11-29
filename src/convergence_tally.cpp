@@ -21,6 +21,7 @@ ConvergenceTally::ConvergenceTally(pugi::xml_node node)
 {
   auto dim = std::stoi(get_node_value(node, "dimension"));
   set_dimension(dim);
+  n_bins_ = 1;
 
   // Set axial properties
   if (dim == 1 || dim == 3) {
@@ -28,7 +29,7 @@ ConvergenceTally::ConvergenceTally(pugi::xml_node node)
     double min = std::stod(get_node_value(node, "min"));
     double max = std::stod(get_node_value(node, "max"));
     set_minmax(min, max);
-    n_bins_ = axial_order_ + 1;
+    n_bins_ *= (axial_order_ + 1);
   }
 
   // Set radial properties
@@ -37,10 +38,8 @@ ConvergenceTally::ConvergenceTally(pugi::xml_node node)
     x_ = std::stod(get_node_value(node, "x"));
     y_ = std::stod(get_node_value(node, "y"));
     r_ = std::stod(get_node_value(node, "r"));
-    n_bins_ = ((radial_order_+1) * (radial_order_+2)) / 2;
+    n_bins_ *= (((radial_order_ + 1) * (radial_order_ + 2)) / 2);
   }
-
-  // TODO: set n_bins_ properly for dim = 3
 }
 
 void
@@ -85,6 +84,7 @@ ConvergenceTally::compute()
 {
   if (dimension_ == 1) compute_1d();
   else if (dimension_ == 2) compute_2d();
+  else compute_3d();
 }
 
 void
@@ -122,9 +122,9 @@ ConvergenceTally::compute_1d()
     #pragma omp for
     for (auto i = 0; i < bank_size; i++) {
       const auto& bank = fission_bank[i];
-      double x_norm = 2.0 * (bank.r.z - min_)/(max_ - min_) - 1.0;
+      double z_norm = 2.0 * (bank.r.z - min_)/(max_ - min_) - 1.0;
       double res_tmp[n_bins_] = {0};
-      calc_pn_c(axial_order_, x_norm, res_tmp);
+      calc_pn_c(axial_order_, z_norm, res_tmp);
       for (auto j = 0; j < n_bins_; j++) {
         res_private[ithread*n_bins_+j] += res_tmp[j] * simulation::keff;
       }
@@ -189,6 +189,79 @@ ConvergenceTally::compute_2d()
         calc_zn(radial_order_, b_r, theta, res_tmp);
         for (auto j = 0; j < n_bins_; j++)
           res_private[ithread*n_bins_+j] += res_tmp[j] * simulation::keff;
+      }
+    }
+
+    // Collapse res_private to res
+    #pragma omp for
+    for(int i=0; i < n_bins_; i++) {
+      for(int t=0; t < nthreads; t++) {
+        res[i] += res_private[n_bins_*t + i];
+      }
+    }
+  }
+  delete[] res_private;
+
+  std::vector<double> results_local;
+  results.clear();
+  for(int i = 0; i < n_bins_; i++) {
+    results_local.push_back(res[i]);
+    results.push_back(0.0);
+  }
+
+#ifdef OPENMC_MPI
+  MPI_Reduce(results_local.data(), results.data(), results_local.size(),
+            MPI_DOUBLE, MPI_SUM, 0, mpi::intracomm);
+#endif
+
+}
+
+void
+ConvergenceTally::compute_3d()
+{
+  // Assumes x,y axes define plane for unit disk
+  // Array storing convergence tally results
+  double res[n_bins_] = {0};
+  const int nthreads = omp_get_max_threads();
+
+  // Store bank_size, fission_bank on stack since std::vector not threadsafe
+  int bank_size = simulation::fission_bank.size();
+  const auto& fission_bank = simulation::fission_bank;
+
+  const auto n_axial_bins = axial_order_ + 1;
+  const auto n_radial_bins = (int)(n_bins_/n_axial_bins);
+
+  // Allocate and initialize res_private to 0.0
+  double *res_private = new double[n_bins_*nthreads];
+  for(int i=0; i < n_bins_*nthreads; i++) res_private[i] = 0.;
+
+  #pragma omp parallel
+  {
+    const int ithread = omp_get_thread_num();
+
+    // Compute P_n and Z_n for each particle in fission bank on each thread
+    // Store product to res_private
+    #pragma omp for
+    for (auto i = 0; i < bank_size; i++) {
+      const auto& bank = fission_bank[i];
+      double z_norm = 2.0 * (bank.r.z - min_)/(max_ - min_) - 1.0;
+      double axial_res_tmp[n_axial_bins] = {0};
+      calc_pn_c(axial_order_, z_norm, axial_res_tmp);
+
+      double b_x = bank.r.x - x_;
+      double b_y = bank.r.y - y_;
+      double b_r = std::sqrt(b_x*b_x + b_y*b_y) / r_;
+      double theta = std::atan2(b_y, b_x);
+      if (b_r <= 1.0) {
+        // Compute and return the Zernike weights.
+        double radial_res_tmp[n_radial_bins] = {0};
+        calc_zn(radial_order_, b_r, theta, radial_res_tmp);
+        for (auto j = 0; j < n_radial_bins; j++) {
+          for (auto k = 0; k < n_axial_bins; k++) {
+            auto result = radial_res_tmp[j] * axial_res_tmp[k] * simulation::keff;
+            res_private[ithread*n_bins_+j*n_axial_bins+k] += result;
+          }
+        }
       }
     }
 

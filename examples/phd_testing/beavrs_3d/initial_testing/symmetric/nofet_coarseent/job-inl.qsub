@@ -1,0 +1,13 @@
+#!/bin/bash
+#PBS -l select=1:ncpus=36
+#PBS -l walltime=24:00:00
+#PBS -j oe
+#PBS -P neup
+#PBS -q general
+#PBS -N 3db-nocmfd
+
+source $HOME/.bashrc
+cd $PBS_O_WORKDIR
+cat $PBS_NODEFILE | sort | uniq > hostfile
+
+mpiexec -machinefile hostfile -n 2 python3 run_openmc.py 18 3d-beavrs nocmfd

@@ -63,17 +63,20 @@ private:
   //----------------------------------------------------------------------------
   // Private methods
 
-  //! Calculate FET convergence results for 1d expansion
+  //! Calculate FET convergence results for 1d Legendre expansion
   void compute_1d();
 
-  //! Calculate FET convergence results for 2d expansion
+  //! Calculate FET convergence results for 2d Zernike expansion
   void compute_2d();
+
+  //! Calculate FET convergence results for 3d Zernike-Legendre expansion
+  void compute_3d();
 
   //----------------------------------------------------------------------------
   // Data members
 
 protected:
-  //! Dimension of FET expansion: 1=axial, 2=radial, 3=axial-radial
+  //! Dimension of FET expansion: 1=axial, 2=radial, 3=radial-axial
   int dimension_;
 
   //! Cartesian x coordinate for the origin of radial expansion.

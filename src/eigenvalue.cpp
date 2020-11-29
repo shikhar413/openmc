@@ -43,7 +43,6 @@ double keff_generation;
 std::array<double, 2> k_sum;
 std::vector<double> entropy;
 xt::xtensor<double, 1> source_frac;
-std::vector<double> p_vector;
 xt::xtensor<double, 1> p;
 
 } // namespace simulation
@@ -655,7 +654,7 @@ void read_eigenvalue_hdf5(hid_t group)
   read_dataset(group, "k_abs_tra", simulation::k_abs_tra);
 }
 
-void free_memory_entropy() { simulation::p_vector.clear(); }
+void free_memory_entropy() { simulation::p.resize({0}); }
 
 //==============================================================================
 //// C-API functions
@@ -664,18 +663,8 @@ void free_memory_entropy() { simulation::p_vector.clear(); }
 extern "C" int
 openmc_get_entropy_p(double** entropy_p, int32_t* n)
 {
-  simulation::p_vector.clear();
-  for (auto i = 0; i < simulation::p.size(); i++) {
-    if (mpi::master) {
-      simulation::p_vector.push_back(simulation::p[i]);
-    }
-    else {
-      simulation::p_vector.push_back(1.0);
-    }
-  }
-
-  *entropy_p = simulation::p_vector.data();
-  *n = simulation::p_vector.size();
+  *entropy_p = simulation::p.data();
+  *n = simulation::p.size();
 
   return 0;
 }

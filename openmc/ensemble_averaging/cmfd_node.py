@@ -213,7 +213,6 @@ class CMFDNode(object):
         self._egrid = None
         self._albedo = None
         self._coremap = None
-        self._mesh_id = None
         self._mat_dim = _CMFD_NOACCEL
         self._keff_bal = None
         self._keff = None
@@ -1328,8 +1327,7 @@ class CMFDNode(object):
 
         # Compute fission source
         cmfd_src = (np.sum(self._nfissxs[:,:,:,:,:] *
-                    cmfd_flux[:,:,:,:,np.newaxis], axis=3) *
-                    vol[:,:,:,np.newaxis])
+                    cmfd_flux[:,:,:,:,np.newaxis], axis=3))
 
         # Normalize source such that it sums to 1.0
         self._cmfd_src = cmfd_src / np.sum(cmfd_src)
@@ -1810,7 +1808,13 @@ class CMFDNode(object):
 
         # Allocate dimensions for each mesh cell
         self._hxyz = np.zeros((nx, ny, nz, 3))
-        self._hxyz[:] = self._mesh.width
+        if self._mesh.mesh_type == 'regular':
+            self._hxyz[:] = self._mesh.width
+        elif self._mesh.mesh_type == 'rectilinear':
+            for i, diff_x in enumerate(np.diff(self._mesh.grid[0])):
+                for j, diff_y in enumerate(np.diff(self._mesh.grid[1])):
+                    for k, diff_z in enumerate(np.diff(self._mesh.grid[2])):
+                        self._hxyz[i, j, k, :] = diff_x, diff_y, diff_z
 
         # Allocate flux, cross sections and diffusion coefficient
         self._flux = np.zeros((nx, ny, nz, ng))
@@ -1819,7 +1823,7 @@ class CMFDNode(object):
         self._scattxs = np.zeros((nx, ny, nz, ng, ng))  # Incoming, outgoing
         self._nfissxs = np.zeros((nx, ny, nz, ng, ng))  # Incoming, outgoing
         self._diffcof = np.zeros((nx, ny, nz, ng))
-        self._cmfd_src = np.zeros((nx, ny, nz, ng))
+        self._cmfd_src = np.ones((nx, ny, nz, ng))
 
         # Allocate dtilde and dhat
         self._dtilde = np.zeros((nx, ny, nz, ng, 6))
