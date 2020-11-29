@@ -21,6 +21,10 @@ examples/phd_testing/ref-calcs/2d-beavrs-cmfd-qassembly
 examples/phd_testing/ensemble-averaging/performance_profiling
 examples/phd_testing/ensemble-averaging/timing-tests
 
+*/npy_files
+hostfile
+*.npy
+
 # Compiled objects and modules
 *.a
 *.o
