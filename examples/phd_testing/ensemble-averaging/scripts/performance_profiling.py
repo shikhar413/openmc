@@ -17,7 +17,7 @@ def generate_input_files(cluster, prob_type, run_file):
                 'mult_factor': 4,
                 'n_particles': 10000000,
                 'n_batches': 10,
-                'max_window_size': 32
+                'max_window_size': 128
             },
             '2d-beavrs': {
                 'batch_file': "job.slurm",
@@ -31,7 +31,7 @@ def generate_input_files(cluster, prob_type, run_file):
                 'mult_factor': 4,
                 'n_particles': 10000000,
                 'n_batches': 10,
-                'max_window_size': 8
+                'max_window_size': 64
             }
         }
 
@@ -49,7 +49,7 @@ def generate_input_files(cluster, prob_type, run_file):
                 'mult_factor': 32,
                 'n_particles': 10000000,
                 'n_batches': 10,
-                'max_window_size': 32
+                'max_window_size': 128
             },
             '2d-beavrs': {
                 'batch_file': "job-inl.qsub",
@@ -63,7 +63,7 @@ def generate_input_files(cluster, prob_type, run_file):
                 'mult_factor': 32,
                 'n_particles': 10000000,
                 'n_batches': 10,
-                'max_window_size': 8
+                'max_window_size': 128
             }
         }
 
@@ -90,17 +90,18 @@ def generate_input_files(cluster, prob_type, run_file):
 
     run_strats = [
         {'particle_mult': False, 'seed_mult': True, 'test_num': 0, 'ea_run': False},                  # test1-32seed-10M-noCMFD
-        {'particle_mult': True, 'seed_mult': False, 'test_num': 2, 'ea_run': False},                  # test2-1seed-320M-CMFD-window32
-        {'particle_mult': False, 'seed_mult': True, 'ea_run': True, 'ea_run_strat': 'bulk-synch'},    # test3-32seed-10M-bsCMFD-window32
-        {'particle_mult': False, 'seed_mult': True, 'ea_run': True, 'ea_run_strat': 'rendez-asynch'}, # test4-32seed-10M-raCMFD-window32
-        {'particle_mult': False, 'seed_mult': True, 'ea_run': True, 'ea_run_strat': 'eager-asynch'}   # test5-32seed-10M-eaCMFD-window32
+        {'particle_mult': False, 'seed_mult': True, 'test_num': 2, 'ea_run': False},                  # test2-32seed-10M-CMFD
+        {'particle_mult': True, 'seed_mult': False, 'test_num': 2, 'ea_run': False},                  # test3-1seed-320M-CMFD
+        {'particle_mult': False, 'seed_mult': True, 'ea_run': True, 'ea_run_strat': 'bulk-synch'},    # test4-32seed-10M-bsCMFD
+        {'particle_mult': False, 'seed_mult': True, 'ea_run': True, 'ea_run_strat': 'rendez-asynch'}, # test5-32seed-10M-raCMFD
+        {'particle_mult': False, 'seed_mult': True, 'ea_run': True, 'ea_run_strat': 'eager-asynch'}   # test6-32seed-10M-eaCMFD
     ]
 
     test_num = 0
     for run_strat in run_strats:
         test_num += 1
 
-        if test_num == 5 and prob_type == '2d-beavrs':
+        if test_num == 6 and prob_type == '2d-beavrs':
             continue
 
         run_strat['n_particles'] = cluster_params['mult_factor']*cluster_params['n_particles'] if run_strat['particle_mult'] else cluster_params['n_particles']
@@ -199,7 +200,7 @@ def get_cluster(socket_name):
 
 if __name__ == "__main__":
     if len(sys.argv) not in [2, 3]:
-        print('Usage: generate_cmfd_fet_examples.py [prob_type] [-r]')
+        print('Usage: performance_profiling.py [prob_type] [-r]')
         sys.exit()
 
     # Get command line arguments

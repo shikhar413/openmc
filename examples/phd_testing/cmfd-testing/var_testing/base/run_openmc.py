@@ -37,7 +37,6 @@ def init_openmc_run(problem_type, mesh_type, window_size):
         cmfd_mesh.albedo = [1., 1., 1., 1., 0., 0.]
         if mesh_type == '0p4cm':
             cmfd_mesh.dimension = [1, 1, 1000]
-            cmfd_mesh.use_all_threads = True
         elif mesh_type == '20cm':
             cmfd_mesh.dimension = [1, 1, 20]
         elif mesh_type == 'nocmfd':
@@ -83,7 +82,8 @@ def init_openmc_run(problem_type, mesh_type, window_size):
     cmfd_run.window_type = 'expanding'
     cmfd_run.downscatter = True
     cmfd_run.gauss_seidel_tolerance = [1.e-15, 1.e-20]
-    cmfd_run.use_all_threads = True
+    if mesh_type == '0p4cm':
+        cmfd_run.use_all_threads = True
     if window_size:
         cmfd_run.max_window_size = window_size
 

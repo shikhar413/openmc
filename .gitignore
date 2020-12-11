@@ -15,11 +15,12 @@ examples/phd_testing/cmfd-testing/var_testing/[1-3]d-*
 
 examples/phd_testing/lcrc_runs/*/seed*
 
-examples/phd_testing/ref-calcs/1d-homog-nocmfd
-examples/phd_testing/ref-calcs/2d-beavrs-cmfd-qassembly
+examples/phd_testing/ref-calcs/1d-homog-*
+examples/phd_testing/ref-calcs/2d-beavrs-*
 
 examples/phd_testing/ensemble-averaging/performance_profiling
 examples/phd_testing/ensemble-averaging/timing_tests
+examples/phd_testing/ensemble-averaging/var_testing/
 
 examples/phd_testing/beavrs_3d/timing_tests
 examples/phd_testing/beavrs_3d/performance_profiling
@@ -75,6 +76,7 @@ results_test.dat
 
 # Test
 .pytest_cache/
+__pycache__/
 
 # HDF5 files
 *.h5

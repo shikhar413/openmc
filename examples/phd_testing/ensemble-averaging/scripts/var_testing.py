@@ -17,7 +17,7 @@ def generate_input_files(cluster, prob_type, run_file):
                 'mult_factor': 16,
                 'n_particles': 10000000,
                 'n_batches': 499,
-                'max_window_size': 64
+                'max_window_size': 128
             },
             '2d-beavrs': {
                 'batch_file': "job-inl.qsub",
@@ -31,7 +31,7 @@ def generate_input_files(cluster, prob_type, run_file):
                 'mult_factor': 16,
                 'n_particles': 10000000,
                 'n_batches': 199,
-                'max_window_size': 16
+                'max_window_size': 128
             }
         }
 
@@ -158,7 +158,7 @@ def get_cluster(socket_name):
 
 if __name__ == "__main__":
     if len(sys.argv) not in [2, 3]:
-        print('Usage: generate_cmfd_fet_examples.py [prob_type] [-r]')
+        print('Usage: var_testing.py [prob_type] [-r]')
         sys.exit()
 
     # Get command line arguments
