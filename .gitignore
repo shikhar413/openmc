@@ -19,8 +19,15 @@ examples/phd_testing/ref-calcs/1d-homog-*
 examples/phd_testing/ref-calcs/2d-beavrs-*
 
 examples/phd_testing/ensemble-averaging/performance_profiling
-examples/phd_testing/ensemble-averaging/timing-tests
+examples/phd_testing/ensemble-averaging/timing_tests
 examples/phd_testing/ensemble-averaging/var_testing/
+
+examples/phd_testing/beavrs_3d/timing_tests
+examples/phd_testing/beavrs_3d/performance_profiling
+
+*/npy_files
+hostfile
+*.npy
 
 # Compiled objects and modules
 *.a
