@@ -1,0 +1,41 @@
+<?xml version='1.0' encoding='utf-8'?>
+<settings>
+  <run_mode>eigenvalue</run_mode>
+  <particles>10000000</particles>
+  <batches>999</batches>
+  <inactive>998</inactive>
+  <seed>1</seed>
+  <!--fet_convergence>
+    <dimension>3</dimension>
+    <axial_order>10</axial_order>
+    <min>36.748</min>
+    <max>402.508</max>
+    <radial_order>10</radial_order>
+    <r>183.2</r>
+    <x>0.0</x>
+    <y>0.0</y>
+  </fet_convergence-->
+  <source strength="1.0">
+    <space type="fission">
+      <parameters>-161.2773 -161.2773 35.0 161.2773 161.2773 419.704</parameters>
+    </space>
+  </source>
+  <output>
+    <tallies>false</tallies>
+    <summary>false</summary>
+  </output>
+  <mesh id="2" type="rectilinear">
+    <x_grid> -182.78094 -161.2773  -139.77366 -118.27002  -96.76638   -75.26274
+               -53.7591 -32.25546   -10.75182   10.75182   32.25546     53.7591
+               75.26274   96.76638  118.27002  139.77366   161.2773   182.78094
+    </x_grid>
+    <y_grid> -182.78094 -161.2773  -139.77366 -118.27002  -96.76638   -75.26274
+               -53.7591 -32.25546   -10.75182   10.75182   32.25546     53.7591
+               75.26274   96.76638  118.27002  139.77366   161.2773   182.78094
+    </y_grid>
+    <z_grid>   16.748    422.508
+    </z_grid>
+  </mesh>
+  <entropy_mesh>2</entropy_mesh>
+  <state_point batches="" />
+</settings>
