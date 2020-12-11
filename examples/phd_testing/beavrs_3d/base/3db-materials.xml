@@ -224,7 +224,7 @@
     <sab name="c_H_in_H2O" />
   </material>
   <material id="16" name="Borated Water, minus7" temperature="300">
-    <density units="g/cc" value="0.7055820675158279" />
+    <density units="g/cc" value="0.7125820675158279" />
     <nuclide ao="0.0003217866044341838" name="B10" />
     <nuclide ao="0.001301758322075321" name="B11" />
     <nuclide ao="1.9964419358487546" name="H1" />
@@ -234,7 +234,7 @@
     <sab name="c_H_in_H2O" />
   </material>
   <material id="17" name="Borated Water, minus6" temperature="300">
-    <density units="g/cc" value="0.7105820675158279" />
+    <density units="g/cc" value="0.7165820675158279" />
     <nuclide ao="0.0003217866044341838" name="B10" />
     <nuclide ao="0.001301758322075321" name="B11" />
     <nuclide ao="1.9964419358487546" name="H1" />
@@ -244,16 +244,6 @@
     <sab name="c_H_in_H2O" />
   </material>
   <material id="18" name="Borated Water, minus5" temperature="300">
-    <density units="g/cc" value="0.7155820675158279" />
-    <nuclide ao="0.0003217866044341838" name="B10" />
-    <nuclide ao="0.001301758322075321" name="B11" />
-    <nuclide ao="1.9964419358487546" name="H1" />
-    <nuclide ao="0.00031097429822629077" name="H2" />
-    <nuclide ao="0.9979980703970175" name="O16" />
-    <nuclide ao="0.00037838467647285283" name="O17" />
-    <sab name="c_H_in_H2O" />
-  </material>
-  <material id="19" name="Borated Water, minus4" temperature="300">
     <density units="g/cc" value="0.7205820675158279" />
     <nuclide ao="0.0003217866044341838" name="B10" />
     <nuclide ao="0.001301758322075321" name="B11" />
@@ -263,8 +253,18 @@
     <nuclide ao="0.00037838467647285283" name="O17" />
     <sab name="c_H_in_H2O" />
   </material>
+  <material id="19" name="Borated Water, minus4" temperature="300">
+    <density units="g/cc" value="0.7245820675158279" />
+    <nuclide ao="0.0003217866044341838" name="B10" />
+    <nuclide ao="0.001301758322075321" name="B11" />
+    <nuclide ao="1.9964419358487546" name="H1" />
+    <nuclide ao="0.00031097429822629077" name="H2" />
+    <nuclide ao="0.9979980703970175" name="O16" />
+    <nuclide ao="0.00037838467647285283" name="O17" />
+    <sab name="c_H_in_H2O" />
+  </material>
   <material id="20" name="Borated Water, minus3" temperature="300">
-    <density units="g/cc" value="0.7255820675158279" />
+    <density units="g/cc" value="0.7285820675158279" />
     <nuclide ao="0.0003217866044341838" name="B10" />
     <nuclide ao="0.001301758322075321" name="B11" />
     <nuclide ao="1.9964419358487546" name="H1" />
@@ -274,7 +274,7 @@
     <sab name="c_H_in_H2O" />
   </material>
   <material id="21" name="Borated Water, minus2" temperature="300">
-    <density units="g/cc" value="0.7305820675158279" />
+    <density units="g/cc" value="0.7325820675158279" />
     <nuclide ao="0.0003217866044341838" name="B10" />
     <nuclide ao="0.001301758322075321" name="B11" />
     <nuclide ao="1.9964419358487546" name="H1" />
@@ -284,7 +284,7 @@
     <sab name="c_H_in_H2O" />
   </material>
   <material id="22" name="Borated Water, minus1" temperature="300">
-    <density units="g/cc" value="0.7355820675158279" />
+    <density units="g/cc" value="0.7365820675158279" />
     <nuclide ao="0.0003217866044341838" name="B10" />
     <nuclide ao="0.001301758322075321" name="B11" />
     <nuclide ao="1.9964419358487546" name="H1" />
@@ -304,7 +304,7 @@
     <sab name="c_H_in_H2O" />
   </material>
   <material id="24" name="Borated Water, plus1" temperature="300">
-    <density units="g/cc" value="0.7455820675158279" />
+    <density units="g/cc" value="0.7445820675158279" />
     <nuclide ao="0.0003217866044341838" name="B10" />
     <nuclide ao="0.001301758322075321" name="B11" />
     <nuclide ao="1.9964419358487546" name="H1" />
@@ -314,7 +314,7 @@
     <sab name="c_H_in_H2O" />
   </material>
   <material id="25" name="Borated Water, plus2" temperature="300">
-    <density units="g/cc" value="0.7505820675158279" />
+    <density units="g/cc" value="0.7485820675158279" />
     <nuclide ao="0.0003217866044341838" name="B10" />
     <nuclide ao="0.001301758322075321" name="B11" />
     <nuclide ao="1.9964419358487546" name="H1" />
@@ -324,7 +324,7 @@
     <sab name="c_H_in_H2O" />
   </material>
   <material id="26" name="Borated Water, plus3" temperature="300">
-    <density units="g/cc" value="0.7555820675158279" />
+    <density units="g/cc" value="0.7525820675158279" />
     <nuclide ao="0.0003217866044341838" name="B10" />
     <nuclide ao="0.001301758322075321" name="B11" />
     <nuclide ao="1.9964419358487546" name="H1" />
@@ -334,7 +334,7 @@
     <sab name="c_H_in_H2O" />
   </material>
   <material id="27" name="Borated Water, plus4" temperature="300">
-    <density units="g/cc" value="0.7605820675158279" />
+    <density units="g/cc" value="0.7565820675158279" />
     <nuclide ao="0.0003217866044341838" name="B10" />
     <nuclide ao="0.001301758322075321" name="B11" />
     <nuclide ao="1.9964419358487546" name="H1" />
@@ -344,7 +344,7 @@
     <sab name="c_H_in_H2O" />
   </material>
   <material id="28" name="Borated Water, plus5" temperature="300">
-    <density units="g/cc" value="0.7655820675158279" />
+    <density units="g/cc" value="0.7605820675158279" />
     <nuclide ao="0.0003217866044341838" name="B10" />
     <nuclide ao="0.001301758322075321" name="B11" />
     <nuclide ao="1.9964419358487546" name="H1" />
@@ -354,7 +354,7 @@
     <sab name="c_H_in_H2O" />
   </material>
   <material id="29" name="Borated Water, plus6" temperature="300">
-    <density units="g/cc" value="0.7705820675158279" />
+    <density units="g/cc" value="0.7645820675158279" />
     <nuclide ao="0.0003217866044341838" name="B10" />
     <nuclide ao="0.001301758322075321" name="B11" />
     <nuclide ao="1.9964419358487546" name="H1" />
@@ -364,7 +364,7 @@
     <sab name="c_H_in_H2O" />
   </material>
   <material id="30" name="Borated Water, plus7" temperature="300">
-    <density units="g/cc" value="0.7755820675158279" />
+    <density units="g/cc" value="0.7685820675158279" />
     <nuclide ao="0.0003217866044341838" name="B10" />
     <nuclide ao="0.001301758322075321" name="B11" />
     <nuclide ao="1.9964419358487546" name="H1" />
