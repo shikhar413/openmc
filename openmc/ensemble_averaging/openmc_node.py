@@ -24,7 +24,7 @@ from mpi4py import MPI
 
 from openmc import cmfd
 import openmc.lib
-from openmc.checkvalue import check_type, check_greater_than
+from openmc.checkvalue import check_type, check_greater_than, check_value
 from openmc.exceptions import OpenMCError
 
 # Maximum/minimum neutron energies
