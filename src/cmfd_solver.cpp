@@ -497,7 +497,7 @@ void openmc_cmfd_reweight(const bool feedback, const double* cmfd_src)
                                                          &sites_outside);
 
   // Compute CMFD weightfactors, all initialized to 0
-  xt::xtensor<double, 1> weightfactors = xt::xtensor<double, 1>({src_size}, 0.); 
+  xt::xtensor<double, 1> weightfactors = xt::xtensor<double, 1>({src_size}, 1.); 
   if (mpi::master) {
     if (sites_outside) {
       //fatal_error("Source sites outside of the CMFD mesh");  TEMP
