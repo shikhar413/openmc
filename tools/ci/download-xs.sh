@@ -1,6 +1,8 @@
 #!/bin/bash
 set -ex
 
+mkdir -p $HOME/opt/openmc_dependencies
+
 # Download HDF5 data
 if [[ ! -e $HOME/opt/openmc_dependencies/nndc_hdf5/cross_sections.xml ]]; then
     wget -q -O - https://anl.box.com/shared/static/teaup95cqv8s9nn56hfn7ku8mmelr95p.xz | tar -C $HOME/opt/openmc_dependencies -xJ
