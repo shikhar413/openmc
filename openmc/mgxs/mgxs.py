@@ -948,7 +948,7 @@ class MGXS:
         self.xs_tally._std_dev = np.nan_to_num(self.xs_tally.std_dev)
         self.xs_tally.sparse = self.sparse
 
-    def load_from_statepoint(self, statepoint):
+    def load_from_statepoint(self, statepoint, materials=None, universes=None):
         """Extracts tallies in an OpenMC StatePoint with the data needed to
         compute multi-group cross sections.
 
@@ -972,21 +972,23 @@ class MGXS:
 
         cv.check_type('statepoint', statepoint, openmc.StatePoint)
 
-        if statepoint.summary is None:
-            msg = 'Unable to load data from a statepoint which has not been ' \
-                  'linked with a summary file'
-            raise ValueError(msg)
+        #if statepoint.summary is None:
+        #    msg = 'Unable to load data from a statepoint which has not been ' \
+        #          'linked with a summary file'
+        #    raise ValueError(msg)
 
         # Override the domain object that loaded from an OpenMC summary file
         # NOTE: This is necessary for micro cross-sections which require
         # the isotopic number densities as computed by OpenMC
-        su = statepoint.summary
+        #su = statepoint.summary
         if self.domain_type in ('cell', 'distribcell'):
             self.domain = su._fast_cells[self.domain.id]
         elif self.domain_type == 'universe':
-            self.domain = su._fast_universes[self.domain.id]
+            self.domain = universes[self.domain.id]
+            #self.domain = su._fast_universes[self.domain.id]
         elif self.domain_type == 'material':
-            self.domain = su._fast_materials[self.domain.id]
+            self.domain = materials[self.domain.id]
+            #self.domain = su._fast_materials[self.domain.id]
         elif self.domain_type == 'mesh':
             self.domain = statepoint.meshes[self.domain.id]
         else:
@@ -4878,7 +4880,7 @@ class ScatterMatrixXS(MatrixMGXS):
 
         self._histogram_bins = histogram_bins
 
-    def load_from_statepoint(self, statepoint):
+    def load_from_statepoint(self, statepoint, materials=None, universes=None):
         """Extracts tallies in an OpenMC StatePoint with the data needed to
         compute multi-group cross sections.
 
@@ -4907,7 +4909,7 @@ class ScatterMatrixXS(MatrixMGXS):
             self._rxn_rate_tally = None
             self._loaded_sp = False
 
-        super().load_from_statepoint(statepoint)
+        super().load_from_statepoint(statepoint, materials, universes)
 
     def get_slice(self, nuclides=[], in_groups=[], out_groups=[],
                   legendre_order='same'):
