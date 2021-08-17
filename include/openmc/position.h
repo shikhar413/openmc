@@ -1,11 +1,12 @@
 #ifndef OPENMC_POSITION_H
 #define OPENMC_POSITION_H
 
-#include <array>
 #include <cmath> // for sqrt
 #include <iostream>
 #include <stdexcept> // for out_of_range
-#include <vector>
+
+#include "openmc/array.h"
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -16,10 +17,10 @@ namespace openmc {
 struct Position {
   // Constructors
   Position() = default;
-  Position(double x_, double y_, double z_) : x{x_}, y{y_}, z{z_} { };
-  Position(const double xyz[]) : x{xyz[0]}, y{xyz[1]}, z{xyz[2]} { };
-  Position(const std::vector<double>& xyz) : x{xyz[0]}, y{xyz[1]}, z{xyz[2]} { };
-  Position(const std::array<double, 3>& xyz) : x{xyz[0]}, y{xyz[1]}, z{xyz[2]} { };
+  Position(double x_, double y_, double z_) : x {x_}, y {y_}, z {z_} {};
+  Position(const double xyz[]) : x {xyz[0]}, y {xyz[1]}, z {xyz[2]} {};
+  Position(const vector<double>& xyz) : x {xyz[0]}, y {xyz[1]}, z {xyz[2]} {};
+  Position(const array<double, 3>& xyz) : x {xyz[0]}, y {xyz[1]}, z {xyz[2]} {};
 
   // Unary operators
   Position& operator+=(Position);
@@ -32,22 +33,30 @@ struct Position {
   Position& operator/=(double);
   Position operator-() const;
 
-  const double& operator[](int i) const {
+  const double& operator[](int i) const
+  {
     switch (i) {
-      case 0: return x;
-      case 1: return y;
-      case 2: return z;
-      default:
-        throw std::out_of_range{"Index in Position must be between 0 and 2."};
+    case 0:
+      return x;
+    case 1:
+      return y;
+    case 2:
+      return z;
+    default:
+      throw std::out_of_range {"Index in Position must be between 0 and 2."};
     }
   }
-  double& operator[](int i) {
+  double& operator[](int i)
+  {
     switch (i) {
-      case 0: return x;
-      case 1: return y;
-      case 2: return z;
-      default:
-        throw std::out_of_range{"Index in Position must be between 0 and 2."};
+    case 0:
+      return x;
+    case 1:
+      return y;
+    case 2:
+      return z;
+    default:
+      throw std::out_of_range {"Index in Position must be between 0 and 2."};
     }
   }
 
@@ -68,12 +77,11 @@ struct Position {
   //! Dot product of two vectors
   //! \param[in] other Vector to take dot product with
   //! \result Resulting dot product
-  inline double dot(Position other) const {
-    return x*other.x + y*other.y + z*other.z;
+  inline double dot(Position other) const
+  {
+    return x * other.x + y * other.y + z * other.z;
   }
-  inline double norm() const {
-    return std::sqrt(x*x + y*y + z*z);
-  }
+  inline double norm() const { return std::sqrt(x * x + y * y + z * z); }
 
   //! Reflect a direction across a normal vector
   //! \param[in] other Vector to reflect across
@@ -81,7 +89,7 @@ struct Position {
   Position reflect(Position n) const;
 
   //! Rotate the position based on a rotation matrix
-  Position rotate(const std::vector<double>& rotation) const;
+  Position rotate(const vector<double>& rotation) const;
 
   // Data members
   double x = 0.;
@@ -122,23 +130,60 @@ inline double& Position::get<2>()
 }
 
 // Binary operators
-inline Position operator+(Position a, Position b) { return a += b; }
-inline Position operator+(Position a, double b)   { return a += b; }
-inline Position operator+(double a, Position b)   { return b += a; }
+inline Position operator+(Position a, Position b)
+{
+  return a += b;
+}
+inline Position operator+(Position a, double b)
+{
+  return a += b;
+}
+inline Position operator+(double a, Position b)
+{
+  return b += a;
+}
 
-inline Position operator-(Position a, Position b) { return a -= b; }
-inline Position operator-(Position a, double b)   { return a -= b; }
-inline Position operator-(double a, Position b)   { return b -= a; }
+inline Position operator-(Position a, Position b)
+{
+  return a -= b;
+}
+inline Position operator-(Position a, double b)
+{
+  return a -= b;
+}
+inline Position operator-(double a, Position b)
+{
+  return b -= a;
+}
 
-inline Position operator*(Position a, Position b) { return a *= b; }
-inline Position operator*(Position a, double b)   { return a *= b; }
-inline Position operator*(double a, Position b)   { return b *= a; }
+inline Position operator*(Position a, Position b)
+{
+  return a *= b;
+}
+inline Position operator*(Position a, double b)
+{
+  return a *= b;
+}
+inline Position operator*(double a, Position b)
+{
+  return b *= a;
+}
 
-inline Position operator/(Position a, Position b) { return a /= b; }
-inline Position operator/(Position a, double b)   { return a /= b; }
-inline Position operator/(double a, Position b)   { return b /= a; }
+inline Position operator/(Position a, Position b)
+{
+  return a /= b;
+}
+inline Position operator/(Position a, double b)
+{
+  return a /= b;
+}
+inline Position operator/(double a, Position b)
+{
+  return b /= a;
+}
 
-inline Position Position::reflect(Position n) const {
+inline Position Position::reflect(Position n) const
+{
   const double projection = n.dot(*this);
   const double magnitude = n.dot(n);
   n *= (2.0 * projection / magnitude);
@@ -146,10 +191,14 @@ inline Position Position::reflect(Position n) const {
 }
 
 inline bool operator==(Position a, Position b)
-{return a.x == b.x && a.y == b.y && a.z == b.z;}
+{
+  return a.x == b.x && a.y == b.y && a.z == b.z;
+}
 
 inline bool operator!=(Position a, Position b)
-{return a.x != b.x || a.y != b.y || a.z != b.z;}
+{
+  return a.x != b.x || a.y != b.y || a.z != b.z;
+}
 
 std::ostream& operator<<(std::ostream& os, Position a);
 

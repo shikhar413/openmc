@@ -3,8 +3,8 @@ project(openmc C CXX)
 
 # Set version numbers
 set(OPENMC_VERSION_MAJOR 0)
-set(OPENMC_VERSION_MINOR 12)
-set(OPENMC_VERSION_RELEASE 1)
+set(OPENMC_VERSION_MINOR 13)
+set(OPENMC_VERSION_RELEASE 0)
 set(OPENMC_VERSION ${OPENMC_VERSION_MAJOR}.${OPENMC_VERSION_MINOR}.${OPENMC_VERSION_RELEASE})
 configure_file(include/openmc/version.h.in "${CMAKE_BINARY_DIR}/include/openmc/version.h" @ONLY)
 
@@ -25,12 +25,13 @@ endif()
 # Command line options
 #===============================================================================
 
-option(openmp   "Enable shared-memory parallelism with OpenMP"   ON)
-option(profile  "Compile with profiling flags"                   OFF)
-option(debug    "Compile with debug flags"                       OFF)
-option(optimize "Turn on all compiler optimization flags"        OFF)
-option(coverage "Compile with coverage analysis flags"           OFF)
-option(dagmc    "Enable support for DAGMC (CAD) geometry"        OFF)
+option(openmp   "Enable shared-memory parallelism with OpenMP"         ON)
+option(profile  "Compile with profiling flags"                         OFF)
+option(debug    "Compile with debug flags"                             OFF)
+option(optimize "Turn on all compiler optimization flags"              OFF)
+option(coverage "Compile with coverage analysis flags"                 OFF)
+option(dagmc    "Enable support for DAGMC (CAD) geometry"              OFF)
+option(libmesh  "Enable support for libMesh unstructured mesh tallies" OFF)
 
 #===============================================================================
 # MPI for distributed-memory parallelism
@@ -47,6 +48,10 @@ endif()
 #===============================================================================
 if(dagmc)
   find_package(DAGMC REQUIRED PATH_SUFFIXES lib/cmake)
+  if (${DAGMC_VERSION} VERSION_LESS 3.2.0)
+    message(FATAL_ERROR "Discovered DAGMC Version: ${DAGMC_VERSION}. \
+    Please update DAGMC to version 3.2.0 or greater.")
+  endif()
 endif()
 
 #===============================================================================
@@ -65,6 +70,13 @@ if(pugixml_FOUND)
   message(STATUS "Found pugixml: ${pugixml_DIR}")
 else()
   message(STATUS "Did not find pugixml, will use submodule instead")
+endif()
+
+#===============================================================================
+# libMesh Unstructured Mesh Support
+#===============================================================================
+if(libmesh)
+  find_package(LIBMESH REQUIRED)
 endif()
 
 #===============================================================================
@@ -287,6 +299,7 @@ list(APPEND libopenmc_SOURCES
   src/nuclide.cpp
   src/output.cpp
   src/particle.cpp
+  src/particle_data.cpp
   src/particle_restart.cpp
   src/photon.cpp
   src/physics.cpp
@@ -295,6 +308,7 @@ list(APPEND libopenmc_SOURCES
   src/plot.cpp
   src/position.cpp
   src/progress_bar.cpp
+  src/random_dist.cpp
   src/random_lcg.cpp
   src/reaction.cpp
   src/reaction_product.cpp
@@ -322,6 +336,7 @@ list(APPEND libopenmc_SOURCES
   src/tallies/filter_distribcell.cpp
   src/tallies/filter_energyfunc.cpp
   src/tallies/filter_energy.cpp
+  src/tallies/filter_collision.cpp
   src/tallies/filter_legendre.cpp
   src/tallies/filter_material.cpp
   src/tallies/filter_mesh.cpp
@@ -403,6 +418,11 @@ target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES
 if(dagmc)
   target_compile_definitions(libopenmc PRIVATE DAGMC)
   target_link_libraries(libopenmc dagmc-shared uwuw-shared)
+endif()
+
+if(libmesh)
+  target_compile_definitions(libopenmc PRIVATE LIBMESH)
+  target_link_libraries(libopenmc PkgConfig::LIBMESH)
 endif()
 
 #===============================================================================

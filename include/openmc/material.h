@@ -1,19 +1,19 @@
 #ifndef OPENMC_MATERIAL_H
 #define OPENMC_MATERIAL_H
 
-#include <memory> // for unique_ptr
 #include <string>
 #include <unordered_map>
-#include <vector>
 
-#include <gsl/gsl>
-#include <hdf5.h>
 #include "pugixml.hpp"
 #include "xtensor/xtensor.hpp"
+#include <gsl/gsl>
+#include <hdf5.h>
 
-#include "openmc/constants.h"
 #include "openmc/bremsstrahlung.h"
+#include "openmc/constants.h"
+#include "openmc/memory.h" // for unique_ptr
 #include "openmc/particle.h"
+#include "openmc/vector.h"
 
 namespace openmc {
 
@@ -26,7 +26,7 @@ class Material;
 namespace model {
 
 extern std::unordered_map<int32_t, int32_t> material_map;
-extern std::vector<std::unique_ptr<Material>> materials;
+extern vector<unique_ptr<Material>> materials;
 
 } // namespace model
 
@@ -34,15 +34,14 @@ extern std::vector<std::unique_ptr<Material>> materials;
 //! A substance with constituent nuclides and thermal scattering data
 //==============================================================================
 
-class Material
-{
+class Material {
 public:
   //----------------------------------------------------------------------------
   // Types
   struct ThermalTable {
-    int index_table; //!< Index of table in data::thermal_scatt
+    int index_table;   //!< Index of table in data::thermal_scatt
     int index_nuclide; //!< Index in nuclide_
-    double fraction; //!< How often to use table
+    double fraction;   //!< How often to use table
   };
 
   //----------------------------------------------------------------------------
@@ -69,6 +68,14 @@ public:
   //! Write material data to HDF5
   void to_hdf5(hid_t group) const;
 
+  //! Export physical properties to HDF5
+  //! \param[in] group  HDF5 group to write to
+  void export_properties_hdf5(hid_t group) const;
+
+  //! Import physical properties from HDF5
+  //! \param[in] group  HDF5 group to read from
+  void import_properties_hdf5(hid_t group);
+
   //! Add nuclide to the material
   //
   //! \param[in] nuclide Name of the nuclide
@@ -79,8 +86,8 @@ public:
   //
   //! \param[in] name Name of each nuclide
   //! \param[in] density Density of each nuclide in [atom/b-cm]
-  void set_densities(const std::vector<std::string>& name,
-    const std::vector<double>& density);
+  void set_densities(
+    const vector<std::string>& name, const vector<double>& density);
 
   //----------------------------------------------------------------------------
   // Accessors
@@ -108,11 +115,17 @@ public:
 
   //! Get nuclides in material
   //! \return Indices into the global nuclides vector
-  gsl::span<const int> nuclides() const { return {nuclide_.data(), nuclide_.size()}; }
+  gsl::span<const int> nuclides() const
+  {
+    return {nuclide_.data(), nuclide_.size()};
+  }
 
   //! Get densities of each nuclide in material
   //! \return Densities in [atom/b-cm]
-  gsl::span<const double> densities() const { return {atom_density_.data(), atom_density_.size()}; }
+  gsl::span<const double> densities() const
+  {
+    return {atom_density_.data(), atom_density_.size()};
+  }
 
   //! Get ID of material
   //! \return ID of material
@@ -137,28 +150,30 @@ public:
 
   //----------------------------------------------------------------------------
   // Data
-  int32_t id_ {C_NONE}; //!< Unique ID
-  std::string name_; //!< Name of material
-  std::vector<int> nuclide_; //!< Indices in nuclides vector
-  std::vector<int> element_; //!< Indices in elements vector
+  int32_t id_ {C_NONE};                 //!< Unique ID
+  std::string name_;                    //!< Name of material
+  vector<int> nuclide_;                 //!< Indices in nuclides vector
+  vector<int> element_;                 //!< Indices in elements vector
   xt::xtensor<double, 1> atom_density_; //!< Nuclide atom density in [atom/b-cm]
-  double density_; //!< Total atom density in [atom/b-cm]
-  double density_gpcc_; //!< Total atom density in [g/cm^3]
-  double volume_ {-1.0}; //!< Volume in [cm^3]
-  bool fissionable_ {false}; //!< Does this material contain fissionable nuclides
+  double density_;                      //!< Total atom density in [atom/b-cm]
+  double density_gpcc_;                 //!< Total atom density in [g/cm^3]
+  double volume_ {-1.0};                //!< Volume in [cm^3]
+  bool fissionable_ {
+    false};                 //!< Does this material contain fissionable nuclides
   bool depletable_ {false}; //!< Is the material depletable?
-  std::vector<bool> p0_; //!< Indicate which nuclides are to be treated with iso-in-lab scattering
+  vector<bool> p0_;         //!< Indicate which nuclides are to be treated with
+                            //!< iso-in-lab scattering
 
   // To improve performance of tallying, we store an array (direct address
   // table) that indicates for each nuclide in data::nuclides the index of the
   // corresponding nuclide in the nuclide_ vector. If it is not present in the
   // material, the entry is set to -1.
-  std::vector<int> mat_nuclide_index_;
+  vector<int> mat_nuclide_index_;
 
   // Thermal scattering tables
-  std::vector<ThermalTable> thermal_tables_;
+  vector<ThermalTable> thermal_tables_;
 
-  std::unique_ptr<Bremsstrahlung> ttb_;
+  unique_ptr<Bremsstrahlung> ttb_;
 
 private:
   //----------------------------------------------------------------------------
@@ -191,13 +206,13 @@ private:
 //==============================================================================
 
 //! Calculate Sternheimer adjustment factor
-double sternheimer_adjustment(const std::vector<double>& f, const
-  std::vector<double>& e_b_sq, double e_p_sq, double n_conduction, double
-  log_I, double tol, int max_iter);
+double sternheimer_adjustment(const vector<double>& f,
+  const vector<double>& e_b_sq, double e_p_sq, double n_conduction,
+  double log_I, double tol, int max_iter);
 
 //! Calculate density effect correction
-double density_effect(const std::vector<double>& f, const std::vector<double>&
-  e_b_sq, double e_p_sq, double n_conduction, double rho, double E, double tol,
+double density_effect(const vector<double>& f, const vector<double>& e_b_sq,
+  double e_p_sq, double n_conduction, double rho, double E, double tol,
   int max_iter);
 
 //! Read material data from materials.xml

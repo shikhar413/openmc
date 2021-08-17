@@ -1,4 +1,5 @@
 from collections.abc import Mapping
+from ctypes import ArgumentError
 import os
 
 import numpy as np
@@ -98,6 +99,21 @@ def lib_run(lib_simulation_init):
     openmc.lib.run()
 
 
+@pytest.fixture(scope='module')
+def pincell_model_w_univ():
+    """Set up a model to test with and delete files when done"""
+    openmc.reset_auto_ids()
+    pincell = openmc.examples.pwr_pin_cell()
+    clad_univ = openmc.Universe(cells=[openmc.Cell(fill=pincell.materials[1])])
+    pincell.geometry.root_universe.cells[2].fill = clad_univ
+    pincell.settings.verbosity = 1
+
+    # Write XML files in tmpdir
+    with cdtemp():
+        pincell.export_to_xml()
+        yield
+
+
 def test_cell_mapping(lib_init):
     cells = openmc.lib.cells
     assert isinstance(cells, Mapping)
@@ -115,13 +131,30 @@ def test_cell(lib_init):
     assert cell.name == "Fuel"
     cell.name = "Not fuel"
     assert cell.name == "Not fuel"
+    assert cell.num_instances == 1
+
 
 def test_cell_temperature(lib_init):
     cell = openmc.lib.cells[1]
     cell.set_temperature(100.0, 0)
-    assert cell.get_temperature(0) == 100.0
+    assert cell.get_temperature(0) == pytest.approx(100.0)
     cell.set_temperature(200)
-    assert cell.get_temperature() == 200.0
+    assert cell.get_temperature() == pytest.approx(200.0)
+
+
+def test_properties_temperature(lib_init):
+    # Cell temperature should be 200 from above test
+    cell = openmc.lib.cells[1]
+    assert cell.get_temperature() == pytest.approx(200.0)
+
+    # Export properties and change temperature
+    openmc.lib.export_properties('properties.h5')
+    cell.set_temperature(300.0)
+    assert cell.get_temperature() == pytest.approx(300.0)
+
+    # Import properties and check that temperature is restored
+    openmc.lib.import_properties('properties.h5')
+    assert cell.get_temperature() == pytest.approx(200.0)
 
 
 def test_new_cell(lib_init):
@@ -130,6 +163,13 @@ def test_new_cell(lib_init):
     new_cell = openmc.lib.Cell()
     new_cell_with_id = openmc.lib.Cell(10)
     assert len(openmc.lib.cells) == 5
+
+
+def test_properties_fail_cell(lib_init):
+    # The number of cells was changed in the previous test, so the properties
+    # file is no longer valid
+    with pytest.raises(exc.GeometryError, match="Number of cells"):
+        openmc.lib.import_properties("properties.h5")
 
 
 def test_material_mapping(lib_init):
@@ -162,10 +202,29 @@ def test_material(lib_init):
     assert sum(m.densities) == pytest.approx(rho)
 
     m.set_density(0.1, 'g/cm3')
-    assert m.density == pytest.approx(0.1)
+    assert m.get_density('g/cm3') == pytest.approx(0.1)
     assert m.name == "Hot borated water"
     m.name = "Not hot borated water"
     assert m.name == "Not hot borated water"
+
+
+def test_properties_density(lib_init):
+    m = openmc.lib.materials[1]
+    orig_density = m.get_density('atom/b-cm')
+    orig_density_gpcc = m.get_density('g/cm3')
+
+    # Export properties and change density
+    openmc.lib.export_properties('properties.h5')
+    m.set_density(orig_density_gpcc*2, 'g/cm3')
+    assert m.get_density() == pytest.approx(orig_density*2)
+
+    # Import properties and check that density was restored
+    openmc.lib.import_properties('properties.h5')
+    assert m.get_density() == pytest.approx(orig_density)
+
+    with pytest.raises(ValueError):
+        m.get_density('🥏')
+
 
 def test_material_add_nuclide(lib_init):
     m = openmc.lib.materials[3]
@@ -180,6 +239,13 @@ def test_new_material(lib_init):
     new_mat = openmc.lib.Material()
     new_mat_with_id = openmc.lib.Material(10)
     assert len(openmc.lib.materials) == 5
+
+
+def test_properties_fail_material(lib_init):
+    # The number of materials was changed in the previous test, so the properties
+    # file is no longer valid
+    with pytest.raises(exc.GeometryError, match="Number of materials"):
+        openmc.lib.import_properties("properties.h5")
 
 
 def test_nuclide_mapping(lib_init):
@@ -387,12 +453,12 @@ def test_reset(lib_run):
     openmc.lib.hard_reset()
     openmc.lib.simulation_init()
     try:
-        for i in range(10):
+        for i in range(20):
             openmc.lib.next_batch()
 
-        # Make sure there are 5 realizations for the 5 active batches.
-        assert openmc.lib.num_realizations() == 5
-        assert openmc.lib.tallies[2].num_realizations == 5
+        # Make sure there are 15 realizations for the 15 active batches.
+        assert openmc.lib.num_realizations() == 15
+        assert openmc.lib.tallies[2].num_realizations == 15
         _, keff_sd1 = openmc.lib.keff()
         tally_sd1 = openmc.lib.tallies[2].std_dev[0]
 
@@ -470,11 +536,17 @@ def test_regular_mesh(lib_init):
         assert isinstance(mesh, openmc.lib.RegularMesh)
         assert mesh_id == mesh.id
 
+    translation = (1.0, 2.0, 3.0)
+
     mf = openmc.lib.MeshFilter(mesh)
     assert mf.mesh == mesh
+    mf.translation = translation
+    assert mf.translation == translation
 
     msf = openmc.lib.MeshSurfaceFilter(mesh)
     assert msf.mesh == mesh
+    msf.translation = translation
+    assert msf.translation == translation
 
 
 def test_rectilinear_mesh(lib_init):
@@ -552,9 +624,9 @@ def test_load_nuclide(lib_init):
 
 
 def test_id_map(lib_init):
-    expected_ids = np.array([[(3, 3), (2, 2), (3, 3)],
-                             [(2, 2), (1, 1), (2, 2)],
-                             [(3, 3), (2, 2), (3, 3)]], dtype='int32')
+    expected_ids = np.array([[(3, 0, 3), (2, 0, 2), (3, 0, 3)],
+                             [(2, 0, 2), (1, 0, 1), (2, 0, 2)],
+                             [(3, 0, 3), (2, 0, 2), (3, 0, 3)]], dtype='int32')
 
     # create a plot object
     s = openmc.lib.plot._PlotBase()
@@ -568,6 +640,7 @@ def test_id_map(lib_init):
 
     ids = openmc.lib.plot.id_map(s)
     assert np.array_equal(expected_ids, ids)
+
 
 def test_property_map(lib_init):
     expected_properties = np.array(
@@ -635,3 +708,37 @@ def test_trigger_set_n_batches(uo2_trigger_model, mpi_intracomm):
     # Ensure statepoint was created only at batch 20 when calling set_batches
     assert not os.path.exists('statepoint.12.h5')
     assert os.path.exists('statepoint.20.h5')
+
+
+def test_cell_translation(pincell_model_w_univ, mpi_intracomm):
+    openmc.lib.finalize()
+    openmc.lib.init(intracomm=mpi_intracomm)
+    openmc.lib.simulation_init()
+    # Cell 1 is filled with a material so it has a translation, but we can't
+    # set it.
+    cell = openmc.lib.cells[1]
+    assert cell.translation == pytest.approx([0., 0., 0.])
+    with pytest.raises(exc.GeometryError, match='not filled with'):
+        cell.translation = (1., 0., -1.)
+
+    # Cell 2 was given a universe, so we can assign it a translation vector
+    cell = openmc.lib.cells[2]
+    assert cell.translation == pytest.approx([0., 0., 0.])
+    # This time we *can* set it
+    cell.translation = (1., 0., -1.)
+    assert cell.translation == pytest.approx([1., 0., -1.])
+
+
+def test_cell_rotation(pincell_model_w_univ):
+    # Cell 1 is filled with a material so we cannot rotate it, but we can get
+    # its rotation matrix (which will be the identity matrix)
+    cell = openmc.lib.cells[1]
+    assert cell.rotation == pytest.approx([0., 0., 0.])
+    with pytest.raises(exc.GeometryError, match='not filled with'):
+        cell.rotation = (180., 0., 0.)
+
+    # Now repeat with Cell 2 and we will be allowed to do it
+    cell = openmc.lib.cells[2]
+    assert cell.rotation == pytest.approx([0., 0., 0.])
+    cell.rotation = (180., 0., 0.)
+    assert cell.rotation == pytest.approx([180., 0., 0.])

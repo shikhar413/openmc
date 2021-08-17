@@ -122,7 +122,7 @@ class Material(IDManagerMixin):
         string += '{: <16}=\t{}\n'.format('\tTemperature', self._temperature)
 
         string += '{: <16}=\t{}'.format('\tDensity', self._density)
-        string += ' [{}]\n'.format(self._density_units)
+        string += f' [{self._density_units}]\n'
 
         string += '{: <16}\n'.format('\tS(a,b) Tables')
 
@@ -208,7 +208,7 @@ class Material(IDManagerMixin):
     @name.setter
     def name(self, name):
         if name is not None:
-            cv.check_type('name for Material ID="{}"'.format(self._id),
+            cv.check_type(f'name for Material ID="{self._id}"',
                           name, str)
             self._name = name
         else:
@@ -216,13 +216,13 @@ class Material(IDManagerMixin):
 
     @temperature.setter
     def temperature(self, temperature):
-        cv.check_type('Temperature for Material ID="{}"'.format(self._id),
+        cv.check_type(f'Temperature for Material ID="{self._id}"',
                       temperature, (Real, type(None)))
         self._temperature = temperature
 
     @depletable.setter
     def depletable(self, depletable):
-        cv.check_type('Depletable flag for Material ID="{}"'.format(self.id),
+        cv.check_type(f'Depletable flag for Material ID="{self._id}"',
                       depletable, bool)
         self._depletable = depletable
 
@@ -520,6 +520,19 @@ class Material(IDManagerMixin):
             element = openmc.data.ELEMENT_SYMBOL.get(el)
             if element is None:
                 msg = 'Element name "{}" not recognised'.format(el)
+                raise ValueError(msg)
+        else:
+            if element[0].islower():
+                msg = 'Element name "{}" should start with an uppercase ' \
+                      'letter'.format(element)
+                raise ValueError(msg)
+            if len(element) == 2 and element[1].isupper():
+                msg = 'Element name "{}" should end with a lowercase ' \
+                      'letter'.format(element)
+                raise ValueError(msg)
+            # skips the first entry of ATOMIC_SYMBOL which is n for neutron
+            if element not in list(openmc.data.ATOMIC_SYMBOL.values())[1:]:
+                msg = 'Element name "{}" not recognised'.format(element)
                 raise ValueError(msg)
 
         if self._macroscopic is not None:

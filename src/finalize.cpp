@@ -20,9 +20,9 @@
 #include "openmc/simulation.h"
 #include "openmc/source.h"
 #include "openmc/surface.h"
+#include "openmc/tallies/tally.h"
 #include "openmc/thermal.h"
 #include "openmc/timer.h"
-#include "openmc/tallies/tally.h"
 #include "openmc/volume_calc.h"
 
 #include "xtensor/xview.hpp"
@@ -51,12 +51,9 @@ void free_memory()
   if (settings::event_based) {
     free_event_queues();
   }
-#ifdef DAGMC
-  free_memory_dagmc();
-#endif
 }
 
-}
+} // namespace openmc
 
 using namespace openmc;
 
@@ -74,7 +71,6 @@ int openmc_finalize()
   settings::confidence_intervals = false;
   settings::create_fission_neutrons = true;
   settings::electron_treatment = ElectronTreatment::LED;
-  settings::dagmc = false;
   settings::delayed_photon_scaling = true;
   settings::energy_cutoff = {0.0, 1000.0, 0.0, 0.0};
   settings::entropy_on = false;
@@ -137,9 +133,14 @@ int openmc_finalize()
   // Deallocate arrays
   free_memory();
 
+#ifdef LIBMESH
+  settings::libmesh_init.reset();
+#endif
+
   // Free all MPI types
 #ifdef OPENMC_MPI
-  if (mpi::bank != MPI_DATATYPE_NULL) MPI_Type_free(&mpi::bank);
+  if (mpi::source_site != MPI_DATATYPE_NULL)
+    MPI_Type_free(&mpi::source_site);
 #endif
 
   return 0;

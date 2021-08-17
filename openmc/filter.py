@@ -15,14 +15,15 @@ from .cell import Cell
 from .material import Material
 from .mixin import IDManagerMixin
 from .surface import Surface
-from .universe import Universe
+from .universe import UniverseBase
 
 
 _FILTER_TYPES = (
     'universe', 'material', 'cell', 'cellborn', 'surface', 'mesh', 'energy',
     'energyout', 'mu', 'polar', 'azimuthal', 'distribcell', 'delayedgroup',
     'energyfunction', 'cellfrom', 'legendre', 'spatiallegendre',
-    'sphericalharmonics', 'zernike', 'zernikeradial', 'particle', 'cellinstance'
+    'sphericalharmonics', 'zernike', 'zernikeradial', 'particle', 'cellinstance',
+    'collision'
 )
 
 _CURRENT_NAMES = (
@@ -265,8 +266,7 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
         """
 
         if not self.can_merge(other):
-            msg = 'Unable to merge "{0}" with "{1}" '.format(
-                type(self), type(other))
+            msg = f'Unable to merge "{type(self)}" with "{type(other)}"'
             raise ValueError(msg)
 
         # Merge unique filter bins
@@ -325,8 +325,8 @@ class Filter(IDManagerMixin, metaclass=FilterMeta):
         """
 
         if filter_bin not in self.bins:
-            msg = 'Unable to get the bin index for Filter since "{0}" ' \
-                  'is not one of the bins'.format(filter_bin)
+            msg = ('Unable to get the bin index for Filter since '
+                   f'"{filter_bin}" is not one of the bins')
             raise ValueError(msg)
 
         if isinstance(self.bins, np.ndarray):
@@ -407,8 +407,8 @@ class UniverseFilter(WithIDFilter):
 
     Parameters
     ----------
-    bins : openmc.Universe, int, or iterable thereof
-        The Universes to tally. Either openmc.Universe objects or their
+    bins : openmc.UniverseBase, int, or iterable thereof
+        The Universes to tally. Either openmc.UniverseBase objects or their
         Integral ID numbers can be used.
     filter_id : int
         Unique identifier for the filter
@@ -416,14 +416,14 @@ class UniverseFilter(WithIDFilter):
     Attributes
     ----------
     bins : Iterable of Integral
-        openmc.Universe IDs.
+        openmc.UniverseBase IDs.
     id : int
         Unique identifier for the filter
     num_bins : Integral
         The number of filter bins
 
     """
-    expected_type = Universe
+    expected_type = UniverseBase
 
 
 class MaterialFilter(WithIDFilter):
@@ -715,6 +715,9 @@ class MeshFilter(Filter):
         The mesh object that events will be tallied onto
     id : int
         Unique identifier for the filter
+    translation : Iterable of float
+        This array specifies a vector that is used to translate (shift)
+        the mesh for this filter
     bins : list of tuple
         A list of mesh indices for each filter bin, e.g. [(1, 1, 1), (2, 1, 1),
         ...]
@@ -726,6 +729,7 @@ class MeshFilter(Filter):
     def __init__(self, mesh, filter_id=None):
         self.mesh = mesh
         self.id = filter_id
+        self._translation = None
 
     def __hash__(self):
         string = type(self).__name__ + '\n'
@@ -736,6 +740,7 @@ class MeshFilter(Filter):
         string = type(self).__name__ + '\n'
         string += '{: <16}=\t{}\n'.format('\tMesh ID', self.mesh.id)
         string += '{: <16}=\t{}\n'.format('\tID', self.id)
+        string += '{: <16}=\t{}\n'.format('\tTranslation', self.translation)
         return string
 
     @classmethod
@@ -753,7 +758,12 @@ class MeshFilter(Filter):
         mesh_obj = kwargs['meshes'][mesh_id]
         filter_id = int(group.name.split('/')[-1].lstrip('filter '))
 
+
         out = cls(mesh_obj, filter_id=filter_id)
+
+        translation = group.get('translation')
+        if translation:
+            out.translation = translation[()]
 
         return out
 
@@ -772,6 +782,16 @@ class MeshFilter(Filter):
                 self.bins = list(range(len(mesh.volumes)))
         else:
             self.bins = list(mesh.indices)
+
+    @property
+    def translation(self):
+        return self._translation
+
+    @translation.setter
+    def translation(self, t):
+        cv.check_type('mesh filter translation', t, Iterable, Real)
+        cv.check_length('mesh filter translation', t, 3)
+        self._translation = np.asarray(t)
 
     def can_merge(self, other):
         # Mesh filters cannot have more than one bin
@@ -812,7 +832,7 @@ class MeshFilter(Filter):
         filter_dict = {}
 
         # Append mesh ID as outermost index of multi-index
-        mesh_key = 'mesh {}'.format(self.mesh.id)
+        mesh_key = f'mesh {self.mesh.id}'
 
         # Find mesh dimensions - use 3D indices for simplicity
         n_dim = len(self.mesh.dimension)
@@ -853,6 +873,8 @@ class MeshFilter(Filter):
         """
         element = super().to_xml_element()
         element[0].text = str(self.mesh.id)
+        if self.translation is not None:
+            element.set('translation', ' '.join(map(str, self.translation)))
         return element
 
 
@@ -872,6 +894,9 @@ class MeshSurfaceFilter(MeshFilter):
         The mesh ID
     mesh : openmc.MeshBase
         The mesh object that events will be tallied onto
+    translation : Iterable of float
+        This array specifies a vector that is used to translate (shift)
+        the mesh for this filter
     id : int
         Unique identifier for the filter
     bins : list of tuple
@@ -929,7 +954,7 @@ class MeshSurfaceFilter(MeshFilter):
         filter_dict = {}
 
         # Append mesh ID as outermost index of multi-index
-        mesh_key = 'mesh {}'.format(self.mesh.id)
+        mesh_key = f'mesh {self.mesh.id}'
 
         # Find mesh dimensions - use 3D indices for simplicity
         n_surfs = 4 * len(self.mesh.dimension)
@@ -962,6 +987,66 @@ class MeshSurfaceFilter(MeshFilter):
 
         # Initialize a Pandas DataFrame from the mesh dictionary
         return pd.concat([df, pd.DataFrame(filter_dict)])
+
+
+class CollisionFilter(Filter):
+    """Bins tally events based on the number of collisions.
+
+    .. versionadded:: 0.12.2
+
+    Parameters
+    ----------
+    bins : Iterable of int
+        A list or iterable of the number of collisions, as integer values.
+        The events whose post-scattering collision number equals one of
+        the provided values will be counted.
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    id : int
+        Unique identifier for the filter
+    bins : numpy.ndarray
+        An array of integer values representing the number of collisions events
+        by which to filter
+    num_bins : int
+        The number of filter bins
+
+    """
+
+    def __init__(self, bins, filter_id=None):
+        self.bins = np.asarray(bins)
+        self.id = filter_id
+
+    def __repr__(self):
+        string = type(self).__name__ + '\n'
+        string += '{: <16}=\t{}\n'.format('\tValues', self.bins)
+        string += '{: <16}=\t{}\n'.format('\tID', self.id)
+        return string
+
+    @Filter.bins.setter
+    def bins(self, bins):
+        Filter.bins.__set__(self, np.asarray(bins))
+
+    def check_bins(self, bins):
+        for x in bins:
+            # Values should be integers
+            cv.check_type('filter value', x, Integral)
+            cv.check_greater_than('filter value', x, 0, equality=True)
+
+    def to_xml_element(self):
+        """Return XML Element representing the Filter.
+
+        Returns
+        -------
+        element : xml.etree.ElementTree.Element
+            XML element containing filter data
+
+        """
+        element = super().to_xml_element()
+        element[0].text = ' '.join(str(x) for x in self.bins)
+        return element
 
 
 class RealFilter(Filter):
@@ -1020,14 +1105,14 @@ class RealFilter(Filter):
 
             # Make sure that each tuple has values that are increasing
             if v1 < v0:
-                raise ValueError('Values {} and {} appear to be out of order'
-                                 .format(v0, v1))
+                raise ValueError(f'Values {v0} and {v1} appear to be out of '
+                                 'order')
 
         for pair0, pair1 in zip(bins[:-1], bins[1:]):
             # Successive pairs should be ordered
             if pair1[1] < pair0[1]:
-                raise ValueError('Values {} and {} appear to be out of order'
-                                 .format(pair1[1], pair0[1]))
+                raise ValueError(f'Values {pair1[1]} and {pair0[1]} appear to '
+                                 'be out of order')
 
     def can_merge(self, other):
         if type(self) is not type(other):
@@ -1044,8 +1129,7 @@ class RealFilter(Filter):
 
     def merge(self, other):
         if not self.can_merge(other):
-            msg = 'Unable to merge "{0}" with "{1}" ' \
-                  'filters'.format(type(self), type(other))
+            msg = f'Unable to merge "{type(self)}" with "{type(other)}" filters'
             raise ValueError(msg)
 
         # Merge unique filter bins
@@ -1083,8 +1167,8 @@ class RealFilter(Filter):
     def get_bin_index(self, filter_bin):
         i = np.where(self.bins[:, 1] == filter_bin[1])[0]
         if len(i) == 0:
-            msg = 'Unable to get the bin index for Filter since "{0}" ' \
-                  'is not one of the bins'.format(filter_bin)
+            msg = (f'Unable to get the bin index for Filter since '
+                   '"{filter_bin}" is not one of the bins')
             raise ValueError(msg)
         else:
             return i[0]
@@ -1130,7 +1214,7 @@ class RealFilter(Filter):
 
         # Add the new energy columns to the DataFrame.
         if hasattr(self, 'units'):
-            units = ' [{}]'.format(self.units)
+            units = f' [{self.units}]'
         else:
             units = ''
 
@@ -1187,8 +1271,8 @@ class EnergyFilter(RealFilter):
         if min_delta < 1E-3:
             return deltas.argmin()
         else:
-            msg = 'Unable to get the bin index for Filter since "{0}" ' \
-                  'is not one of the bins'.format(filter_bin)
+            msg = ('Unable to get the bin index for Filter since '
+                   f'"{filter_bin}" is not one of the bins')
             raise ValueError(msg)
 
     def check_bins(self, bins):
@@ -1330,8 +1414,8 @@ class DistribcellFilter(Filter):
 
         # Make sure there is only 1 bin.
         if not len(bins) == 1:
-            msg = 'Unable to add bins "{0}" to a DistribcellFilter since ' \
-                  'only a single distribcell can be used per tally'.format(bins)
+            msg = (f'Unable to add bins "{bins}" to a DistribcellFilter since '
+                  'only a single distribcell can be used per tally')
             raise ValueError(msg)
 
         # Check the type and extract the id, if necessary.
@@ -1422,7 +1506,7 @@ class DistribcellFilter(Filter):
             num_levels = len(paths[0])
             for i_level in range(num_levels):
                 # Use level key as first index in Pandas Multi-index column
-                level_key = 'level {}'.format(i_level + 1)
+                level_key = f'level {i_level + 1}'
 
                 # Create a dictionary for this level for Pandas Multi-index
                 level_dict = OrderedDict()

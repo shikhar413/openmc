@@ -3,12 +3,9 @@
 #include "openmc/capi.h"
 #include "openmc/constants.h"
 #include "openmc/container_util.h"
-#ifdef DAGMC
-#include "openmc/dagmc.h"
-#endif
 #include "openmc/error.h"
-#include "openmc/geometry_aux.h"
 #include "openmc/file_utils.h"
+#include "openmc/geometry_aux.h"
 #include "openmc/hdf5_interface.h"
 #include "openmc/material.h"
 #include "openmc/message_passing.h"
@@ -18,10 +15,10 @@
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/string_utils.h"
-#include "openmc/timer.h"
 #include "openmc/thermal.h"
-#include "openmc/xml_interface.h"
+#include "openmc/timer.h"
 #include "openmc/wmp.h"
+#include "openmc/xml_interface.h"
 
 #include "pugixml.hpp"
 
@@ -37,9 +34,8 @@ namespace openmc {
 namespace data {
 
 std::map<LibraryKey, std::size_t> library_map;
-std::vector<Library> libraries;
-
-}
+vector<Library> libraries;
+} // namespace data
 
 //==============================================================================
 // Library methods
@@ -97,27 +93,12 @@ void read_cross_sections_xml()
 {
   pugi::xml_document doc;
   std::string filename = settings::path_input + "materials.xml";
-#ifdef DAGMC
-  std::string s;
-  bool found_uwuw_mats = false;
-  if (settings::dagmc) {
-    found_uwuw_mats = get_uwuw_materials_xml(s);
-  }
-
-  if (found_uwuw_mats) {
-    // if we found uwuw materials, load those
-    doc.load_file(s.c_str());
-  } else {
-#endif
   // Check if materials.xml exists
   if (!file_exists(filename)) {
     fatal_error("Material XML file '" + filename + "' does not exist.");
   }
   // Parse materials.xml file
   doc.load_file(filename.c_str());
-#ifdef DAGMC
-  }
-#endif
 
   auto root = doc.document_element();
 
@@ -130,7 +111,8 @@ void read_cross_sections_xml()
     if (settings::run_CE) {
       char* envvar = std::getenv("OPENMC_CROSS_SECTIONS");
       if (!envvar) {
-        fatal_error("No cross_sections.xml file was specified in "
+        fatal_error(
+          "No cross_sections.xml file was specified in "
           "materials.xml or in the OPENMC_CROSS_SECTIONS"
           " environment variable. OpenMC needs such a file to identify "
           "where to find data libraries. Please consult the"
@@ -141,12 +123,13 @@ void read_cross_sections_xml()
     } else {
       char* envvar = std::getenv("OPENMC_MG_CROSS_SECTIONS");
       if (!envvar) {
-        fatal_error("No mgxs.h5 file was specified in "
-              "materials.xml or in the OPENMC_MG_CROSS_SECTIONS environment "
-              "variable. OpenMC needs such a file to identify where to "
-              "find MG cross section libraries. Please consult the user's "
-              "guide at https://docs.openmc.org for information on "
-              "how to set up MG cross section libraries.");
+        fatal_error(
+          "No mgxs.h5 file was specified in "
+          "materials.xml or in the OPENMC_MG_CROSS_SECTIONS environment "
+          "variable. OpenMC needs such a file to identify where to "
+          "find MG cross section libraries. Please consult the user's "
+          "guide at https://docs.openmc.org for information on "
+          "how to set up MG cross section libraries.");
       }
       settings::path_cross_sections = envvar;
     }
@@ -176,22 +159,21 @@ void read_cross_sections_xml()
   for (const auto& name : settings::res_scat_nuclides) {
     LibraryKey key {Library::Type::neutron, name};
     if (data::library_map.find(key) == data::library_map.end()) {
-      fatal_error("Could not find resonant scatterer " +
-        name + " in cross_sections.xml file!");
+      fatal_error("Could not find resonant scatterer " + name +
+                  " in cross_sections.xml file!");
     }
   }
 }
 
-void
-read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
-  const std::vector<std::vector<double>>& thermal_temps)
+void read_ce_cross_sections(const vector<vector<double>>& nuc_temps,
+  const vector<vector<double>>& thermal_temps)
 {
   std::unordered_set<std::string> already_read;
 
   // Construct a vector of nuclide names because we haven't loaded nuclide data
   // yet, but we need to know the name of the i-th nuclide
-  std::vector<std::string> nuclide_names(data::nuclide_map.size());
-  std::vector<std::string> thermal_names(data::thermal_scatt_map.size());
+  vector<std::string> nuclide_names(data::nuclide_map.size());
+  vector<std::string> thermal_names(data::thermal_scatt_map.size());
   for (const auto& kv : data::nuclide_map) {
     nuclide_names[kv.second] = kv.first;
   }
@@ -208,11 +190,13 @@ read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
       std::string& name = nuclide_names[i_nuc];
 
       // If we've already read this nuclide, skip it
-      if (already_read.find(name) != already_read.end()) continue;
+      if (already_read.find(name) != already_read.end())
+        continue;
 
       const auto& temps = nuc_temps[i_nuc];
       int err = openmc_load_nuclide(name.c_str(), temps.data(), temps.size());
-      if (err < 0) throw std::runtime_error{openmc_err_msg};
+      if (err < 0)
+        throw std::runtime_error {openmc_err_msg};
 
       already_read.insert(name);
     }
@@ -238,8 +222,8 @@ read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
 
         // Read thermal scattering data from HDF5
         hid_t group = open_group(file_id, name.c_str());
-        data::thermal_scatt.push_back(std::make_unique<ThermalScattering>(
-          group, thermal_temps[i_table]));
+        data::thermal_scatt.push_back(
+          make_unique<ThermalScattering>(group, thermal_temps[i_table]));
         close_group(group);
         file_close(file_id);
 
@@ -252,14 +236,17 @@ read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
     mat->finalize();
   } // materials
 
-  if (settings::photon_transport && settings::electron_treatment == ElectronTreatment::TTB) {
+  if (settings::photon_transport &&
+      settings::electron_treatment == ElectronTreatment::TTB) {
     // Take logarithm of energies since they are log-log interpolated
     data::ttb_e_grid = xt::log(data::ttb_e_grid);
   }
 
   // Show minimum/maximum temperature
-  write_message(4, "Minimum neutron data temperature: {} K", data::temperature_min);
-  write_message(4, "Maximum neutron data temperature: {} K", data::temperature_max);
+  write_message(
+    4, "Minimum neutron data temperature: {} K", data::temperature_min);
+  write_message(
+    4, "Maximum neutron data temperature: {} K", data::temperature_max);
 
   // If the user wants multipole, make sure we found a multipole library.
   if (settings::temperature_multipole) {
@@ -272,8 +259,8 @@ read_ce_cross_sections(const std::vector<std::vector<double>>& nuc_temps,
     }
     if (mpi::master && !mp_found) {
       warning("Windowed multipole functionality is turned on, but no multipole "
-        "libraries were found. Make sure that windowed multipole data is "
-        "present in your cross_sections.xml file.");
+              "libraries were found. Make sure that windowed multipole data is "
+              "present in your cross_sections.xml file.");
     }
   }
 }
@@ -284,8 +271,7 @@ void read_ce_cross_sections_xml()
   const auto& filename = settings::path_cross_sections;
   if (!file_exists(filename)) {
     // Could not find cross_sections.xml file
-    fatal_error("Cross sections XML file '" + filename +
-      "' does not exist.");
+    fatal_error("Cross sections XML file '" + filename + "' does not exist.");
   }
 
   write_message("Reading cross sections XML file...", 5);
@@ -321,11 +307,13 @@ void read_ce_cross_sections_xml()
 
   // Make sure file was not empty
   if (data::libraries.empty()) {
-    fatal_error("No cross section libraries present in cross_sections.xml file.");
+    fatal_error(
+      "No cross section libraries present in cross_sections.xml file.");
   }
 }
 
-void finalize_cross_sections(){
+void finalize_cross_sections()
+{
   if (settings::run_mode != RunMode::PLOTTING) {
     simulation::time_read_xs.start();
     if (settings::run_CE) {
@@ -346,7 +334,8 @@ void finalize_cross_sections(){
   }
 }
 
-void library_clear() {
+void library_clear()
+{
   data::libraries.clear();
   data::library_map.clear();
 }

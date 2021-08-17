@@ -2060,7 +2060,7 @@ class XSdata:
                 Np = self.num_polar
                 Na = self.num_azimuthal
 
-            g_out_bounds = np.zeros((Np, Na, G, 2), dtype=np.int)
+            g_out_bounds = np.zeros((Np, Na, G, 2), dtype=int)
             for p in range(Np):
                 for a in range(Na):
                     for g_in in range(G):
@@ -2368,8 +2368,8 @@ class MGXSLibrary:
         """
 
         if not isinstance(xsdata, XSdata):
-            msg = 'Unable to add a non-XSdata "{0}" to the ' \
-                  'MGXSLibrary instance'.format(xsdata)
+            msg = f'Unable to add a non-XSdata "{xsdata}" to the ' \
+                  'MGXSLibrary instance'
             raise ValueError(msg)
 
         if xsdata.energy_groups != self._energy_groups:
@@ -2404,8 +2404,8 @@ class MGXSLibrary:
         """
 
         if not isinstance(xsdata, XSdata):
-            msg = 'Unable to remove a non-XSdata "{0}" from the ' \
-                  'MGXSLibrary instance'.format(xsdata)
+            msg = f'Unable to remove a non-XSdata "{xsdata}" from the ' \
+                  'MGXSLibrary instance'
             raise ValueError(msg)
 
         self._xsdatas.remove(xsdata)
