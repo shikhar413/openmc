@@ -6,8 +6,8 @@ pip install --upgrade pip
 pip install --upgrade pytest
 pip install --upgrade numpy
 
-# Install NJOY 2016
-./tools/ci/gha-install-njoy.sh
+# Skip NJOY 2016 installation, issue with latest Fortran compilers
+#./tools/ci/gha-install-njoy.sh
 
 # Install DAGMC if needed
 if [[ $DAGMC = 'y' ]]; then
