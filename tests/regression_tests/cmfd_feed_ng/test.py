@@ -17,7 +17,7 @@ def test_cmfd_feed_ng():
     cmfd_run = cmfd.CMFDRun()
     cmfd_run.mesh = cmfd_mesh
     cmfd_run.reset = [5]
-    cmfd_run.tally_begin = 10
+    cmfd_run.tally_begin = 1
     cmfd_run.solver_begin = 10
     cmfd_run.display = {'dominance': True}
     cmfd_run.feedback = True

@@ -80,7 +80,7 @@ class CMFDMesh:
     albedo : Iterable of float
         Surface ratio of incoming to outgoing partial currents on global
         boundary conditions. They are listed in the following order: -x +x -y
-        +y -z +z.
+        +y for a 2-D mesh and -x +x -y +y -z +z for a 3-D mesh.
     map : Iterable of int
         An optional acceleration map can be specified to overlay on the coarse
         mesh spatial grid. If this option is used, a ``0`` is used for a
@@ -105,7 +105,7 @@ class CMFDMesh:
         * "rectilinear" - Use RectilinearMesh to define CMFD
     grid : Iterable of Iterable of float
         Grid used to define RectilinearMesh. First dimension must have length
-        3 where grid[0], grid[1], and grid[2] correspond to the x-, y-, and
+        2 or 3 where grid[0], grid[1], and grid[2] correspond to the x-, y-, and
         z-grids respectively
 
     """
@@ -134,9 +134,10 @@ class CMFDMesh:
         elif self._mesh_type == "rectilinear":
             outstr += (
                 self._get_repr(self._grid[0], "X-grid") + "\n"
-                + self._get_repr(self._grid[1], "Y-grid") + "\n"
-                + self._get_repr(self._grid[2], "Z-grid")
+                + self._get_repr(self._grid[1], "Y-grid")
             )
+            if len(self._grid) == 3:
+                outstr += "\n" + self._get_repr(self._grid[2], "Z-grid")
         return outstr
 
     def _get_repr(self, list_var, label):
@@ -222,7 +223,8 @@ class CMFDMesh:
     @albedo.setter
     def albedo(self, albedo):
         check_type("CMFD mesh albedo", albedo, Iterable, Real)
-        check_length("CMFD mesh albedo", albedo, 6)
+        accepted_lengths = [4, 6]
+        check_value("CMFD albedo length", len(albedo), accepted_lengths)
         for a in albedo:
             check_greater_than("CMFD mesh albedo", a, 0, True)
             check_less_than("CMFD mesh albedo", a, 1, True)
@@ -242,11 +244,12 @@ class CMFDMesh:
 
     @grid.setter
     def grid(self, grid):
-        grid_length = 3
+        grid_len_lower = 2
+        grid_len_upper = 3
         dims = ["x", "y", "z"]
 
-        check_length("CMFD mesh grid", grid, grid_length)
-        for i in range(grid_length):
+        check_length("CMFD mesh grid", grid, grid_len_lower, grid_len_upper)
+        for i in range(len(grid)):
             check_type("CMFD mesh {}-grid".format(dims[i]), grid[i], Iterable,
                        Real)
             check_greater_than(
@@ -373,6 +376,9 @@ class CMFDRun:
         Time for solving CMFD matrix equations, in seconds
     use_all_threads : bool
         Whether to use all threads allocated to OpenMC for CMFD solver
+    use_cpp_solver : bool
+        Whether to use C++ Gauss Seidel solver (true) or Numpy solver (false)
+        to solve CMFD system
     intracomm : mpi4py.MPI.Intracomm or None
         MPI intercommunicator for running MPI commands
 
@@ -411,6 +417,7 @@ class CMFDRun:
         self._window_size = 10
         self._intracomm = None
         self._use_all_threads = False
+        self._use_cpp_solver = True
 
         # External variables used during runtime but users cannot control
         self._set_reference_params = False
@@ -421,7 +428,8 @@ class CMFDRun:
         self._mesh_id = None
         self._tally_ids = None
         self._energy_filters = None
-        self._cmfd_on = False
+        self._solver_on = False
+        self._tally_on = False
         self._mat_dim = _CMFD_NOACCEL
         self._keff_bal = None
         self._keff = None
@@ -578,6 +586,10 @@ class CMFDRun:
         return self._use_all_threads
 
     @property
+    def use_cpp_solver(self):
+        return self._use_cpp_solver
+
+    @property
     def cmfd_src(self):
         return self._cmfd_src
 
@@ -655,13 +667,22 @@ class CMFDRun:
                     "CMFD regular mesh requires spatial "
                     "dimensions to be specified"
                 )
+            ndim = len(cmfd_mesh.dimension)
 
-            # Check lower left defined
+            # Check correct length of albedo
+            if cmfd_mesh.albedo is not None:
+                check_length("CMFD albedo", cmfd_mesh.albedo, ndim * 2,
+                             ndim * 2)
+
+            # Check lower left defined and has correct dimension
             if cmfd_mesh.lower_left is None:
                 raise ValueError(
                     "CMFD regular mesh requires lower left "
                     "coordinates to be specified"
                 )
+            check_length(
+                "CMFD mesh width", cmfd_mesh.lower_left, ndim, ndim
+            )
 
             # Check that both upper right and width both not defined
             if (
@@ -680,23 +701,18 @@ class CMFDRun:
                     "coordinates or width to be specified"
                 )
 
-            # Check width and lower length are same dimension and define
-            # upper_right
+            # Check width has correct dimension and define upper_right
             if cmfd_mesh.width is not None:
                 check_length(
-                    "CMFD mesh width", cmfd_mesh.width,
-                    len(cmfd_mesh.lower_left)
+                    "CMFD mesh width", cmfd_mesh.width, ndim, ndim
                 )
                 cmfd_mesh.upper_right = np.array(cmfd_mesh.lower_left) + \
                     np.array(cmfd_mesh.width) * np.array(cmfd_mesh.dimension)
 
-            # Check upper_right and lower length are same dimension and define
-            # width
+            # Check upper_right has correct dimension and define width
             elif cmfd_mesh.upper_right is not None:
                 check_length(
-                    "CMFD mesh upper right",
-                    cmfd_mesh.upper_right,
-                    len(cmfd_mesh.lower_left)
+                    "CMFD mesh upper right", cmfd_mesh.upper_right, ndim, ndim
                 )
                 # Check upper right coordinates are greater than lower left
                 if np.any(np.array(cmfd_mesh.upper_right) <=
@@ -711,6 +727,19 @@ class CMFDRun:
                 cmfd_mesh.width = np.true_divide(
                     mesh_difference, np.array(cmfd_mesh.dimension)
                 )
+
+            # Define 3rd dimension if only 2 are provided
+            if ndim == 2:
+                z_dim = 1
+                z_bot = -1.0e10
+                z_top = 1.0e10
+                z_width = (z_top - z_bot) / z_dim
+                cmfd_mesh.dimension = np.append(cmfd_mesh.dimension, z_dim)
+                cmfd_mesh.lower_left = np.append(cmfd_mesh.lower_left, z_bot)
+                cmfd_mesh.upper_right = np.append(cmfd_mesh.upper_right, z_top)
+                cmfd_mesh.width = np.append(cmfd_mesh.width, z_width)
+                if cmfd_mesh.albedo is not None:
+                    cmfd_mesh.albedo = np.append(cmfd_mesh.albedo, [1.0, 1.0])
         elif cmfd_mesh.mesh_type == "rectilinear":
             # Check dimension defined
             if cmfd_mesh.grid is None:
@@ -718,6 +747,22 @@ class CMFDRun:
                     "CMFD rectilinear mesh requires spatial "
                     "grid to be specified"
                 )
+            ndim = len(cmfd_mesh.grid)
+
+            # Check correct length of albedo
+            if cmfd_mesh.albedo is not None:
+                check_length("CMFD albedo", cmfd_mesh.albedo, ndim * 2,
+                             ndim * 2)
+
+            # Define 3rd dimension if only 2 are provided
+            if ndim == 2:
+                z_bot = -1.0e10
+                z_top = 1.0e10
+                x_grid, y_grid = cmfd_mesh.grid
+                cmfd_mesh.grid = np.array([x_grid, y_grid, [z_bot, z_top]],
+                                          dtype=object)
+                if cmfd_mesh.albedo is not None:
+                    cmfd_mesh.albedo = np.append(cmfd_mesh.albedo, [1.0, 1.0])
             cmfd_mesh.dimension = [len(cmfd_mesh.grid[i]) - 1 for i in range(3)]
 
         self._mesh = cmfd_mesh
@@ -801,7 +846,12 @@ class CMFDRun:
         check_type("CMFD use all threads", use_all_threads, bool)
         self._use_all_threads = use_all_threads
 
-    def run(self, **kwargs):
+    @use_cpp_solver.setter
+    def use_cpp_solver(self, use_cpp_solver):
+        check_type("CMFD use C++ solver", use_cpp_solver, bool)
+        self._use_cpp_solver = use_cpp_solver
+
+    def run(self, settings_args=None, **kwargs):
         """Run OpenMC with coarse mesh finite difference acceleration
 
         This method is called by the user to run CMFD once instance variables
@@ -809,17 +859,19 @@ class CMFDRun:
 
         Parameters
         ----------
+        settings_args : dict
+            Dictionary of arguments to pass into :data:`openmc.lib.settings`
         **kwargs
             All keyword arguments are passed to
             :func:`openmc.lib.run_in_memory`.
 
         """
-        with self.run_in_memory(**kwargs):
+        with self.run_in_memory(settings_args, **kwargs):
             for _ in self.iter_batches():
                 pass
 
     @contextmanager
-    def run_in_memory(self, **kwargs):
+    def run_in_memory(self, settings_args=None, **kwargs):
         """Context manager for running CMFD functions with OpenMC shared
         library functions.
 
@@ -835,6 +887,8 @@ class CMFDRun:
 
         Parameters
         ----------
+        settings_args : dict
+            Dictionary of arguments to pass into :data:`openmc.lib.settings`
         **kwargs
             All keyword arguments passed to :func:`openmc.lib.run_in_memory`.
 
@@ -848,7 +902,7 @@ class CMFDRun:
 
         # Run and pass arguments to C API run_in_memory function
         with openmc.lib.run_in_memory(**kwargs):
-            self.init()
+            self.init(settings_args)
             yield
             self.finalize()
 
@@ -867,11 +921,20 @@ class CMFDRun:
             status = self.next_batch()
             yield
 
-    def init(self):
+    def init(self, settings_args=None):
         """Initialize CMFDRun instance by setting up CMFD parameters and
         calling :func:`openmc.lib.simulation_init`
 
+        Parameters
+        ----------
+        settings_args : dict
+            Dictionary of arguments to pass into :data:`openmc.lib.settings`
+
         """
+        # Set OpenMC settings through openmc.lib
+        if settings_args:
+            self._configure_settings(settings_args)
+
         # Configure CMFD parameters
         self._configure_cmfd()
 
@@ -892,6 +955,12 @@ class CMFDRun:
 
         # Initialize simulation
         openmc.lib.simulation_init()
+
+        # Manually set "batches" through openmc.lib since it is set
+        # in openmc.lib.settings as a function and needs to be called
+        # after simulation_init is called to reset simulation::current_batch
+        if settings_args and "batches" in settings_args:
+            openmc.lib.settings.set_batches(settings_args["batches"])
 
         # Set cmfd_run variable to True through C API
         openmc.lib.settings.cmfd_run = True
@@ -972,7 +1041,7 @@ class CMFDRun:
                             flush=True
                         )
                     cmfd_group = f.create_group("cmfd")
-                    cmfd_group.attrs["cmfd_on"] = self._cmfd_on
+                    cmfd_group.attrs["solver_on"] = self._solver_on
                     cmfd_group.attrs["feedback"] = self._feedback
                     cmfd_group.attrs["solver_begin"] = self._solver_begin
                     cmfd_group.attrs["mesh_id"] = self._mesh_id
@@ -1017,6 +1086,7 @@ class CMFDRun:
                     )
 
     def _initialize_linsolver(self):
+        """Initialize and pass arguments to  C++ linear solver"""
         # Determine number of rows in CMFD matrix
         ng = self._indices[3]
         n = self._mat_dim * ng
@@ -1025,7 +1095,8 @@ class CMFDRun:
         loss_row = self._loss_row
         loss_col = self._loss_col
         temp_data = np.ones(len(loss_row))
-        temp_loss = sparse.csr_matrix((temp_data, (loss_row, loss_col)), shape=(n, n))
+        temp_loss = sparse.csr_matrix((temp_data, (loss_row, loss_col)),
+                                      shape=(n, n))
 
         # Pass coremap as 1-d array of 32-bit integers
         coremap = np.swapaxes(self._coremap, 0, 2).flatten().astype(np.int32)
@@ -1072,6 +1143,38 @@ class CMFDRun:
             flush=True
         )
 
+    def _configure_settings(self, args):
+        """Determine public instance variables of :data:`openmc.lib.settings`
+        and set the value of these variables based on input parameter dict
+
+        Parameters
+        ----------
+        args : dict
+            Dictionary of arguments to pass into :data:`openmc.lib.settings`
+
+        """
+        settings_vars = []
+
+        # Iterate through all openmc.lib.settings attributes and store
+        # public instance variables
+        settings_attributes = openmc.lib.settings.__class__.__dict__
+        for attr_name, attr_type in settings_attributes.items():
+            # Skip private attributes beginning with '_'
+            if attr_name.startswith('_'):
+                continue
+            # Get name of attribute type
+            type_name = attr_type.__class__.__name__
+            # Public instance variables of openmc.lib.settings are of type
+            # "property" or "_DLLGlobal"
+            if type_name in ['property', '_DLLGlobal']:
+                settings_vars.append(attr_name)
+
+        # Set values of openmc.lib.settings instance variables based on values
+        # of "args"
+        for var in settings_vars:
+            if var in args:
+                setattr(openmc.lib.settings, var, args[var])
+
     def _configure_cmfd(self):
         """Initialize CMFD parameters and set CMFD input variables"""
         # Check if restarting simulation from statepoint file
@@ -1105,7 +1208,12 @@ class CMFDRun:
 
         # Check if in continuous energy mode
         if not openmc.lib.settings.run_CE:
-            raise OpenMCError("CMFD must be run in continuous energy mode")
+            self._abort_cmfd("CMFD must be run in continuous energy mode")
+
+        # Check entropy mesh is defined if CMFD entropy is to be outputted
+        if self._display["entropy"] and not openmc.lib.settings.entropy_on:
+            self._abort_cmfd("Entropy mesh must be defined to output CMFD "
+                             "entropy")
 
         # Set number of energy groups
         if self._mesh.energy is not None:
@@ -1130,8 +1238,9 @@ class CMFDRun:
                                         dtype=int)
 
         # Check CMFD tallies accummulated before feedback turned on
-        if self._feedback and self._solver_begin < self._tally_begin:
-            raise ValueError("Tally begin must be less than or equal to " "CMFD begin")
+        if self._solver_begin < self._tally_begin:
+            raise ValueError("Tally begin must be less than or equal to "
+                             "CMFD begin")
 
         # Initialize parameters for CMFD tally windows
         self._set_tally_window()
@@ -1178,7 +1287,7 @@ class CMFDRun:
         """
         with h5py.File(filename, "r") as f:
             if "cmfd" not in f:
-                raise OpenMCError(
+                self._abort_cmfd(
                     "Could not find CMFD parameters in ",
                     "file {}".format(filename)
                 )
@@ -1190,7 +1299,7 @@ class CMFDRun:
                 cmfd_group = f["cmfd"]
 
                 # Define variables that exist on all processes
-                self._cmfd_on = cmfd_group.attrs["cmfd_on"]
+                self._solver_on = cmfd_group.attrs["solver_on"]
                 self._feedback = cmfd_group.attrs["feedback"]
                 self._solver_begin = cmfd_group.attrs["solver_begin"]
                 self._tally_begin = cmfd_group.attrs["tally_begin"]
@@ -1262,9 +1371,16 @@ class CMFDRun:
         # Add 1 as next_batch has not been called yet
         current_batch = openmc.lib.current_batch() + 1
 
+        # Check to set CMFD tallies as active
+        if not self._tally_on and self._tally_begin <= current_batch:
+            tallies = openmc.lib.tallies
+            for tally_id in self._tally_ids:
+                tallies[tally_id].active = True
+            self._tally_on = True
+
         # Check to activate CMFD solver and possible feedback
         if self._solver_begin == current_batch:
-            self._cmfd_on = True
+            self._solver_on = True
 
         # Check to reset tallies
         if (
@@ -1284,7 +1400,7 @@ class CMFDRun:
                 self._compute_xs()
 
         # Execute CMFD algorithm if CMFD on for current batch
-        if self._cmfd_on:
+        if self._solver_on:
             # Run CMFD on master process
             if openmc.lib.master():
                 # Create CMFD data based on OpenMC tallies
@@ -1315,7 +1431,7 @@ class CMFDRun:
         if openmc.lib.master():
             time_stop_cmfd = time.time()
             self._time_cmfd += time_stop_cmfd - time_start_cmfd
-            if self._cmfd_on:
+            if self._solver_on:
                 # Write CMFD output if CMFD on for current batch
                 self._write_cmfd_output()
 
@@ -1532,6 +1648,19 @@ class CMFDRun:
         )
 
     def _build_loss_matrix(self, adjoint):
+        """Builds loss matrix used in CMFD power iteration
+
+        Parameters
+        ----------
+        adjoint : bool
+            Whether or not to calculate adjoint loss matrix
+
+        Returns
+        -------
+        loss : scipy.sparse.csr_matrix
+            Loss matrix as a sparse CSR matrix
+
+        """
         # Extract spatial and energy indices and define matrix dimension
         ng = self._indices[3]
         n = self._mat_dim * ng
@@ -1653,6 +1782,19 @@ class CMFDRun:
         return loss
 
     def _build_prod_matrix(self, adjoint):
+        """Builds production matrix used in CMFD power iteration
+
+        Parameters
+        ----------
+        adjoint : bool
+            Whether or not to calculate adjoint production matrix
+
+        Returns
+        -------
+        prod : scipy.sparse.csr_matrix
+            Production matrix as a sparse CSR matrix
+
+        """
         # Extract spatial and energy indices and define matrix dimension
         ng = self._indices[3]
         n = self._mat_dim * ng
@@ -1736,9 +1878,9 @@ class CMFDRun:
         for i in range(maxits):
             # Check if reach max number of iterations
             if i == maxits - 1:
-                raise OpenMCError(
-                    "Reached maximum iterations in CMFD power "
-                    "iteration solver."
+                self._abort_cmfd(
+                    "Reached maximum iterations in CMFD power iteration "
+                    "solver."
                 )
 
             # Compute source vector
@@ -1747,9 +1889,14 @@ class CMFDRun:
             # Normalize source vector
             s_o /= k_lo
 
-            # Compute new flux with C++ solver
-            innerits = openmc.lib._dll.openmc_run_linsolver(loss.data, s_o,
-                                                            phi_n, toli)
+            if self._use_cpp_solver:
+                # Compute new flux with C++ solver
+                innerits = openmc.lib._dll.openmc_run_linsolver(loss.data, s_o,
+                                                                phi_n, toli)
+            else:
+                # Compute new flux with Numpy solver
+                innerits = None
+                phi_n = np.linalg.solve(loss.toarray(), s_o)
 
             # Compute new source vector
             s_n = prod.dot(phi_n)
@@ -1823,15 +1970,15 @@ class CMFDRun:
 
         # Print out to user
         if self._power_monitor and openmc.lib.master():
-            print(
-                "{:8s}{:20s}{:25s}{:s}{:s}".format(
-                    " {:d}:".format(iteration),
-                    "k-eff: {:0.8f}".format(k_n),
-                    "k-error:  {:.5e}".format(kerr),
-                    "src-error:  {:.5e}".format(serr),
-                    "  {:d}".format(innerits),
-                ), flush=True
+            print_str = "{:8s}{:20s}{:25s}{:s}".format(
+                " {:d}:".format(iteration),
+                "k-eff: {:0.8f}".format(k_n),
+                "k-error:  {:.5e}".format(kerr),
+                "src-error:  {:.5e}".format(serr)
             )
+            if self._use_cpp_solver:
+                print_str += "  {:d}".format(innerits)
+            print(print_str, flush=True)
 
         return iconv, serr
 
@@ -1920,7 +2067,7 @@ class CMFDRun:
         # Detect zero flux, abort if located and cmfd is on
         zero_flux = np.logical_and(self._flux < _TINY_BIT,
                                    is_accel[..., np.newaxis])
-        if np.any(zero_flux) and self._cmfd_on:
+        if np.any(zero_flux) and self._solver_on:
             # Get index of first zero flux in flux array
             idx = np.argwhere(zero_flux)[0]
 
@@ -1933,7 +2080,7 @@ class CMFDRun:
                 + ") in group "
                 + str(ng - idx[-1])
             )
-            raise OpenMCError(err_message)
+            #self._abort_cmfd(err_message)
 
         # Get total reaction rate (rr) from CMFD tally 0
         totalrr = tallies[tally_id].results[:, 1, 1]
@@ -2065,38 +2212,39 @@ class CMFDRun:
             0.0
         )
 
-        # Get p1 scatter rr from CMFD tally 3
-        tally_id = self._tally_ids[3]
-        p1scattrr = tallies[tally_id].results[:, 0, 1]
-
-        # Define target tally reshape dimensions for p1 scatter tally
-        target_tally_shape = [nz, ny, nx, 2, ng, 1]
-
-        # Reshape and extract only p1 data from tally results as there is
-        # no need for p0 data
-        reshape_p1scattrr = np.swapaxes(p1scattrr.reshape(target_tally_shape),                                         0, 2)[:, :, :, 1, :, :]
-
-        # p1-scatter rr is flipped in energy axis as tally results are given in
-        # reverse order of energy group
-        reshape_p1scattrr = np.flip(reshape_p1scattrr, axis=3)
-
-        # Bank p1-scatter rr to p1scatt_rate
-        self._p1scatt_rate = np.append(self._p1scatt_rate, reshape_p1scattrr,
-                                       axis=4)
-
-        # Compute p1-scatter xs as aggregate of banked p1scatt_rate over tally
-        # window divided by flux
-        self._p1scattxs = np.divide(
-            np.sum(self._p1scatt_rate, axis=4), self._flux,
-            where=self._flux > 0, out=np.zeros_like(self._p1scattxs)
-        )
-
         if self._set_reference_params:
             # Set diffusion coefficients based on reference value
             self._diffcof = np.where(
                 self._flux > 0, self._ref_d[None, None, None, :], 0.0
             )
         else:
+            # Get p1 scatter rr from CMFD tally 3
+            tally_id = self._tally_ids[3]
+            p1scattrr = tallies[tally_id].results[:, 0, 1]
+
+            # Define target tally reshape dimensions for p1 scatter tally
+            target_tally_shape = [nz, ny, nx, 2, ng, 1]
+
+            # Reshape and extract only p1 data from tally results as there is
+            # no need for p0 data
+            reshape_p1scattrr = np.swapaxes(p1scattrr.reshape(target_tally_shape),
+                                            0, 2)[:, :, :, 1, :, :]
+
+            # p1-scatter rr is flipped in energy axis as tally results are
+            # given in reverse order of energy group
+            reshape_p1scattrr = np.flip(reshape_p1scattrr, axis=3)
+
+            # Bank p1-scatter rr to p1scatt_rate
+            self._p1scatt_rate = np.append(self._p1scatt_rate,
+                                           reshape_p1scattrr, axis=4)
+
+            # Compute p1-scatter xs as aggregate of banked p1scatt_rate over
+            # tally window divided by flux
+            self._p1scattxs = np.divide(
+                np.sum(self._p1scatt_rate, axis=4), self._flux,
+                where=self._flux > 0, out=np.zeros_like(self._p1scattxs)
+            )
+
             # Calculate and store diffusion coefficient
             with np.errstate(divide="ignore", invalid="ignore"):
                 self._diffcof = np.where(
@@ -2223,7 +2371,7 @@ class CMFDRun:
             # Check length of reference diffusion parameters equal to number of
             # energy groups
             if self._ref_d.size != self._indices[3]:
-                raise OpenMCError(
+                self._abort_cmfd(
                     "Number of reference diffusion parameters "
                     "must equal number of CMFD energy groups"
                 )
@@ -3167,6 +3315,10 @@ class CMFDRun:
 
             # Set attributes of CMFD P1 scatter tally
             elif i == 3:
+                # Skip computation of P1 scatter tally if reference diffusion
+                # parameters given
+                if self._set_reference_params:
+                    continue
                 # Set filters for tally
                 if self._energy_filters:
                     cmfd_tally.filters = [mesh_filter, legendre_filter,
@@ -3178,9 +3330,13 @@ class CMFDRun:
                 cmfd_tally.type = "volume"
                 cmfd_tally.estimator = "analog"
 
-            # Set all tallies to be active from beginning
-            cmfd_tally.active = True
-
         # Initialize CMFD mesh and energy grid in C++ for CMFD reweight
         args = self._tally_ids[0], self._indices, self._norm
         openmc.lib._dll.openmc_initialize_mesh_egrid(*args)
+
+    def _abort_cmfd(self, err_msg):
+        if have_mpi:
+            print(err_msg, file=sys.stderr, flush=True)
+            self._intracomm.Abort()
+        else:
+            raise OpenMCError(err_msg)

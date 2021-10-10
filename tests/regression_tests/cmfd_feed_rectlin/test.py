@@ -18,7 +18,7 @@ def test_cmfd_feed_rectlin():
     # Initialize and run CMFDRun object
     cmfd_run = cmfd.CMFDRun()
     cmfd_run.mesh = cmfd_mesh
-    cmfd_run.tally_begin = 5
+    cmfd_run.tally_begin = 1
     cmfd_run.solver_begin = 5
     cmfd_run.display = {'dominance': True}
     cmfd_run.feedback = True
