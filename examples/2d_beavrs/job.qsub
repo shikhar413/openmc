@@ -1,0 +1,14 @@
+#!/bin/bash
+#PBS -n 2
+#PBS -t 720
+#PBS -j oe
+#PBS -q gomez
+#PBS -N mpi_bottleneck
+
+qsub -n 1 -t 720 -q gomez ./submit-all-plots3.sh
+
+source $HOME/.bashrc
+cd $PBS_O_WORKDIR
+cat $PBS_NODEFILE | sort | uniq > hostfile
+
+mpiexec -machinefile hostfile -n {nproc} python3 run_openmc.py {openmc_args}

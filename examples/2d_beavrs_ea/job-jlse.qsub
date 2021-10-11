@@ -1,0 +1,18 @@
+#!/bin/bash
+#COBALT -n 5
+#COBALT -t 360
+#COBALT -q gomez
+#COBALT -o $COBALT_JOBID.out
+#COBALT -e $COBALT_JOBID.out
+#COBALT --jobname mpi_bottleneck
+#COBALT --proccount 40
+
+# --debuglog $COBALT_JOBID.out
+echo $COBALT_JOBID
+
+#source $HOME/.bashrc
+#cd $PBS_O_WORKDIR
+#cat $COBALT_NODEFILE | sort | uniq > hostfile
+#cat hostfile
+
+mpiexec -n 40 python3 run_openmc.py 20 2 16
