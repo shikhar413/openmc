@@ -1,0 +1,11 @@
+#!/bin/bash
+#PBS -l select=20:ncpus=48:mpiprocs=2
+#PBS -l walltime=00:20:00
+#PBS -j oe
+#PBS -N mpi_bottleneck
+#PBS -P neams
+#PBS -q router
+
+cd $PBS_O_WORKDIR
+
+mpirun python3 run_openmc.py 20 2 24
