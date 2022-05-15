@@ -443,7 +443,7 @@ class Material(IDManagerMixin):
 
         # Generally speaking, the density for a macroscopic object will
         # be 1.0. Therefore, lets set density to 1.0 so that the user
-        # doesnt need to set it unless its needed.
+        # doesn't need to set it unless its needed.
         # Of course, if the user has already set a value of density,
         # then we will not override it.
         if self._density is None:
@@ -482,8 +482,8 @@ class Material(IDManagerMixin):
             'ao' for atom percent and 'wo' for weight percent. Defaults to atom
             percent.
         enrichment : float, optional
-            Enrichment of an enrichment_taget nuclide in percent (ao or wo).
-            If enrichment_taget is not supplied then it is enrichment for U235
+            Enrichment of an enrichment_target nuclide in percent (ao or wo).
+            If enrichment_target is not supplied then it is enrichment for U235
             in weight percent. For example, input 4.95 for 4.95 weight percent
             enriched U.
             Default is None (natural composition).
@@ -625,7 +625,7 @@ class Material(IDManagerMixin):
                         raise ValueError(msg)
                 elif token not in ['(', ')', ''] and not token.isdigit():
                         msg = 'Formula must be made from a sequence of ' \
-                              'element symbols, integers, and backets. ' \
+                              'element symbols, integers, and brackets. ' \
                               '{} is not an allowable entry.'.format(token)
                         raise ValueError(msg)
 
@@ -700,14 +700,7 @@ class Material(IDManagerMixin):
         cv.check_type('S(a,b) fraction', fraction, Real)
         cv.check_greater_than('S(a,b) fraction', fraction, 0.0, True)
         cv.check_less_than('S(a,b) fraction', fraction, 1.0, True)
-
-        new_name = openmc.data.get_thermal_name(name)
-        if new_name != name:
-            msg = 'OpenMC S(a,b) tables follow the GND naming convention. ' \
-                  'Table "{}" is being renamed as "{}".'.format(name, new_name)
-            warnings.warn(msg)
-
-        self._sab.append((new_name, fraction))
+        self._sab.append((name, fraction))
 
     def make_isotropic_in_lab(self):
         self.isotropic = [x.name for x in self._nuclides]
@@ -935,13 +928,8 @@ class Material(IDManagerMixin):
             xml_elements.append(self._get_nuclide_xml(nuclide))
         return xml_elements
 
-    def to_xml_element(self, cross_sections=None):
+    def to_xml_element(self):
         """Return XML representation of the material
-
-        Parameters
-        ----------
-        cross_sections : str
-            Path to an XML cross sections listing file
 
         Returns
         -------
@@ -1092,7 +1080,7 @@ class Material(IDManagerMixin):
         new_density = np.sum([dens for dens in mass_per_cc.values()])
         new_mat.set_density('g/cm3', new_density)
 
-        # If any of the involved materials is depletable, the new material is 
+        # If any of the involved materials is depletable, the new material is
         # depletable
         new_mat.depletable = any(mat.depletable for mat in materials)
 
@@ -1173,7 +1161,10 @@ class Materials(cv.CheckedList):
     ----------
     materials : Iterable of openmc.Material
         Materials to add to the collection
-    cross_sections : str
+
+    Attributes
+    ----------
+    cross_sections : str or path-like
         Indicates the path to an XML cross section listing file (usually named
         cross_sections.xml). If it is not set, the
         :envvar:`OPENMC_CROSS_SECTIONS` environment variable will be used for
@@ -1196,8 +1187,8 @@ class Materials(cv.CheckedList):
 
     @cross_sections.setter
     def cross_sections(self, cross_sections):
-        cv.check_type('cross sections', cross_sections, str)
-        self._cross_sections = cross_sections
+        if cross_sections is not None:
+            self._cross_sections = Path(cross_sections)
 
     def append(self, material):
         """Append material to collection
@@ -1252,9 +1243,9 @@ class Materials(cv.CheckedList):
             fh.write('<materials>\n')
 
             # Write the <cross_sections> element.
-            if self._cross_sections is not None:
+            if self.cross_sections is not None:
                 element = ET.Element('cross_sections')
-                element.text = str(self._cross_sections)
+                element.text = str(self.cross_sections)
                 clean_indentation(element, level=1)
                 element.tail = element.tail.strip(' ')
                 fh.write('  ')
@@ -1263,7 +1254,7 @@ class Materials(cv.CheckedList):
 
             # Write the <material> elements.
             for material in sorted(self, key=lambda x: x.id):
-                element = material.to_xml_element(self.cross_sections)
+                element = material.to_xml_element()
                 clean_indentation(element, level=1)
                 element.tail = element.tail.strip(' ')
                 fh.write('  ')

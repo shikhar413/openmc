@@ -203,7 +203,7 @@ Prerequisites
       respectively. To link against a parallel HDF5 library, make sure to set
       the HDF5_PREFER_PARALLEL CMake option, e.g.::
 
-          CXX=mpicxx.mpich cmake -DHDF5_PREFER_PARALLEL=on ..
+          cmake -DHDF5_PREFER_PARALLEL=on -DOPENMC_USE_MPI=on ..
 
       Note that the exact package names may vary depending on your particular
       distribution and version.
@@ -218,6 +218,15 @@ Prerequisites
 
 .. admonition:: Optional
    :class: note
+
+    * libpng_ official reference PNG library
+
+      OpenMC's built-in plotting capabilities use the libpng library to produce
+      compressed PNG files. In the absence of this library, OpenMC will fallback
+      to writing PPM files, which are uncompressed and only supported by select
+      image viewers. libpng can be installed on Ddebian derivates with::
+
+          sudo apt install libpng-dev
 
     * An MPI implementation for distributed-memory parallel runs
 
@@ -243,7 +252,7 @@ Prerequisites
       In addition to turning this option on, the path to the DAGMC installation
       should be specified as part of the ``CMAKE_PREFIX_PATH`` variable::
 
-          cmake -Ddagmc=on -DCMAKE_PREFIX_PATH=/path/to/dagmc/installation
+          cmake -DOPENMC_USE_DAGMC=on -DCMAKE_PREFIX_PATH=/path/to/dagmc/installation
 
     * libMesh_ mesh library framework for numerical simulations of partial differential equations
 
@@ -254,7 +263,7 @@ Prerequisites
       installation should be specified as part of the ``CMAKE_PREFIX_PATH``
       variable.::
 
-          CXX=mpicxx cmake -Dlibmesh=on -DCMAKE_PREFIX_PATH=/path/to/libmesh/installation
+          cmake -DOPENMC_USE_LIBMESH=on -DOPENMC_USE_MPI=on -DCMAKE_PREFIX_PATH=/path/to/libmesh/installation
 
       Note that libMesh is most commonly compiled with MPI support. If that
       is the case, then OpenMC should be compiled with MPI support as well.
@@ -265,7 +274,9 @@ Prerequisites
 .. _MPICH: https://www.mpich.org
 .. _HDF5: https://www.hdfgroup.org/solutions/hdf5/
 .. _DAGMC: https://svalinn.github.io/DAGMC/index.html
+.. _MOAB: https://bitbucket.org/fathomteam/moab
 .. _libMesh: https://libmesh.github.io/
+.. _libpng: http://www.libpng.org/pub/png/libpng.html
 
 Obtaining the Source
 --------------------
@@ -320,63 +331,62 @@ CMakeLists.txt Options
 
 The following options are available in the CMakeLists.txt file:
 
-debug
-  Enables debugging when compiling. The flags added are dependent on which
-  compiler is used.
+OPENMC_ENABLE_PROFILE
+  Enables profiling using the GNU profiler, gprof. (Default: off)
 
-profile
-  Enables profiling using the GNU profiler, gprof.
-
-optimize
-  Enables high-optimization using compiler-dependent flags. For gcc and
-  Intel C++, this compiles with -O3.
-
-openmp
+OPENMC_USE_OPENMP
   Enables shared-memory parallelism using the OpenMP API. The C++ compiler
   being used must support OpenMP. (Default: on)
 
-dagmc
+OPENMC_USE_DAGMC
   Enables use of CAD-based DAGMC_ geometries and MOAB_ unstructured mesh
   tallies. Please see the note about DAGMC in the optional dependencies list
   for more information on this feature. The installation directory for DAGMC
   should also be defined as `DAGMC_ROOT` in the CMake configuration command.
   (Default: off)
 
-libmesh
+OPENMC_USE_LIBMESH
   Enables the use of unstructured mesh tallies with libMesh_. (Default: off)
 
-coverage
+OPENMC_ENABLE_COVERAGE
   Compile and link code instrumented for coverage analysis. This is typically
-  used in conjunction with gcov_.
+  used in conjunction with gcov_. (Default: off)
 
-To set any of these options (e.g. turning on debug mode), the following form
+OPENMC_USE_MPI
+  Turns on compiling with MPI (default: off). For further information on MPI options,
+  please see the `FindMPI.cmake documentation <https://cmake.org/cmake/help/latest/module/FindMPI.html>`_.
+
+To set any of these options (e.g., turning on profiling), the following form
 should be used:
 
 .. code-block:: sh
 
-    cmake -Ddebug=on /path/to/openmc
+    cmake -DOPENMC_ENABLE_PROFILE=on /path/to/openmc
 
 .. _gcov: https://gcc.gnu.org/onlinedocs/gcc/Gcov.html
 
 .. _usersguide_compile_mpi:
 
-Compiling with MPI
-++++++++++++++++++
+Specifying the Build Type
++++++++++++++++++++++++++
 
-To compile with MPI, set the :envvar:`CXX` environment variable to the path to
-the MPI C++ wrapper. For example, in a bash shell:
+OpenMC can be configured for debug, release, or release with debug info by setting
+the `CMAKE_BUILD_TYPE` option.
+
+Debug
+  Enable debug compiler flags with no optimization `-O0 -g`.
+
+Release
+  Disable debug and enable optimization `-O3 -DNDEBUG`.
+
+RelWithDebInfo
+  (Default if no type is specified.) Enable optimization and debug `-O2 -g`.
+
+Example of configuring for Debug mode:
 
 .. code-block:: sh
 
-    export CXX=mpicxx
-    cmake /path/to/openmc
-
-Note that in many shells, environment variables can be set for a single command,
-i.e.
-
-.. code-block:: sh
-
-    CXX=mpicxx cmake /path/to/openmc
+    cmake -DCMAKE_BUILD_TYPE=Debug /path/to/openmc
 
 Selecting HDF5 Installation
 +++++++++++++++++++++++++++
@@ -501,8 +511,9 @@ distributions.
       are used for several optional features in the API.
 
    `pandas <https://pandas.pydata.org/>`_
-      Pandas is used to generate tally DataFrames as demonstrated in
-      an `example notebook <../examples/pandas-dataframes.ipynb>`_.
+      Pandas is used to generate tally DataFrames as demonstrated in an `example
+      notebook
+      <https://nbviewer.jupyter.org/github/openmc-dev/openmc-notebooks/blob/main/pandas-dataframes.ipynb>`_.
 
    `h5py <http://www.h5py.org/>`_
       h5py provides Python bindings to the HDF5 library. Since OpenMC outputs

@@ -29,7 +29,7 @@ kwargs = {
     'packages': find_packages(exclude=['tests*']),
     'scripts': glob.glob('scripts/openmc-*'),
 
-    # Data files and librarries
+    # Data files and libraries
     'package_data': {
         'openmc.lib': ['libopenmc.{}'.format(suffix)],
         'openmc.data': ['mass16.txt', 'BREMX.DAT', '*.h5'],
@@ -38,7 +38,7 @@ kwargs = {
 
     # Metadata
     'author': 'The OpenMC Development Team',
-    'author_email': 'openmc-dev@googlegroups.com',
+    'author_email': 'openmc@anl.gov',
     'description': 'OpenMC',
     'url': 'https://openmc.org',
     'download_url': 'https://github.com/openmc-dev/openmc/releases',

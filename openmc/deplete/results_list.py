@@ -1,6 +1,7 @@
 import numbers
 import bisect
 import math
+from warnings import warn
 
 import h5py
 import numpy as np
@@ -12,6 +13,17 @@ from openmc.material import Material, Materials
 from openmc.exceptions import DataError, InvalidArgumentError
 
 __all__ = ["ResultsList"]
+
+
+def _get_time_as(seconds, units):
+    if units == "d":
+        return seconds / (60 * 60 * 24)
+    elif units == "h":
+        return seconds / (60 * 60)
+    elif units == "min":
+        return seconds / 60
+    else:
+        return seconds
 
 
 class ResultsList(list):
@@ -58,8 +70,8 @@ class ResultsList(list):
 
         Parameters
         ----------
-        mat : str
-            Material name to evaluate
+        mat : openmc.Material, str
+            Material object or material id to evaluate
         nuc : str
             Nuclide name to evaluate
         nuc_units : {"atoms", "atom/b-cm", "atom/cm3"}, optional
@@ -84,25 +96,25 @@ class ResultsList(list):
         cv.check_value("nuc_units", nuc_units,
                     {"atoms", "atom/b-cm", "atom/cm3"})
 
+        if isinstance(mat, Material):
+            mat_id = str(mat.id)
+        elif isinstance(mat, str):
+            mat_id = mat
+        else:
+            raise TypeError('mat should be of type openmc.Material or str')
         times = np.empty_like(self, dtype=float)
         concentrations = np.empty_like(self, dtype=float)
 
         # Evaluate value in each region
         for i, result in enumerate(self):
             times[i] = result.time[0]
-            concentrations[i] = result[0, mat, nuc]
+            concentrations[i] = result[0, mat_id, nuc]
 
         # Unit conversions
-        if time_units == "d":
-            times /= (60 * 60 * 24)
-        elif time_units == "h":
-            times /= (60 * 60)
-        elif time_units == "min":
-            times /= 60
-
+        times = _get_time_as(times, time_units)
         if nuc_units != "atoms":
             # Divide by volume to get density
-            concentrations /= self[0].volume[mat]
+            concentrations /= self[0].volume[mat_id]
             if nuc_units == "atom/b-cm":
                 # 1 barn = 1e-24 cm^2
                 concentrations *= 1e-24
@@ -122,8 +134,8 @@ class ResultsList(list):
 
         Parameters
         ----------
-        mat : str
-            Material name to evaluate
+        mat : openmc.Material, str
+            Material object or material id to evaluate
         nuc : str
             Nuclide name to evaluate
         rx : str
@@ -140,26 +152,40 @@ class ResultsList(list):
         times = np.empty_like(self, dtype=float)
         rates = np.empty_like(self, dtype=float)
 
+        if isinstance(mat, Material):
+            mat_id = str(mat.id)
+        elif isinstance(mat, str):
+            mat_id = mat
+        else:
+            raise TypeError('mat should be of type openmc.Material or str')
+
         # Evaluate value in each region
         for i, result in enumerate(self):
             times[i] = result.time[0]
-            rates[i] = result.rates[0].get(mat, nuc, rx) * result[0, mat, nuc]
+            rates[i] = result.rates[0].get(mat_id, nuc, rx) * result[0, mat, nuc]
 
         return times, rates
 
-    def get_eigenvalue(self):
+    def get_keff(self, time_units='s'):
         """Evaluates the eigenvalue from a results list.
+
+        Parameters
+        ----------
+        time_units : {"s", "d", "h", "min"}, optional
+            Desired units for the times array
 
         Returns
         -------
         times : numpy.ndarray
-            Array of times in [s]
+            Array of times in specified units
         eigenvalues : numpy.ndarray
             k-eigenvalue at each time. Column 0
             contains the eigenvalue, while column
             1 contains the associated uncertainty
 
         """
+        cv.check_value("time_units", time_units, {"s", "d", "min", "h"})
+
         times = np.empty_like(self, dtype=float)
         eigenvalues = np.empty((len(self), 2), dtype=float)
 
@@ -168,16 +194,23 @@ class ResultsList(list):
             times[i] = result.time[0]
             eigenvalues[i] = result.k[0]
 
+        # Convert time units if necessary
+        times = _get_time_as(times, time_units)
         return times, eigenvalues
+
+    def get_eigenvalue(self, time_units='s'):
+        warn("The get_eigenvalue(...) function has been renamed get_keff and "
+             "will be removed in a future version of OpenMC.", FutureWarning)
+        return self.get_keff(time_units)
+
 
     def get_depletion_time(self):
         """Return an array of the average time to deplete a material
 
         .. note::
-
-            Will have one fewer row than number of other methods,
-            like :meth:`get_eigenvalues`, because no depletion
-            is performed at the final transport stage
+            The return value will have one fewer values than several other
+            methods, such as :meth:`get_keff`, because no depletion is performed
+            at the final transport stage.
 
         Returns
         -------
@@ -217,7 +250,7 @@ class ResultsList(list):
             1-D vector of time points
 
         """
-        cv.check_type("time_units", time_units, str)
+        cv.check_value("time_units", time_units, {"s", "d", "min", "h"})
 
         times = np.fromiter(
             (r.time[0] for r in self),
@@ -225,18 +258,7 @@ class ResultsList(list):
             count=len(self),
         )
 
-        if time_units == "d":
-            times /= (60 * 60 * 24)
-        elif time_units == "h":
-            times /= (60 * 60)
-        elif time_units == "min":
-            times /= 60
-        elif time_units != "s":
-            raise ValueError(
-                'Unable to set "time_units" to {} since it is not '
-                'in ("s", "d", "min", "h")'.format(time_units)
-            )
-        return times
+        return _get_time_as(times, time_units)
 
     def get_step_where(
         self, time, time_units="d", atol=1e-6, rtol=1e-3
@@ -361,6 +383,7 @@ class ResultsList(list):
             mat_id = str(mat.id)
             if mat_id in result.mat_to_ind:
                 mat.volume = result.volume[mat_id]
+                mat.set_density('sum')
                 for nuc in result.nuc_to_ind:
                     if nuc not in available_cross_sections:
                         continue

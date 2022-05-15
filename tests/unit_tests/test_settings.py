@@ -54,6 +54,7 @@ def test_export_to_xml(run_in_tmpdir):
     s.log_grid_bins = 2000
     s.photon_transport = False
     s.electron_treatment = 'led'
+    s.write_initial_source = True
 
     # Make sure exporting XML works
     s.export_to_xml()
@@ -110,3 +111,11 @@ def test_export_to_xml(run_in_tmpdir):
     assert s.log_grid_bins == 2000
     assert not s.photon_transport
     assert s.electron_treatment == 'led'
+    assert s.write_initial_source == True
+    assert len(s.volume_calculations) == 1
+    vol = s.volume_calculations[0]
+    assert vol.domain_type == 'cell'
+    assert len(vol.ids) == 1
+    assert vol.samples == 1000
+    assert vol.lower_left == (-10., -10., -10.)
+    assert vol.upper_right == (10., 10., 10.)

@@ -57,8 +57,13 @@ def get_decay_modes(value):
         List of successive decays, e.g. ('beta-', 'neutron')
 
     """
-    return [_DECAY_MODES[int(x)][0] for x in
-            str(value).strip('0').replace('.', '')]
+    if int(value) == 10:
+        # The logic below would treat 10.0 as [1, 0] rather than [10] as it
+        # should, so we handle this case separately
+        return ['unknown']
+    else:
+        return [_DECAY_MODES[int(x)][0] for x in
+                str(value).strip('0').replace('.', '')]
 
 
 class FissionProductYields(EqualityMixin):
@@ -437,7 +442,7 @@ class Decay(EqualityMixin):
                     # Read continuous spectrum
                     ci = {}
                     params, ci['probability'] = get_tab1_record(file_obj)
-                    ci['type'] = get_decay_modes(params[0])
+                    ci['from_mode'] = get_decay_modes(params[0])
 
                     # Read covariance (Ek, Fk) table
                     LCOV = params[3]

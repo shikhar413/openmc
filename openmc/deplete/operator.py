@@ -10,19 +10,20 @@ densities is all done in-memory instead of through the filesystem.
 import copy
 from collections import OrderedDict
 import os
-import xml.etree.ElementTree as ET
 from warnings import warn
-from pathlib import Path
 
 import numpy as np
 from uncertainties import ufloat
 
 import openmc
 from openmc.checkvalue import check_value
+from openmc.data import DataLibrary
+from openmc.exceptions import DataError
 import openmc.lib
-from . import comm
+from openmc.mpi import comm
 from .abc import TransportOperator, OperatorResult
 from .atom_number import AtomNumber
+from .chain import _find_chain_file
 from .reaction_rates import ReactionRates
 from .results_list import ResultsList
 from .helpers import (
@@ -57,6 +58,22 @@ def _distribute(items):
         j += chunk_size
 
 
+def _find_cross_sections(model):
+    """Determine cross sections to use for depletion"""
+    if model.materials and model.materials.cross_sections is not None:
+        # Prefer info from Model class if available
+        return model.materials.cross_sections
+
+    # otherwise fallback to environment variable
+    cross_sections = os.environ.get("OPENMC_CROSS_SECTIONS")
+    if cross_sections is None:
+        raise DataError(
+            "Cross sections were not specified in Model.materials and "
+            "the OPENMC_CROSS_SECTIONS environment variable is not set."
+        )
+    return cross_sections
+
+
 class Operator(TransportOperator):
     """OpenMC transport operator for depletion.
 
@@ -65,12 +82,14 @@ class Operator(TransportOperator):
     directly. Instead, an instance of this class is passed to an integrator
     class, such as :class:`openmc.deplete.CECMIntegrator`.
 
+    .. versionchanged:: 0.13.0
+        The geometry and settings parameters have been replaced with a
+        model parameter that takes a :class:`~openmc.model.Model` object
+
     Parameters
     ----------
-    geometry : openmc.Geometry
-        OpenMC geometry object
-    settings : openmc.Settings
-        OpenMC Settings object
+    model : openmc.model.Model
+        OpenMC model object
     chain_file : str, optional
         Path to the depletion chain XML file.  Defaults to the file
         listed under ``depletion_chain`` in
@@ -144,6 +163,8 @@ class Operator(TransportOperator):
 
     Attributes
     ----------
+    model : openmc.model.Model
+        OpenMC model object
     geometry : openmc.Geometry
         OpenMC geometry object
     settings : openmc.Settings
@@ -174,8 +195,9 @@ class Operator(TransportOperator):
     prev_res : ResultsList or None
         Results from a previous depletion calculation. ``None`` if no
         results are to be used.
-    diff_burnable_mats : bool
-        Whether to differentiate burnable materials with multiple instances
+    cleanup_when_done : bool
+        Whether to finalize and clear the shared library memory when the
+        depletion operation is complete. Defaults to clearing the library.
     """
     _fission_helpers = {
         "average": AveragedFissionYieldHelper,
@@ -183,12 +205,26 @@ class Operator(TransportOperator):
         "cutoff": FissionYieldCutoffHelper,
     }
 
-    def __init__(self, geometry, settings, chain_file=None, prev_results=None,
+    def __init__(self, model, chain_file=None, prev_results=None,
                  diff_burnable_mats=False, normalization_mode="fission-q",
                  fission_q=None, dilute_initial=1.0e3,
                  fission_yield_mode="constant", fission_yield_opts=None,
                  reaction_rate_mode="direct", reaction_rate_opts=None,
                  reduce_chain=False, reduce_chain_level=None):
+        # check for old call to constructor
+        if isinstance(model, openmc.Geometry):
+            msg = "As of version 0.13.0 openmc.deplete.Operator requires an " \
+                "openmc.Model object rather than the openmc.Geometry and " \
+                "openmc.Settings parameters. Please use the geometry and " \
+                "settings objects passed here to create a model with which " \
+                "to generate the depletion Operator."
+            raise TypeError(msg)
+
+        # Determine cross sections / depletion chain
+        cross_sections = _find_cross_sections(model)
+        if chain_file is None:
+            chain_file = _find_chain_file(cross_sections)
+
         check_value('fission yield mode', fission_yield_mode,
                     self._fission_helpers.keys())
         check_value('normalization mode', normalization_mode,
@@ -199,14 +235,23 @@ class Operator(TransportOperator):
                 fission_q = None
         super().__init__(chain_file, fission_q, dilute_initial, prev_results)
         self.round_number = False
-        self.settings = settings
-        self.geometry = geometry
-        self.diff_burnable_mats = diff_burnable_mats
+        self.model = model
+        self.settings = model.settings
+        self.geometry = model.geometry
+
+        # determine set of materials in the model
+        if not model.materials:
+            model.materials = openmc.Materials(
+                model.geometry.get_all_materials().values()
+            )
+        self.materials = model.materials
+
+        self.cleanup_when_done = True
 
         # Reduce the chain before we create more materials
         if reduce_chain:
             all_isotopes = set()
-            for material in geometry.get_all_materials().values():
+            for material in self.materials:
                 if not material.depletable:
                     continue
                 for name, _dens_percent, _dens_type in material.nuclides:
@@ -214,8 +259,11 @@ class Operator(TransportOperator):
             self.chain = self.chain.reduce(all_isotopes, reduce_chain_level)
 
         # Differentiate burnable materials with multiple instances
-        if self.diff_burnable_mats:
+        if diff_burnable_mats:
             self._differentiate_burnable_mats()
+            self.materials = openmc.Materials(
+                model.geometry.get_all_materials().values()
+            )
 
         # Clear out OpenMC, create task lists, distribute
         openmc.reset_auto_ids()
@@ -228,7 +276,7 @@ class Operator(TransportOperator):
 
         if self.prev_res is not None:
             # Reload volumes into geometry
-            prev_results[-1].transfer_volumes(geometry)
+            prev_results[-1].transfer_volumes(self.model)
 
             # Store previous results in operator
             # Distribute reaction rates according to those tracked
@@ -243,7 +291,7 @@ class Operator(TransportOperator):
                     self.prev_res.append(new_res)
 
         # Determine which nuclides have incident neutron data
-        self.nuclides_with_data = self._get_nuclides_with_data()
+        self.nuclides_with_data = self._get_nuclides_with_data(cross_sections)
 
         # Select nuclides with data that are also in the chain
         self._burnable_nucs = [nuc.name for nuc in self.chain.nuclides
@@ -282,7 +330,7 @@ class Operator(TransportOperator):
         if normalization_mode == "fission-q":
             self._normalization_helper = ChainFissionHelper()
         elif normalization_mode == "energy-deposition":
-            score = "heating" if settings.photon_transport else "heating-local"
+            score = "heating" if self.settings.photon_transport else "heating-local"
             self._normalization_helper = EnergyScoreHelper(score)
         else:
             self._normalization_helper = SourceRateHelper()
@@ -317,6 +365,10 @@ class Operator(TransportOperator):
         # Reset results in OpenMC
         openmc.lib.reset()
 
+        # Update the number densities regardless of the source rate
+        self.number.set_density(vec)
+        self._update_materials()
+
         # If the source rate is zero, return zero reaction rates without running
         # a transport solve
         if source_rate == 0.0:
@@ -327,11 +379,7 @@ class Operator(TransportOperator):
         # Prevent OpenMC from complaining about re-creating tallies
         openmc.reset_auto_ids()
 
-        # Update status
-        self.number.set_density(vec)
-
-        # Update material compositions and tally nuclides
-        self._update_materials()
+        # Update tally nuclides data in preparation for transport solve
         nuclides = self._get_tally_nuclides()
         self._rate_helper.nuclides = nuclides
         self._normalization_helper.nuclides = nuclides
@@ -369,7 +417,7 @@ class Operator(TransportOperator):
 
         # Extract all burnable materials which have multiple instances
         distribmats = set(
-            [mat for mat in self.geometry.get_all_materials().values()
+            [mat for mat in self.materials
              if mat.depletable and mat.num_instances > 1])
 
         for mat in distribmats:
@@ -407,7 +455,7 @@ class Operator(TransportOperator):
         self.heavy_metal = 0.0
 
         # Iterate once through the geometry to get dictionaries
-        for mat in self.geometry.get_all_materials().values():
+        for mat in self.materials:
             for nuclide in mat.get_nuclides():
                 model_nuclides.add(nuclide)
             if mat.depletable:
@@ -459,13 +507,13 @@ class Operator(TransportOperator):
         # Now extract and store the number densities
         # From the geometry if no previous depletion results
         if prev_res is None:
-            for mat in self.geometry.get_all_materials().values():
+            for mat in self.materials:
                 if str(mat.id) in local_mats:
                     self._set_number_from_mat(mat)
 
         # Else from previous depletion results
         else:
-            for mat in self.geometry.get_all_materials().values():
+            for mat in self.materials:
                 if str(mat.id) in local_mats:
                     self._set_number_from_results(mat, prev_res)
 
@@ -536,7 +584,8 @@ class Operator(TransportOperator):
 
         # Initialize OpenMC library
         comm.barrier()
-        openmc.lib.init(intracomm=comm)
+        if not openmc.lib.is_initialized:
+            openmc.lib.init(intracomm=comm)
 
         # Generate tallies in memory
         materials = [openmc.lib.materials[int(i)]
@@ -554,7 +603,8 @@ class Operator(TransportOperator):
 
     def finalize(self):
         """Finalize a depletion simulation and release resources."""
-        openmc.lib.finalize()
+        if self.cleanup_when_done:
+            openmc.lib.finalize()
 
     def _update_materials(self):
         """Updates material compositions in OpenMC on all processes."""
@@ -603,23 +653,12 @@ class Operator(TransportOperator):
         through direct memory writing.
 
         """
-        materials = openmc.Materials(self.geometry.get_all_materials()
-                                     .values())
-
         # Sort nuclides according to order in AtomNumber object
         nuclides = list(self.number.nuclides)
-        for mat in materials:
+        for mat in self.materials:
             mat._nuclides.sort(key=lambda x: nuclides.index(x[0]))
 
-        # Grab the cross sections tag from the existing file
-        mfile = Path("materials.xml")
-        if mfile.exists():
-            tree = ET.parse(str(mfile))
-            xs = tree.find('cross_sections')
-            if xs is not None:
-                materials.cross_sections = xs.text
-
-        materials.export_to_xml()
+        self.materials.export_to_xml()
 
     def _get_tally_nuclides(self):
         """Determine nuclides that should be tallied for reaction rates.
@@ -686,7 +725,7 @@ class Operator(TransportOperator):
         rates.fill(0.0)
 
         # Get k and uncertainty
-        k_combined = ufloat(*openmc.lib.keff())
+        keff = ufloat(*openmc.lib.keff())
 
         # Extract tally bins
         nuclides = self._rate_helper.nuclides
@@ -740,42 +779,16 @@ class Operator(TransportOperator):
         # Store new fission yields on the chain
         self.chain.fission_yields = fission_yields
 
-        return OperatorResult(k_combined, rates)
+        return OperatorResult(keff, rates)
 
-    def _get_nuclides_with_data(self):
-        """Loads a cross_sections.xml file to find participating nuclides.
-
-        This allows for nuclides that are important in the decay chain but not
-        important neutronically, or have no cross section data.
-        """
-
-        # Reads cross_sections.xml to create a dictionary containing
-        # participating (burning and not just decaying) nuclides.
-
-        try:
-            filename = os.environ["OPENMC_CROSS_SECTIONS"]
-        except KeyError:
-            filename = None
-
+    def _get_nuclides_with_data(self, cross_sections):
+        """Loads cross_sections.xml file to find nuclides with neutron data"""
         nuclides = set()
-
-        try:
-            tree = ET.parse(filename)
-        except Exception:
-            if filename is None:
-                msg = "No cross_sections.xml specified in materials."
-            else:
-                msg = 'Cross section file "{}" is invalid.'.format(filename)
-            raise IOError(msg)
-
-        root = tree.getroot()
-        for nuclide_node in root.findall('library'):
-            mats = nuclide_node.get('materials')
-            if not mats:
+        data_lib = DataLibrary.from_xml(cross_sections)
+        for library in data_lib.libraries:
+            if library['type'] != 'neutron':
                 continue
-            for name in mats.split():
-                # Make a burn list of the union of nuclides in cross_sections.xml
-                # and nuclides in depletion chain.
+            for name in library['materials']:
                 if name not in nuclides:
                     nuclides.add(name)
 

@@ -1,5 +1,4 @@
 from collections.abc import Mapping
-from ctypes import ArgumentError
 import os
 
 import numpy as np
@@ -263,6 +262,7 @@ def test_settings(lib_init):
     assert settings.generations_per_batch == 1
     assert settings.particles == 100
     assert settings.seed == 1
+    assert settings.event_based is False
     settings.seed = 11
 
 
@@ -579,6 +579,68 @@ def test_rectilinear_mesh(lib_init):
     msf = openmc.lib.MeshSurfaceFilter(mesh)
     assert msf.mesh == mesh
 
+def test_cylindrical_mesh(lib_init):
+    deg2rad = lambda deg: deg*np.pi/180
+    mesh = openmc.lib.CylindricalMesh()
+    r_grid = [0., 5., 10.]
+    phi_grid = np.radians([0., 10., 20.])
+    z_grid = [10., 20., 30.]
+    mesh.set_grid(r_grid, phi_grid, z_grid)
+    assert np.all(mesh.lower_left == (0., 0., 10.))
+    assert np.all(mesh.upper_right == (10., deg2rad(20.), 30.))
+    assert np.all(mesh.dimension == (2, 2, 2))
+    for i, _ in enumerate(np.diff(r_grid)):
+        for j, _ in enumerate(np.diff(phi_grid)):
+            for k, _ in enumerate(np.diff(z_grid)):
+                assert np.allclose(mesh.width[i, j, k, :], (5, deg2rad(10), 10))
+
+    with pytest.raises(exc.AllocationError):
+        mesh2 = openmc.lib.CylindricalMesh(mesh.id)
+
+    meshes = openmc.lib.meshes
+    assert isinstance(meshes, Mapping)
+    assert len(meshes) == 3
+
+    mesh = meshes[mesh.id]
+    assert isinstance(mesh, openmc.lib.CylindricalMesh)
+
+    mf = openmc.lib.MeshFilter(mesh)
+    assert mf.mesh == mesh
+
+    msf = openmc.lib.MeshSurfaceFilter(mesh)
+    assert msf.mesh == mesh
+
+def test_spherical_mesh(lib_init):
+    deg2rad = lambda deg: deg*np.pi/180
+    mesh = openmc.lib.SphericalMesh()
+    r_grid = [0., 5., 10.]
+    theta_grid = np.radians([0., 10., 20.])
+    phi_grid = np.radians([10., 20., 30.])
+    mesh.set_grid(r_grid, theta_grid, phi_grid)
+    assert np.all(mesh.lower_left == (0., 0., deg2rad(10.)))
+    assert np.all(mesh.upper_right == (10., deg2rad(20.), deg2rad(30.)))
+    assert np.all(mesh.dimension == (2, 2, 2))
+    for i, _ in enumerate(np.diff(r_grid)):
+        for j, _ in enumerate(np.diff(theta_grid)):
+            for k, _ in enumerate(np.diff(phi_grid)):
+                assert np.allclose(mesh.width[i, j, k, :], (5, deg2rad(10), deg2rad(10)))
+
+    with pytest.raises(exc.AllocationError):
+        mesh2 = openmc.lib.SphericalMesh(mesh.id)
+
+    meshes = openmc.lib.meshes
+    assert isinstance(meshes, Mapping)
+    assert len(meshes) == 4
+
+    mesh = meshes[mesh.id]
+    assert isinstance(mesh, openmc.lib.SphericalMesh)
+
+    mf = openmc.lib.MeshFilter(mesh)
+    assert mf.mesh == mesh
+
+    msf = openmc.lib.MeshSurfaceFilter(mesh)
+    assert msf.mesh == mesh
+
 
 def test_restart(lib_init, mpi_intracomm):
     # Finalize and re-init to make internal state consistent with XML.
@@ -713,7 +775,6 @@ def test_trigger_set_n_batches(uo2_trigger_model, mpi_intracomm):
 def test_cell_translation(pincell_model_w_univ, mpi_intracomm):
     openmc.lib.finalize()
     openmc.lib.init(intracomm=mpi_intracomm)
-    openmc.lib.simulation_init()
     # Cell 1 is filled with a material so it has a translation, but we can't
     # set it.
     cell = openmc.lib.cells[1]
@@ -727,9 +788,12 @@ def test_cell_translation(pincell_model_w_univ, mpi_intracomm):
     # This time we *can* set it
     cell.translation = (1., 0., -1.)
     assert cell.translation == pytest.approx([1., 0., -1.])
+    openmc.lib.finalize()
 
 
-def test_cell_rotation(pincell_model_w_univ):
+def test_cell_rotation(pincell_model_w_univ, mpi_intracomm):
+    openmc.lib.finalize()
+    openmc.lib.init(intracomm=mpi_intracomm)
     # Cell 1 is filled with a material so we cannot rotate it, but we can get
     # its rotation matrix (which will be the identity matrix)
     cell = openmc.lib.cells[1]
@@ -742,3 +806,4 @@ def test_cell_rotation(pincell_model_w_univ):
     assert cell.rotation == pytest.approx([0., 0., 0.])
     cell.rotation = (180., 0., 0.)
     assert cell.rotation == pytest.approx([180., 0., 0.])
+    openmc.lib.finalize()

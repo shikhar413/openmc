@@ -237,8 +237,11 @@ class MGXS:
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.13.1
 
     """
 
@@ -266,7 +269,7 @@ class MGXS:
         self._sparse = False
         self._loaded_sp = False
         self._derived = False
-        self._hdf5_key = None
+        self._mgxs_type = None
         self._valid_estimators = ESTIMATOR_TYPES
 
         self.name = name
@@ -305,7 +308,7 @@ class MGXS:
         clone._sparse = self.sparse
         clone._loaded_sp = self._loaded_sp
         clone._derived = self.derived
-        clone._hdf5_key = self._hdf5_key
+        clone._mgxs_type = self._mgxs_type
 
         clone._tallies = OrderedDict()
         for tally_type, tally in self.tallies.items():
@@ -609,9 +612,9 @@ class MGXS:
         return self._derived
 
     @property
-    def hdf5_key(self):
-        if self._hdf5_key is not None:
-            return self._hdf5_key
+    def mgxs_type(self):
+        if self._mgxs_type is not None:
+            return self._mgxs_type
         else:
             return self._rxn_type
 
@@ -1725,7 +1728,7 @@ class MGXS:
 
         # Build header for string with type and domain info
         string = 'Multi-Group XS\n'
-        string += '{0: <16}=\t{1}\n'.format('\tReaction Type', self.rxn_type)
+        string += '{0: <16}=\t{1}\n'.format('\tReaction Type', self.mgxs_type)
         string += '{0: <16}=\t{1}\n'.format('\tDomain Type', self.domain_type)
         string += '{0: <16}=\t{1}\n'.format('\tDomain ID', self.domain.id)
 
@@ -1912,7 +1915,7 @@ class MGXS:
                 subdomain_group = domain_group
 
             # Create a separate HDF5 group for this cross section
-            rxn_group = subdomain_group.require_group(self.hdf5_key)
+            rxn_group = subdomain_group.require_group(self.mgxs_type)
 
             # Create a separate HDF5 group for each nuclide
             for j, nuclide in enumerate(nuclides):
@@ -2238,8 +2241,11 @@ class MatrixMGXS(MGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.13.1
 
     """
     @property
@@ -2534,7 +2540,7 @@ class MatrixMGXS(MGXS):
 
         # Build header for string with type and domain info
         string = 'Multi-Group XS\n'
-        string += '{0: <16}=\t{1}\n'.format('\tReaction Type', self.rxn_type)
+        string += '{0: <16}=\t{1}\n'.format('\tReaction Type', self.mgxs_type)
         string += '{0: <16}=\t{1}\n'.format('\tDomain Type', self.domain_type)
         string += '{0: <16}=\t{1}\n'.format('\tDomain ID', self.domain.id)
 
@@ -2732,8 +2738,11 @@ class TotalXS(MGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.13.1
 
     """
 
@@ -2870,8 +2879,11 @@ class TransportXS(MGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.13.1
 
     """
 
@@ -3108,8 +3120,11 @@ class DiffusionCoefficient(TransportXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.13.1
 
     """
 
@@ -3127,6 +3142,32 @@ class DiffusionCoefficient(TransportXS):
     @property
     def rxn_rate_tally(self):
         if self._rxn_rate_tally is None:
+            # Switch EnergyoutFilter to EnergyFilter.
+            p1_tally = self.tallies['scatter-1']
+            old_filt = p1_tally.filters[-2]
+            new_filt = openmc.EnergyFilter(old_filt.values)
+            p1_tally.filters[-2] = new_filt
+
+            # Slice Legendre expansion filter and change name of score
+            p1_tally = p1_tally.get_slice(filters=[openmc.LegendreFilter],
+                                          filter_bins=[('P1',)],
+                                          squeeze=True)
+            p1_tally._scores = ['scatter-1']
+
+            transport = self.tallies['total'] - p1_tally
+            self._rxn_rate_tally = transport**(-1) / 3.0
+            self._rxn_rate_tally.sparse = self.sparse
+
+        return self._rxn_rate_tally
+
+    @property
+    def xs_tally(self):
+        if self._xs_tally is None:
+            if self.tallies is None:
+                msg = 'Unable to get xs_tally since tallies have ' \
+                      'not been loaded from a statepoint'
+                raise ValueError(msg)
+
             # Switch EnergyoutFilter to EnergyFilter
             p1_tally = self.tallies['scatter-1']
             old_filt = p1_tally.filters[-2]
@@ -3143,135 +3184,15 @@ class DiffusionCoefficient(TransportXS):
             total_xs = self.tallies['total'] / self.tallies['flux (tracklength)']
 
             # Compute transport correction term
-            trans_corr = self.tallies['scatter-1'] / self.tallies['flux (analog)']
+            trans_corr = p1_tally / self.tallies['flux (analog)']
 
             # Compute the diffusion coefficient
             transport = total_xs - trans_corr
-            dif_coef = transport**(-1) / 3.0
-
-            self._rxn_rate_tally = dif_coef * self.tallies['flux (tracklength)']
-            self._rxn_rate_tally.sparse = self.sparse
-
-        return self._rxn_rate_tally
-
-    @property
-    def xs_tally(self):
-        if self._xs_tally is None:
-            if self.tallies is None:
-                msg = 'Unable to get xs_tally since tallies have ' \
-                      'not been loaded from a statepoint'
-                raise ValueError(msg)
-
-            self._xs_tally = self.rxn_rate_tally / self.tallies['flux (tracklength)']
+            diff_coef = transport**(-1) / 3.0
+            self._xs_tally = diff_coef
             self._compute_xs()
 
         return self._xs_tally
-
-    def get_condensed_xs(self, coarse_groups):
-        """Construct an energy-condensed version of this cross section.
-        Parameters
-        ----------
-        coarse_groups : openmc.mgxs.EnergyGroups
-            The coarse energy group structure of interest
-
-        Returns
-        -------
-        MGXS
-            A new MGXS condensed to the group structure of interest
-        """
-
-        cv.check_type('coarse_groups', coarse_groups, EnergyGroups)
-        cv.check_less_than('coarse groups', coarse_groups.num_groups,
-                           self.num_groups, equality=True)
-        cv.check_value('upper coarse energy', coarse_groups.group_edges[-1],
-                       [self.energy_groups.group_edges[-1]])
-        cv.check_value('lower coarse energy', coarse_groups.group_edges[0],
-                       [self.energy_groups.group_edges[0]])
-
-        # Clone this MGXS to initialize the condensed version
-        condensed_xs = copy.deepcopy(self)
-
-        if self._rxn_rate_tally is None:
-
-            p1_tally = self.tallies['scatter-1']
-            old_filt = p1_tally.filters[-2]
-            new_filt = openmc.EnergyFilter(old_filt.values)
-            p1_tally.filters[-2] = new_filt
-
-            # Slice Legendre expansion filter and change name of score
-            p1_tally = p1_tally.get_slice(filters=[openmc.LegendreFilter],
-                    filter_bins=[('P1',)],
-                    squeeze=True)
-            p1_tally._scores = ['scatter-1']
-
-            total = self.tallies['total'] / self.tallies['flux (tracklength)']
-            trans_corr = p1_tally / self.tallies['flux (analog)']
-            transport = (total - trans_corr)
-            dif_coef = transport**(-1) / 3.0
-            dif_coef *= self.tallies['flux (tracklength)']
-
-        else:
-            dif_coef = self.rxn_rate_tally
-
-        flux_tally = condensed_xs.tallies['flux (tracklength)']
-        condensed_xs._tallies = OrderedDict()
-        condensed_xs._tallies[self._rxn_type] = dif_coef
-        condensed_xs._tallies['flux (tracklength)'] = flux_tally
-        condensed_xs._rxn_rate_tally = dif_coef
-        condensed_xs._xs_tally = None
-        condensed_xs._sparse = False
-        condensed_xs._energy_groups = coarse_groups
-
-        # Build energy indices to sum across
-        energy_indices = []
-        for group in range(coarse_groups.num_groups, 0, -1):
-            low, high = coarse_groups.get_group_bounds(group)
-            low_index = np.where(self.energy_groups.group_edges == low)[0][0]
-            energy_indices.append(low_index)
-
-        fine_edges = self.energy_groups.group_edges
-
-        # Condense each of the tallies to the coarse group structure
-        for tally in condensed_xs.tallies.values():
-
-            # Make condensed tally derived and null out sum, sum_sq
-            tally._derived = True
-            tally._sum = None
-            tally._sum_sq = None
-
-            # Get tally data arrays reshaped with one dimension per filter
-            mean = tally.get_reshaped_data(value='mean')
-            std_dev = tally.get_reshaped_data(value='std_dev')
-
-            # Sum across all applicable fine energy group filters
-            for i, tally_filter in enumerate(tally.filters):
-                if not isinstance(tally_filter,
-                                  (openmc.EnergyFilter,
-                                   openmc.EnergyoutFilter)):
-                    continue
-                elif len(tally_filter.bins) != len(fine_edges):
-                    continue
-                elif not np.allclose(tally_filter.bins, fine_edges):
-                    continue
-                else:
-                    tally_filter.bins = coarse_groups.group_edges
-                    mean = np.add.reduceat(mean, energy_indices, axis=i)
-                    std_dev = np.add.reduceat(std_dev**2, energy_indices,
-                                              axis=i)
-                    std_dev = np.sqrt(std_dev)
-
-            # Reshape condensed data arrays with one dimension for all filters
-            mean = np.reshape(mean, tally.shape)
-            std_dev = np.reshape(std_dev, tally.shape)
-
-            # Override tally's data with the new condensed data
-            tally._mean = mean
-            tally._std_dev = std_dev
-
-        # Compute the energy condensed multi-group cross section
-        condensed_xs.sparse = self.sparse
-        return condensed_xs
-
 
 class AbsorptionXS(MGXS):
     r"""An absorption multi-group cross section.
@@ -3385,8 +3306,11 @@ class AbsorptionXS(MGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.13.1
 
     """
 
@@ -3511,8 +3435,11 @@ class CaptureXS(MGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.13.1
 
     """
 
@@ -3664,8 +3591,11 @@ class FissionXS(MGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.13.1
 
     """
 
@@ -3832,8 +3762,11 @@ class KappaFissionXS(MGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.13.1
 
     """
 
@@ -3963,8 +3896,11 @@ class ScatterXS(MGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.13.1
 
     """
 
@@ -4107,8 +4043,11 @@ class ArbitraryXS(MGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.13.1
 
     """
 
@@ -4239,8 +4178,11 @@ class ArbitraryMatrixXS(MatrixMGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.13.1
 
     """
 
@@ -4441,8 +4383,11 @@ class ScatterMatrixXS(MatrixMGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.13.1
 
     """
 
@@ -4799,17 +4744,17 @@ class ScatterMatrixXS(MatrixMGXS):
         if self.formulation == 'simple':
             if not nu:
                 self._rxn_type = 'scatter'
-                self._hdf5_key = 'scatter matrix'
+                self._mgxs_type = 'scatter matrix'
             else:
                 self._rxn_type = 'nu-scatter'
-                self._hdf5_key = 'nu-scatter matrix'
+                self._mgxs_type = 'nu-scatter matrix'
         else:
             if not nu:
                 self._rxn_type = 'scatter'
-                self._hdf5_key = 'consistent scatter matrix'
+                self._mgxs_type = 'consistent scatter matrix'
             else:
                 self._rxn_type = 'nu-scatter'
-                self._hdf5_key = 'consistent nu-scatter matrix'
+                self._mgxs_type = 'consistent nu-scatter matrix'
 
     @formulation.setter
     def formulation(self, formulation):
@@ -4819,15 +4764,15 @@ class ScatterMatrixXS(MatrixMGXS):
         if self.formulation == 'simple':
             self._valid_estimators = ['analog']
             if not self.nu:
-                self._hdf5_key = 'scatter matrix'
+                self._mgxs_type = 'scatter matrix'
             else:
-                self._hdf5_key = 'nu-scatter matrix'
+                self._mgxs_type = 'nu-scatter matrix'
         else:
             self._valid_estimators = ['tracklength']
             if not self.nu:
-                self._hdf5_key = 'consistent scatter matrix'
+                self._mgxs_type = 'consistent scatter matrix'
             else:
-                self._hdf5_key = 'consistent nu-scatter matrix'
+                self._mgxs_type = 'consistent nu-scatter matrix'
 
     @correction.setter
     def correction(self, correction):
@@ -5289,9 +5234,9 @@ class ScatterMatrixXS(MatrixMGXS):
         cv.check_value('xs_type', xs_type, ['macro', 'micro'])
 
         if self.correction != 'P0' and self.scatter_format == SCATTER_LEGENDRE:
-            rxn_type = '{0} (P{1})'.format(self.rxn_type, moment)
+            rxn_type = '{0} (P{1})'.format(self.mgxs_type, moment)
         else:
-            rxn_type = self.rxn_type
+            rxn_type = self.mgxs_type
 
         # Build header for string with type and domain info
         string = 'Multi-Group XS\n'
@@ -5528,8 +5473,11 @@ class MultiplicityMatrixXS(MatrixMGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.13.1
 
     """
 
@@ -5701,8 +5649,11 @@ class ScatterProbabilityMatrix(MatrixMGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.13.1
 
     """
 
@@ -5716,7 +5667,7 @@ class ScatterProbabilityMatrix(MatrixMGXS):
         super().__init__(domain, domain_type, groups, by_nuclide,
                          name, num_polar, num_azimuthal)
         self._rxn_type = 'scatter'
-        self._hdf5_key = 'scatter probability matrix'
+        self._mgxs_type = 'scatter probability matrix'
         self._estimator = 'analog'
         self._valid_estimators = ['analog']
 
@@ -5874,8 +5825,11 @@ class NuFissionMatrixXS(MatrixMGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.13.1
 
     """
 
@@ -5886,10 +5840,10 @@ class NuFissionMatrixXS(MatrixMGXS):
                          num_polar, num_azimuthal)
         if not prompt:
             self._rxn_type = 'nu-fission'
-            self._hdf5_key = 'nu-fission matrix'
+            self._mgxs_type = 'nu-fission matrix'
         else:
             self._rxn_type = 'prompt-nu-fission'
-            self._hdf5_key = 'prompt-nu-fission matrix'
+            self._mgxs_type = 'prompt-nu-fission matrix'
         self._estimator = 'analog'
         self._valid_estimators = ['analog']
         self.prompt = prompt
@@ -6032,8 +5986,11 @@ class Chi(MGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.13.1
 
     """
 
@@ -6047,10 +6004,6 @@ class Chi(MGXS):
                  num_azimuthal=1):
         super().__init__(domain, domain_type, groups, by_nuclide, name,
                          num_polar, num_azimuthal)
-        if not prompt:
-            self._rxn_type = 'chi'
-        else:
-            self._rxn_type = 'chi-prompt'
         self._estimator = 'analog'
         self._valid_estimators = ['analog']
         self.prompt = prompt
@@ -6125,11 +6078,11 @@ class Chi(MGXS):
         cv.check_type('prompt', prompt, bool)
         self._prompt = prompt
         if not self.prompt:
-            self._rxn_type = 'nu-fission'
-            self._hdf5_key = 'chi'
+            self._rxn_type = 'chi'
+            self._mgxs_type = 'chi'
         else:
-            self._rxn_type = 'prompt-nu-fission'
-            self._hdf5_key = 'chi-prompt'
+            self._rxn_type = 'chi-prompt'
+            self._mgxs_type = 'chi-prompt'
 
     def get_homogenized_mgxs(self, other_mgxs):
         """Construct a homogenized mgxs with other MGXS objects.
@@ -6549,7 +6502,7 @@ class InverseVelocity(MGXS):
         being tracked. This is unity if the by_nuclide attribute is False.
     nuclides : Iterable of str or 'sum'
         The optional user-specified nuclides for which to compute cross
-        sections (e.g., 'U-238', 'O-16'). If by_nuclide is True but nuclides
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
         are not specified by the user, all nuclides in the spatial domain
         are included. This attribute is 'sum' if by_nuclide is false.
     sparse : bool
@@ -6559,8 +6512,11 @@ class InverseVelocity(MGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.13.1
 
     """
 
@@ -6678,8 +6634,11 @@ class MeshSurfaceMGXS(MGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.13.1
     """
 
     def __init__(self, domain=None, domain_type=None, energy_groups=None,
@@ -7064,8 +7023,11 @@ class Current(MeshSurfaceMGXS):
         Whether or not a statepoint file has been loaded with tally data
     derived : bool
         Whether or not the MGXS is merged from one or more other MGXS
-    hdf5_key : str
-        The key used to index multi-group cross sections in an HDF5 data store
+    mgxs_type : str
+        The name of this MGXS type, to be used when printing and
+        indexing in an HDF5 data store
+
+        .. versionadded:: 0.13.1
     """
 
     def __init__(self, domain=None, domain_type=None,

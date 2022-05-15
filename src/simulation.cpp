@@ -487,6 +487,12 @@ void initialize_history(Particle& p, int64_t index_source)
   // Reset particle event counter
   p.n_event() = 0;
 
+  // Reset split counter
+  p.n_split() = 0;
+
+  // Reset weight window ratio
+  p.ww_factor() = 0.0;
+
   // set random number seed
   int64_t particle_seed =
     (simulation::total_gen + overall_generation() - 1) * settings::n_particles +
@@ -679,6 +685,8 @@ void transport_history_based_single_particle(Particle& p)
 {
   while (true) {
     p.event_calculate_xs();
+    if (!p.alive())
+      break;
     p.event_advance();
     if (p.collision_distance() > p.boundary().distance) {
       p.event_cross_surface();

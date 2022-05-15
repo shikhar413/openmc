@@ -37,8 +37,7 @@ def cpp_driver(request):
             add_executable(main main.cpp)
             find_package(OpenMC REQUIRED HINTS {})
             target_link_libraries(main OpenMC::libopenmc)
-            set_target_properties(main PROPERTIES CXX_STANDARD
-            14 CXX_STANDARD_REQUIRED YES CXX_EXTENSIONS NO)
+            target_compile_features(main PUBLIC cxx_std_14)
             set(CMAKE_CXX_FLAGS "-pedantic-errors")
             add_compile_definitions(DAGMC=1)
             """.format(openmc_dir)))
@@ -49,12 +48,14 @@ def cpp_driver(request):
     os.chdir(str(local_builddir))
 
     if config['mpi']:
-        os.environ['CXX'] = 'mpicxx'
+        mpi_arg = "On"
+    else:
+        mpi_arg = "Off"
 
     try:
         print("Building driver")
         # Run cmake/make to build the shared libary
-        subprocess.run(['cmake', os.path.pardir], check=True)
+        subprocess.run(['cmake', os.path.pardir, f'-DOPENMC_USE_MPI={mpi_arg}'], check=True)
         subprocess.run(['make'], check=True)
         os.chdir(os.path.pardir)
 

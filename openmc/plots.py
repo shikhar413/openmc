@@ -1,7 +1,6 @@
 from collections.abc import Iterable, Mapping
 from numbers import Real, Integral
 from pathlib import Path
-import subprocess
 from xml.etree import ElementTree as ET
 
 import numpy as np
@@ -165,6 +164,18 @@ _SVG_COLORS = {
 }
 
 
+def _get_plot_image(plot, cwd):
+    from IPython.display import Image
+
+    # Make sure .png file was created
+    stem = plot.filename if plot.filename is not None else f'plot_{plot.id}'
+    png_file = Path(cwd) / f'{stem}.png'
+    if not png_file.exists():
+        raise FileNotFoundError(f"Could not find .png image for plot {plot.id}")
+
+    return Image(str(png_file))
+
+
 class Plot(IDManagerMixin):
     """Definition of a finite region of space to be plotted.
 
@@ -207,7 +218,7 @@ class Plot(IDManagerMixin):
     mask_background : Iterable of int or str
         Color to apply to all cells/materials not listed in mask_components
     show_overlaps : bool
-        Inidicate whether or not overlapping regions are shown
+        Indicate whether or not overlapping regions are shown
     overlap_color : Iterable of int or str
         Color to apply to overlapping regions
     colors : dict
@@ -501,6 +512,7 @@ class Plot(IDManagerMixin):
         plot.origin = np.insert((lower_left + upper_right)/2,
                                 slice_index, slice_coord)
         plot.width = upper_right - lower_left
+        plot.basis = basis
         return plot
 
     def colorize(self, geometry, seed=1):
@@ -552,9 +564,9 @@ class Plot(IDManagerMixin):
         seed : int
             The random number seed used to generate the color scheme
         alpha : float
-            The value between 0 and 1 to apply in alpha compisiting
+            The value between 0 and 1 to apply in alpha compositing
         background : 3-tuple of int or str
-            The background color to apply in alpha compisiting
+            The background color to apply in alpha compositing
 
         """
 
@@ -671,15 +683,93 @@ class Plot(IDManagerMixin):
 
         return element
 
-    def to_ipython_image(self, openmc_exec='openmc', cwd='.',
-                         convert_exec='convert'):
+    @classmethod
+    def from_xml_element(cls, elem):
+        """Generate plot object from an XML element
+
+        Parameters
+        ----------
+        elem : xml.etree.ElementTree.Element
+            XML element
+
+        Returns
+        -------
+        openmc.Plot
+            Plot object
+
+        """
+        plot_id = int(elem.get("id"))
+        plot = cls(plot_id)
+        if "filename" in elem.keys():
+            plot.filename = elem.get("filename")
+        plot.color_by = elem.get("color_by")
+        plot.type = elem.get("type")
+        plot.basis = elem.get("basis")
+
+        # Helper function to get a tuple of values
+        def get_tuple(elem, name, dtype=int):
+            subelem = elem.find(name)
+            if subelem is not None:
+                return tuple([dtype(x) for x in subelem.text.split()])
+
+        plot.origin = get_tuple(elem, "origin", float)
+        plot.width = get_tuple(elem, "width", float)
+        plot.pixels = get_tuple(elem, "pixels")
+        plot._background = get_tuple(elem, "background")
+
+        # Set plot colors
+        colors = {}
+        for color_elem in elem.findall("color"):
+            uid = color_elem.get("id")
+            colors[uid] = tuple([int(x) for x in color_elem.get("rgb").split()])
+        # TODO: set colors (needs geometry information)
+
+        # Set masking information
+        mask_elem = elem.find("mask")
+        if mask_elem is not None:
+            mask_components = [int(x) for x in mask_elem.get("components").split()]
+            # TODO: set mask components (needs geometry information)
+            background = mask_elem.get("background")
+            if background is not None:
+                plot.mask_background = tuple([int(x) for x in background.split()])
+
+        # show overlaps
+        overlap_elem = elem.find("show_overlaps")
+        if overlap_elem is not None:
+            plot.show_overlaps = (overlap_elem.text in ('true', '1'))
+        overlap_color = get_tuple(elem, "overlap_color")
+        if overlap_color is not None:
+            plot.overlap_color = overlap_color
+
+        # Set universe level
+        level = elem.find("level")
+        if level is not None:
+            plot.level = int(level.text)
+
+        # Set meshlines
+        mesh_elem = elem.find("meshlines")
+        if mesh_elem is not None:
+            meshlines = {'type': mesh_elem.get('meshtype')}
+            if 'id' in mesh_elem.keys():
+                meshlines['id'] = int(mesh_elem.get('id'))
+            if 'linewidth' in mesh_elem.keys():
+                meshlines['linewidth'] = int(mesh_elem.get('linewidth'))
+            if 'color' in mesh_elem.keys():
+                meshlines['color'] = tuple(
+                    [int(x) for x in mesh_elem.get('color').split()]
+                )
+            plot.meshlines = meshlines
+
+        return plot
+
+    def to_ipython_image(self, openmc_exec='openmc', cwd='.'):
         """Render plot as an image
 
-        This method runs OpenMC in plotting mode to produce a bitmap image which
-        is then converted to a .png file and loaded in as an
-        :class:`IPython.display.Image` object. As such, it requires that your
-        model geometry, materials, and settings have already been exported to
-        XML.
+        This method runs OpenMC in plotting mode to produce a .png file.
+
+        .. versionchanged:: 0.13.0
+            The *convert_exec* argument was removed since OpenMC now produces
+            .png images directly.
 
         Parameters
         ----------
@@ -687,8 +777,6 @@ class Plot(IDManagerMixin):
             Path to OpenMC executable
         cwd : str, optional
             Path to working directory to run in
-        convert_exec : str, optional
-            Command that can convert PPM files into PNG files
 
         Returns
         -------
@@ -696,23 +784,14 @@ class Plot(IDManagerMixin):
             Image generated
 
         """
-        from IPython.display import Image
-
         # Create plots.xml
-        Plots([self]).export_to_xml()
+        Plots([self]).export_to_xml(cwd)
 
         # Run OpenMC in geometry plotting mode
         openmc.plot_geometry(False, openmc_exec, cwd)
 
-        # Convert to .png
-        if self.filename is not None:
-            ppm_file = f'{self.filename}.ppm'
-        else:
-            ppm_file = f'plot_{self.id}.ppm'
-        png_file = ppm_file.replace('.ppm', '.png')
-        subprocess.check_call([convert_exec, ppm_file, png_file])
-
-        return Image(png_file)
+        # Return produced image
+        return _get_plot_image(self, cwd)
 
 
 class Plots(cv.CheckedList):
@@ -803,9 +882,9 @@ class Plots(cv.CheckedList):
         seed : int
             The random number seed used to generate the color scheme
         alpha : float
-            The value between 0 and 1 to apply in alpha compisiting
+            The value between 0 and 1 to apply in alpha compositing
         background : 3-tuple of int or str
-            The background color to apply in alpha compisiting
+            The background color to apply in alpha compositing
 
         """
 
@@ -847,3 +926,27 @@ class Plots(cv.CheckedList):
         reorder_attributes(self._plots_file)  # TODO: Remove when support is Python 3.8+
         tree = ET.ElementTree(self._plots_file)
         tree.write(str(p), xml_declaration=True, encoding='utf-8')
+
+    @classmethod
+    def from_xml(cls, path='plots.xml'):
+        """Generate plots collection from XML file
+
+        Parameters
+        ----------
+        path : str, optional
+            Path to plots XML file
+
+        Returns
+        -------
+        openmc.Plots
+            Plots collection
+
+        """
+        tree = ET.parse(path)
+        root = tree.getroot()
+
+        # Generate each plot
+        plots = cls()
+        for elem in root.findall('plot'):
+            plots.append(Plot.from_xml_element(elem))
+        return plots

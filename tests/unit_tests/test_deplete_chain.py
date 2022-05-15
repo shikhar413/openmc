@@ -7,7 +7,8 @@ import os
 from pathlib import Path
 
 import numpy as np
-from openmc.deplete import comm, Chain, reaction_rates, nuclide, cram, pool
+from openmc.mpi import comm
+from openmc.deplete import Chain, reaction_rates, nuclide, cram, pool
 import pytest
 
 from tests import cdtemp
@@ -288,7 +289,7 @@ def test_get_set_chain_br(simple_chain):
 
 
 def test_capture_branch_infer_ground():
-    """Ensure the ground state is infered if not given"""
+    """Ensure the ground state is inferred if not given"""
     # Make up a metastable capture transition:
     infer_br = {"Xe135": {"Xe136_m1": 0.5}}
     set_br = {"Xe135": {"Xe136": 0.5, "Xe136_m1": 0.5}}

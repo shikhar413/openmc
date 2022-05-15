@@ -47,9 +47,9 @@ vector<unique_ptr<Source>> external_sources;
 //==============================================================================
 
 IndependentSource::IndependentSource(
-  UPtrSpace space, UPtrAngle angle, UPtrDist energy)
-  : space_ {std::move(space)}, angle_ {std::move(angle)}, energy_ {
-                                                            std::move(energy)}
+  UPtrSpace space, UPtrAngle angle, UPtrDist energy, UPtrDist time)
+  : space_ {std::move(space)}, angle_ {std::move(angle)},
+    energy_ {std::move(energy)}, time_ {std::move(time)}
 {}
 
 IndependentSource::IndependentSource(pugi::xml_node node)
@@ -140,15 +140,23 @@ IndependentSource::IndependentSource(pugi::xml_node node)
       // Default to a Watt spectrum with parameters 0.988 MeV and 2.249 MeV^-1
       energy_ = UPtrDist {new Watt(0.988e6, 2.249e-6)};
     }
+
+    // Determine external source time distribution
+    if (check_for_node(node, "time")) {
+      pugi::xml_node node_dist = node.child("time");
+      time_ = distribution_from_xml(node_dist);
+    } else {
+      // Default to a Constant time T=0
+      double T[] {0.0};
+      double p[] {1.0};
+      time_ = UPtrDist {new Discrete {T, p, 1}};
+    }
   }
 }
 
 SourceSite IndependentSource::sample(uint64_t* seed) const
 {
   SourceSite site;
-
-  // Set weight to one by default
-  site.wgt = 1.0;
 
   // Repeat sampling source location until a good site has been found
   bool found = false;
@@ -227,10 +235,8 @@ SourceSite IndependentSource::sample(uint64_t* seed) const
       break;
   }
 
-  // Set delayed group
-  site.delayed_group = 0;
-  // Set surface ID
-  site.surf_id = 0;
+  // Sample particle creation time
+  site.time = time_->sample(seed);
 
   return site;
 }

@@ -26,7 +26,7 @@ Each ``<surface>`` element can have the following attributes or sub-elements:
   :type:
     The type of the surfaces. This can be "x-plane", "y-plane", "z-plane",
     "plane", "x-cylinder", "y-cylinder", "z-cylinder", "sphere", "x-cone",
-    "y-cone", "z-cone", or "quadric".
+    "y-cone", "z-cone", "quadric", "x-torus", "y-torus", or "z-torus".
 
     *Default*: None
 
@@ -48,7 +48,7 @@ Each ``<surface>`` element can have the following attributes or sub-elements:
 
   :periodic_surface_id:
      If a periodic boundary condition is applied, this attribute identifies the
-     ``id`` of the corresponding periodic sufrace.
+     ``id`` of the corresponding periodic surface.
 
 The following quadratic surfaces can be modeled:
 
@@ -406,3 +406,14 @@ Each ``<dagmc_universe>`` element can have the following attributes or sub-eleme
     A required string indicating the file to be loaded representing the DAGMC universe.
 
     *Default*: None
+
+
+  .. note:: A geometry.xml file containing only a DAGMC model for a file named `dagmc.h5m` (no CSG)
+            looks as follows
+
+            .. code-block:: xml
+
+              <?xml version='1.0' encoding='utf-8'?>
+              <geometry>
+                <dagmc_universe filename="dagmc.h5m" id="1" />
+              </geometry>

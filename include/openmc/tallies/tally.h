@@ -10,7 +10,7 @@
 #include "pugixml.hpp"
 #include "xtensor/xfixed.hpp"
 #include "xtensor/xtensor.hpp"
-#include <gsl/gsl>
+#include <gsl/gsl-lite.hpp>
 
 #include <string>
 #include <unordered_map>
@@ -103,9 +103,6 @@ public:
 
   //! Index of each nuclide to be tallied.  -1 indicates total material.
   vector<int> nuclides_ {-1};
-
-  //! True if this tally has a bin for every nuclide in the problem
-  bool all_nuclides_ {false};
 
   //! Results for each bin -- the first dimension of the array is for the
   //! combination of filters (e.g. specific cell, specific energy group, etc.)

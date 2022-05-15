@@ -19,10 +19,9 @@ from warnings import warn
 from numpy import nonzero, empty, asarray
 from uncertainties import ufloat
 
-from openmc.data import DataLibrary
 from openmc.lib import MaterialFilter, Tally
 from openmc.checkvalue import check_type, check_greater_than
-from . import comm
+from openmc.mpi import comm
 from .results import Results
 from .chain import Chain
 from .results_list import ResultsList
@@ -70,10 +69,8 @@ class TransportOperator(ABC):
 
     Parameters
     ----------
-    chain_file : str, optional
-        Path to the depletion chain XML file.  Defaults to the file
-        listed under ``depletion_chain`` in
-        :envvar:`OPENMC_CROSS_SECTIONS` environment variable.
+    chain_file : str
+        Path to the depletion chain XML file
     fission_q : dict, optional
         Dictionary of nuclides and their fission Q values [eV]. If not given,
         values will be pulled from the ``chain_file``.
@@ -95,30 +92,12 @@ class TransportOperator(ABC):
         Results from a previous depletion calculation. ``None`` if no
         results are to be used.
     """
-    def __init__(self, chain_file=None, fission_q=None, dilute_initial=1.0e3,
+    def __init__(self, chain_file, fission_q=None, dilute_initial=1.0e3,
                  prev_results=None):
         self.dilute_initial = dilute_initial
         self.output_dir = '.'
 
         # Read depletion chain
-        if chain_file is None:
-            chain_file = os.environ.get("OPENMC_DEPLETE_CHAIN", None)
-            if chain_file is None:
-                data = DataLibrary.from_xml()
-                # search for depletion_chain path from end of list
-                for lib in reversed(data.libraries):
-                    if lib['type'] == 'depletion_chain':
-                        break
-                else:
-                    raise IOError(
-                        "No chain specified, either manually or "
-                        "under depletion_chain in environment variable "
-                        "OPENMC_CROSS_SECTIONS.")
-                chain_file = lib['path']
-            else:
-                warn("Use of OPENMC_DEPLETE_CHAIN is deprecated in favor "
-                     "of adding depletion_chain to OPENMC_CROSS_SECTIONS",
-                     FutureWarning)
         self.chain = Chain.from_xml(chain_file, fission_q)
         if prev_results is None:
             self.prev_res = None
@@ -872,7 +851,7 @@ class Integrator(ABC):
         return (self.operator.prev_res[-1].time[-1],
                 len(self.operator.prev_res) - 1)
 
-    def integrate(self, final_step=True):
+    def integrate(self, final_step=True, output=True):
         """Perform the entire depletion process across all steps
 
         Parameters
@@ -882,12 +861,18 @@ class Integrator(ABC):
             of the last timestep.
 
             .. versionadded:: 0.12.1
+        output : bool, optional
+            Indicate whether to display information about progress
 
+            .. versionadded:: 0.13.1
         """
         with self.operator as conc:
             t, self._i_res = self._get_start_data()
 
             for i, (dt, source_rate) in enumerate(self):
+                if output:
+                    print(f"[openmc.deplete] t={t} s, dt={dt} s, source={source_rate}")
+
                 # Solve transport equation (or obtain result from restart)
                 if i > 0 or self.operator.prev_res is None:
                     conc, res = self._get_bos_data_from_operator(i, source_rate, conc)
@@ -913,6 +898,8 @@ class Integrator(ABC):
             # source rate is passed to the transport operator (which knows to
             # just return zero reaction rates without actually doing a transport
             # solve)
+            if output and final_step:
+                print(f"[openmc.deplete] t={t} (final operator evaluation)")
             res_list = [self.operator(conc, source_rate if final_step else 0.0)]
             Results.save(self.operator, [conc], res_list, [t, t],
                          source_rate, self._i_res + len(self), proc_time)
@@ -1025,12 +1012,23 @@ class SIIntegrator(Integrator):
             self.operator.settings.particles //= self.n_steps
         return inherited
 
-    def integrate(self):
-        """Perform the entire depletion process across all steps"""
+    def integrate(self, output=True):
+        """Perform the entire depletion process across all steps
+
+        Parameters
+        ----------
+        output : bool, optional
+            Indicate whether to display information about progress
+
+            .. versionadded:: 0.13.1
+        """
         with self.operator as conc:
             t, self._i_res = self._get_start_data()
 
             for i, (dt, p) in enumerate(self):
+                if output:
+                    print(f"[openmc.deplete] t={t} s, dt={dt} s, source={p}")
+
                 if i == 0:
                     if self.operator.prev_res is None:
                         conc, res = self._get_bos_data_from_operator(i, p, conc)

@@ -22,6 +22,8 @@ class Source:
         Angular distribution of source sites
     energy : openmc.stats.Univariate
         Energy distribution of source sites
+    time : openmc.stats.Univariate
+        time distribution of source sites
     filename : str
         Source file from which sites should be sampled
     library : str
@@ -43,6 +45,8 @@ class Source:
         Angular distribution of source sites
     energy : openmc.stats.Univariate or None
         Energy distribution of source sites
+    time : openmc.stats.Univariate or None
+        time distribution of source sites
     file : str or None
         Source file from which sites should be sampled
     library : str or None
@@ -56,11 +60,12 @@ class Source:
 
     """
 
-    def __init__(self, space=None, angle=None, energy=None, filename=None,
+    def __init__(self, space=None, angle=None, energy=None, time=None, filename=None,
                  library=None, parameters=None, strength=1.0, particle='neutron'):
         self._space = None
         self._angle = None
         self._energy = None
+        self._time = None
         self._file = None
         self._library = None
         self._parameters = None
@@ -71,6 +76,8 @@ class Source:
             self.angle = angle
         if energy is not None:
             self.energy = energy
+        if time is not None:
+            self.time = time
         if filename is not None:
             self.file = filename
         if library is not None:
@@ -103,6 +110,10 @@ class Source:
     @property
     def energy(self):
         return self._energy
+
+    @property
+    def time(self):
+        return self._time
 
     @property
     def strength(self):
@@ -142,6 +153,11 @@ class Source:
         cv.check_type('energy distribution', energy, Univariate)
         self._energy = energy
 
+    @time.setter
+    def time(self, time):
+        cv.check_type('time distribution', time, Univariate)
+        self._time = time
+
     @strength.setter
     def strength(self, strength):
         cv.check_type('source strength', strength, Real)
@@ -178,6 +194,8 @@ class Source:
             element.append(self.angle.to_xml_element())
         if self.energy is not None:
             element.append(self.energy.to_xml_element('energy'))
+        if self.time is not None:
+            element.append(self.time.to_xml_element('time'))
         return element
 
     @classmethod
@@ -229,6 +247,10 @@ class Source:
         if energy is not None:
             source.energy = Univariate.from_xml_element(energy)
 
+        time = elem.find('time')
+        if time is not None:
+            source.time = Univariate.from_xml_element(time)
+
         return source
 
 
@@ -253,6 +275,8 @@ class SourceParticle:
         Directional cosines
     E : float
         Energy of particle in [eV]
+    time : float
+        Time of particle in [s]
     wgt : float
         Weight of the particle
     delayed_group : int
@@ -263,11 +287,12 @@ class SourceParticle:
         Type of the particle
 
     """
-    def __init__(self, r=(0., 0., 0.), u=(0., 0., 1.), E=1.0e6, wgt=1.0,
+    def __init__(self, r=(0., 0., 0.), u=(0., 0., 1.), E=1.0e6, time=0.0, wgt=1.0,
                  delayed_group=0, surf_id=0, particle=ParticleType.NEUTRON):
         self.r = tuple(r)
         self.u = tuple(u)
         self.E = float(E)
+        self.time = float(time)
         self.wgt = float(wgt)
         self.delayed_group = delayed_group
         self.surf_id = surf_id
@@ -282,7 +307,7 @@ class SourceParticle:
             Source particle attributes
 
         """
-        return (self.r, self.u, self.E, self.wgt,
+        return (self.r, self.u, self.E, self.time, self.wgt,
                 self.delayed_group, self.surf_id, self.particle.value)
 
 
@@ -309,6 +334,7 @@ def write_source_file(source_particles, filename, **kwargs):
         ('r', pos_dtype),
         ('u', pos_dtype),
         ('E', '<f8'),
+        ('time', '<f8'),
         ('wgt', '<f8'),
         ('delayed_group', '<i4'),
         ('surf_id', '<i4'),

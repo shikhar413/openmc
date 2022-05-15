@@ -15,6 +15,15 @@
 namespace openmc {
 
 //==============================================================================
+// Constants
+//==============================================================================
+
+// Maximum number of external source spatial resamples to encounter before an
+// error is thrown.
+constexpr int EXTSRC_REJECT_THRESHOLD {10000};
+constexpr double EXTSRC_REJECT_FRACTION {0.05};
+
+//==============================================================================
 // Global variables
 //==============================================================================
 
@@ -42,13 +51,13 @@ public:
 };
 
 //==============================================================================
-//! Source composed of independent spatial, angle, and energy distributions
+//! Source composed of independent spatial, angle, energy, and time distributions
 //==============================================================================
 
 class IndependentSource : public Source {
 public:
   // Constructors
-  IndependentSource(UPtrSpace space, UPtrAngle angle, UPtrDist energy);
+  IndependentSource(UPtrSpace space, UPtrAngle angle, UPtrDist energy, UPtrDist time);
   explicit IndependentSource(pugi::xml_node node);
 
   //! Sample from the external source distribution
@@ -64,6 +73,7 @@ public:
   SpatialDistribution* space() const { return space_.get(); }
   UnitSphereDistribution* angle() const { return angle_.get(); }
   Distribution* energy() const { return energy_.get(); }
+  Distribution* time() const { return time_.get(); }
 
 private:
   ParticleType particle_ {ParticleType::neutron}; //!< Type of particle emitted
@@ -71,6 +81,7 @@ private:
   UPtrSpace space_;                               //!< Spatial distribution
   UPtrAngle angle_;                               //!< Angular distribution
   UPtrDist energy_;                               //!< Energy distribution
+  UPtrDist time_;                                 //!< Time distribution
 };
 
 //==============================================================================

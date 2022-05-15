@@ -123,6 +123,10 @@ class Nuclide:
         # Neutron fission yields, if present
         self._yield_data = None
 
+    def __repr__(self):
+        n_modes, n_rx = self.n_decay_modes, self.n_reaction_paths
+        return f"<Nuclide: {self.name} ({n_modes} modes, {n_rx} reactions)>"
+
     @property
     def n_decay_modes(self):
         return len(self.decay_modes)
@@ -294,7 +298,8 @@ class Nuclide:
             for mode_type, daughter, br in self.decay_modes:
                 mode_elem = ET.SubElement(elem, 'decay')
                 mode_elem.set('type', mode_type)
-                mode_elem.set('target', daughter or "Nothing")
+                if daughter:
+                    mode_elem.set('target', daughter)
                 mode_elem.set('branching_ratio', str(br))
 
         elem.set('reactions', str(len(self.reactions)))

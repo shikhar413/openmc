@@ -10,7 +10,7 @@
 #include <string>
 
 #include <fmt/core.h>
-#include <gsl/gsl>
+#include <gsl/gsl-lite.hpp>
 
 #include "openmc/capi.h"
 #include "openmc/constants.h"
@@ -34,8 +34,6 @@ namespace model {
 std::unordered_map<int32_t, int32_t> cell_map;
 vector<unique_ptr<Cell>> cells;
 
-std::unordered_map<int32_t, int32_t> universe_map;
-vector<unique_ptr<Universe>> universes;
 } // namespace model
 
 //==============================================================================
@@ -187,66 +185,6 @@ vector<int32_t> generate_rpn(int32_t cell_id, vector<int32_t> infix)
 }
 
 //==============================================================================
-// Universe implementation
-//==============================================================================
-
-void Universe::to_hdf5(hid_t universes_group) const
-{
-  // Create a group for this universe.
-  auto group = create_group(universes_group, fmt::format("universe {}", id_));
-
-  // Write the geometry representation type.
-  write_string(group, "geom_type", "csg", false);
-
-  // Write the contained cells.
-  if (cells_.size() > 0) {
-    vector<int32_t> cell_ids;
-    for (auto i_cell : cells_)
-      cell_ids.push_back(model::cells[i_cell]->id_);
-    write_dataset(group, "cells", cell_ids);
-  }
-
-  close_group(group);
-}
-
-bool Universe::find_cell(Particle& p) const
-{
-  const auto& cells {
-    !partitioner_ ? cells_ : partitioner_->get_cells(p.r_local(), p.u_local())};
-
-  for (auto it = cells.begin(); it != cells.end(); it++) {
-    int32_t i_cell = *it;
-    int32_t i_univ = p.coord(p.n_coord() - 1).universe;
-    if (model::cells[i_cell]->universe_ != i_univ)
-      continue;
-
-    // Check if this cell contains the particle;
-    Position r {p.r_local()};
-    Direction u {p.u_local()};
-    auto surf = p.surface();
-    if (model::cells[i_cell]->contains(r, u, surf)) {
-      p.coord(p.n_coord() - 1).cell = i_cell;
-      return true;
-    }
-  }
-  return false;
-}
-
-BoundingBox Universe::bounding_box() const
-{
-  BoundingBox bbox = {INFTY, -INFTY, INFTY, -INFTY, INFTY, -INFTY};
-  if (cells_.size() == 0) {
-    return {};
-  } else {
-    for (const auto& cell : cells_) {
-      auto& c = model::cells[cell];
-      bbox |= c->bounding_box();
-    }
-  }
-  return bbox;
-}
-
-//==============================================================================
 // Cell implementation
 //==============================================================================
 
@@ -340,7 +278,7 @@ void Cell::set_temperature(double T, int32_t instance, bool set_contained)
           id_)};
     }
 
-    auto contained_cells = this->get_contained_cells();
+    auto contained_cells = this->get_contained_cells(instance);
     for (const auto& entry : contained_cells) {
       auto& cell = model::cells[entry.first];
       Expects(cell->type_ == Fill::MATERIAL);
@@ -877,151 +815,6 @@ bool CSGCell::contains_complex(
 }
 
 //==============================================================================
-// UniversePartitioner implementation
-//==============================================================================
-
-UniversePartitioner::UniversePartitioner(const Universe& univ)
-{
-  // Define an ordered set of surface indices that point to z-planes.  Use a
-  // functor to to order the set by the z0_ values of the corresponding planes.
-  struct compare_surfs {
-    bool operator()(const int32_t& i_surf, const int32_t& j_surf) const
-    {
-      const auto* surf = model::surfaces[i_surf].get();
-      const auto* zplane = dynamic_cast<const SurfaceZPlane*>(surf);
-      double zi = zplane->z0_;
-      surf = model::surfaces[j_surf].get();
-      zplane = dynamic_cast<const SurfaceZPlane*>(surf);
-      double zj = zplane->z0_;
-      return zi < zj;
-    }
-  };
-  std::set<int32_t, compare_surfs> surf_set;
-
-  // Find all of the z-planes in this universe.  A set is used here for the
-  // O(log(n)) insertions that will ensure entries are not repeated.
-  for (auto i_cell : univ.cells_) {
-    for (auto token : model::cells[i_cell]->rpn_) {
-      if (token < OP_UNION) {
-        auto i_surf = std::abs(token) - 1;
-        const auto* surf = model::surfaces[i_surf].get();
-        if (const auto* zplane = dynamic_cast<const SurfaceZPlane*>(surf))
-          surf_set.insert(i_surf);
-      }
-    }
-  }
-
-  // Populate the surfs_ vector from the ordered set.
-  surfs_.insert(surfs_.begin(), surf_set.begin(), surf_set.end());
-
-  // Populate the partition lists.
-  partitions_.resize(surfs_.size() + 1);
-  for (auto i_cell : univ.cells_) {
-    // It is difficult to determine the bounds of a complex cell, so add complex
-    // cells to all partitions.
-    if (!model::cells[i_cell]->simple_) {
-      for (auto& p : partitions_)
-        p.push_back(i_cell);
-      continue;
-    }
-
-    // Find the tokens for bounding z-planes.
-    int32_t lower_token = 0, upper_token = 0;
-    double min_z, max_z;
-    for (auto token : model::cells[i_cell]->rpn_) {
-      if (token < OP_UNION) {
-        const auto* surf = model::surfaces[std::abs(token) - 1].get();
-        if (const auto* zplane = dynamic_cast<const SurfaceZPlane*>(surf)) {
-          if (lower_token == 0 || zplane->z0_ < min_z) {
-            lower_token = token;
-            min_z = zplane->z0_;
-          }
-          if (upper_token == 0 || zplane->z0_ > max_z) {
-            upper_token = token;
-            max_z = zplane->z0_;
-          }
-        }
-      }
-    }
-
-    // If there are no bounding z-planes, add this cell to all partitions.
-    if (lower_token == 0) {
-      for (auto& p : partitions_)
-        p.push_back(i_cell);
-      continue;
-    }
-
-    // Find the first partition this cell lies in.  If the lower_token indicates
-    // a negative halfspace, then the cell is unbounded in the lower direction
-    // and it lies in the first partition onward.  Otherwise, it is bounded by
-    // the positive halfspace given by the lower_token.
-    int first_partition = 0;
-    if (lower_token > 0) {
-      for (int i = 0; i < surfs_.size(); ++i) {
-        if (lower_token == surfs_[i] + 1) {
-          first_partition = i + 1;
-          break;
-        }
-      }
-    }
-
-    // Find the last partition this cell lies in.  The logic is analogous to the
-    // logic for first_partition.
-    int last_partition = surfs_.size();
-    if (upper_token < 0) {
-      for (int i = first_partition; i < surfs_.size(); ++i) {
-        if (upper_token == -(surfs_[i] + 1)) {
-          last_partition = i;
-          break;
-        }
-      }
-    }
-
-    // Add the cell to all relevant partitions.
-    for (int i = first_partition; i <= last_partition; ++i) {
-      partitions_[i].push_back(i_cell);
-    }
-  }
-}
-
-const vector<int32_t>& UniversePartitioner::get_cells(
-  Position r, Direction u) const
-{
-  // Perform a binary search for the partition containing the given coordinates.
-  int left = 0;
-  int middle = (surfs_.size() - 1) / 2;
-  int right = surfs_.size() - 1;
-  while (true) {
-    // Check the sense of the coordinates for the current surface.
-    const auto& surf = *model::surfaces[surfs_[middle]];
-    if (surf.sense(r, u)) {
-      // The coordinates lie in the positive halfspace.  Recurse if there are
-      // more surfaces to check.  Otherwise, return the cells on the positive
-      // side of this surface.
-      int right_leaf = right - (right - middle) / 2;
-      if (right_leaf != middle) {
-        left = middle + 1;
-        middle = right_leaf;
-      } else {
-        return partitions_[middle + 1];
-      }
-
-    } else {
-      // The coordinates lie in the negative halfspace.  Recurse if there are
-      // more surfaces to check.  Otherwise, return the cells on the negative
-      // side of this surface.
-      int left_leaf = left + (middle - left) / 2;
-      if (left_leaf != middle) {
-        right = middle - 1;
-        middle = left_leaf;
-      } else {
-        return partitions_[middle];
-      }
-    }
-  }
-}
-
-//==============================================================================
 // Non-method functions
 //==============================================================================
 
@@ -1220,10 +1013,256 @@ extern "C" int openmc_cell_set_name(int32_t index, const char* name)
   return 0;
 }
 
-std::unordered_map<int32_t, vector<int32_t>> Cell::get_contained_cells() const
+//==============================================================================
+//! Define a containing (parent) cell
+//==============================================================================
+
+//! Used to locate a universe fill in the geometry
+struct ParentCell {
+  bool operator==(const ParentCell& other) const
+  {
+    return cell_index == other.cell_index &&
+           lattice_index == other.lattice_index;
+  }
+
+  bool operator<(const ParentCell& other) const
+  {
+    return cell_index < other.cell_index ||
+           (cell_index == other.cell_index &&
+             lattice_index < other.lattice_index);
+  }
+
+  gsl::index cell_index;
+  gsl::index lattice_index;
+};
+
+//! Structure used to insert ParentCell into hashed STL data structures
+struct ParentCellHash {
+  std::size_t operator()(const ParentCell& p) const
+  {
+    return 4096 * p.cell_index + p.lattice_index;
+  }
+};
+
+//! Used to manage a traversal stack when locating parent cells of a cell
+//! instance in the model
+struct ParentCellStack {
+
+  //! push method that adds to the parent_cells visited cells for this search
+  //! universe
+  void push(int32_t search_universe, const ParentCell& pc)
+  {
+    parent_cells_.push_back(pc);
+    // add parent cell to the set of cells we've visited for this search
+    // universe
+    visited_cells_[search_universe].insert(pc);
+  }
+
+  //! removes the last parent_cell and clears the visited cells for the popped
+  //! cell's universe
+  void pop()
+  {
+    visited_cells_[this->current_univ()].clear();
+    parent_cells_.pop_back();
+  }
+
+  //! checks whether or not the parent cell has been visited already for this
+  //! search universe
+  bool visited(int32_t search_universe, const ParentCell& parent_cell)
+  {
+    return visited_cells_[search_universe].count(parent_cell) != 0;
+  }
+
+  //! return the next universe to search for a parent cell
+  int32_t current_univ() const
+  {
+    return model::cells[parent_cells_.back().cell_index]->universe_;
+  }
+
+  //! indicates whether nor not parent cells are present on the stack
+  bool empty() const { return parent_cells_.empty(); }
+
+  //! compute an instance for the provided distribcell index
+  int32_t compute_instance(int32_t distribcell_index) const
+  {
+    int32_t instance = 0;
+    for (const auto& parent_cell : this->parent_cells_) {
+      auto& cell = model::cells[parent_cell.cell_index];
+      if (cell->type_ == Fill::UNIVERSE) {
+        instance += cell->offset_[distribcell_index];
+      } else if (cell->type_ == Fill::LATTICE) {
+        auto& lattice = model::lattices[cell->fill_];
+        instance +=
+          lattice->offset(distribcell_index, parent_cell.lattice_index);
+      }
+    }
+    return instance;
+  }
+
+  // Accessors
+  vector<ParentCell>& parent_cells() { return parent_cells_; }
+  const vector<ParentCell>& parent_cells() const { return parent_cells_; }
+
+  // Data Members
+  vector<ParentCell> parent_cells_;
+  std::unordered_map<int32_t, std::unordered_set<ParentCell, ParentCellHash>>
+    visited_cells_;
+};
+
+vector<ParentCell> Cell::find_parent_cells(
+  int32_t instance, const Position& r) const {
+
+  // create a temporary particle
+  Particle dummy_particle {};
+  dummy_particle.r() = r;
+  dummy_particle.u() = {0., 0., 1.};
+
+  return find_parent_cells(instance, dummy_particle);
+}
+
+vector<ParentCell> Cell::find_parent_cells(
+  int32_t instance, Particle& p) const {
+  // look up the particle's location
+  exhaustive_find_cell(p);
+  const auto& coords = p.coord();
+
+  // build a parent cell stack from the particle coordinates
+  ParentCellStack stack;
+  bool cell_found = false;
+  for (auto it = coords.begin(); it != coords.end(); it++) {
+    const auto& coord = *it;
+    const auto& cell = model::cells[coord.cell];
+    // if the cell at this level matches the current cell, stop adding to the stack
+    if (coord.cell == model::cell_map[this->id_]) {
+      cell_found = true;
+      break;
+    }
+
+    // if filled with a lattice, get the lattice index from the next
+    // level in the coordinates to push to the stack
+    int lattice_idx = C_NONE;
+    if (cell->type_ == Fill::LATTICE) {
+      const auto& next_coord = *(it + 1);
+      lattice_idx = model::lattices[next_coord.lattice]->get_flat_index(next_coord.lattice_i);
+    }
+    stack.push(coord.universe, {coord.cell, lattice_idx});
+  }
+
+  // if this loop finished because the cell was found and
+  // the instance matches the one requested in the call
+  // we have the correct path and can return the stack
+  if (cell_found && stack.compute_instance(this->distribcell_index_) == instance) {
+    return stack.parent_cells();
+  }
+
+  // fall back on an exhaustive search for the cell's parents
+  return exhaustive_find_parent_cells(instance);
+}
+
+
+vector<ParentCell> Cell::exhaustive_find_parent_cells(
+  int32_t instance) const
+{
+  ParentCellStack stack;
+  // start with this cell's universe
+  int32_t prev_univ_idx;
+  int32_t univ_idx = this->universe_;
+
+  while (true) {
+    const auto& univ = model::universes[univ_idx];
+    prev_univ_idx = univ_idx;
+
+    // search for a cell that is filled w/ this universe
+    for (const auto& cell : model::cells) {
+      // if this is a material-filled cell, move on
+      if (cell->type_ == Fill::MATERIAL)
+        continue;
+
+      if (cell->type_ == Fill::UNIVERSE) {
+        // if this is in the set of cells previously visited for this universe,
+        // move on
+        if (stack.visited(univ_idx, {model::cell_map[cell->id_], C_NONE}))
+          continue;
+
+        // if this cell contains the universe we're searching for, add it to the
+        // stack
+        if (cell->fill_ == univ_idx) {
+          stack.push(univ_idx, {model::cell_map[cell->id_], C_NONE});
+          univ_idx = cell->universe_;
+        }
+      } else if (cell->type_ == Fill::LATTICE) {
+        // retrieve the lattice and lattice universes
+        const auto& lattice = model::lattices[cell->fill_];
+        const auto& lattice_univs = lattice->universes_;
+
+        // start search for universe
+        auto lat_it = lattice_univs.begin();
+        while (true) {
+          // find the next lattice cell with this universe
+          lat_it = std::find(lat_it, lattice_univs.end(), univ_idx);
+          if (lat_it == lattice_univs.end())
+            break;
+
+          int lattice_idx = lat_it - lattice_univs.begin();
+
+          // move iterator forward one to avoid finding the same entry
+          lat_it++;
+          if (stack.visited(
+                univ_idx, {model::cell_map[cell->id_], lattice_idx}))
+            continue;
+
+          // add this cell and lattice index to the stack and exit loop
+          stack.push(univ_idx, {model::cell_map[cell->id_], lattice_idx});
+          univ_idx = cell->universe_;
+          break;
+        }
+      }
+      // if we've updated the universe, break
+      if (prev_univ_idx != univ_idx)
+        break;
+    } // end cell loop search for universe
+
+    // if we're at the top of the geometry and the instance matches, we're done
+    if (univ_idx == model::root_universe &&
+        stack.compute_instance(this->distribcell_index_) == instance)
+      break;
+
+    // if there is no match on the original cell's universe, report an error
+    if (univ_idx == this->universe_) {
+      fatal_error(
+        fmt::format("Could not find the parent cells for cell {}, instance {}.",
+          this->id_, instance));
+    }
+
+    // if we don't find a suitable update, adjust the stack and continue
+    if (univ_idx == model::root_universe || univ_idx == prev_univ_idx) {
+      stack.pop();
+      univ_idx = stack.empty() ? this->universe_ : stack.current_univ();
+    }
+
+  } // end while
+
+  // reverse the stack so the highest cell comes first
+  std::reverse(stack.parent_cells().begin(), stack.parent_cells().end());
+  return stack.parent_cells();
+}
+
+std::unordered_map<int32_t, vector<int32_t>> Cell::get_contained_cells(
+  int32_t instance, Position* hint) const
 {
   std::unordered_map<int32_t, vector<int32_t>> contained_cells;
+
+  // if this is a material-filled cell it has no contained cells
+  if (this->type_ == Fill::MATERIAL)
+    return contained_cells;
+
+  // find the pathway through the geometry to this cell
   vector<ParentCell> parent_cells;
+
+  // if a positional hint is provided, attempt to do a fast lookup
+  // of the parent cells
+  parent_cells = hint ? find_parent_cells(instance, *hint)
+                      : exhaustive_find_parent_cells(instance);
 
   // if this cell is filled w/ a material, it contains no other cells
   if (type_ != Fill::MATERIAL) {
@@ -1244,7 +1283,7 @@ void Cell::get_contained_cells_inner(
     int instance = 0;
     if (this->distribcell_index_ >= 0) {
       for (auto& parent_cell : parent_cells) {
-        auto& cell = openmc::model::cells[parent_cell.cell_index];
+        auto& cell = model::cells[parent_cell.cell_index];
         if (cell->type_ == Fill::UNIVERSE) {
           instance += cell->offset_[distribcell_index_];
         } else if (cell->type_ == Fill::LATTICE) {

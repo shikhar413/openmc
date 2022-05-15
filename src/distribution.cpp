@@ -7,6 +7,8 @@
 #include <stdexcept> // for runtime_error
 #include <string>    // for string, stod
 
+#include <gsl/gsl-lite.hpp>
+
 #include "openmc/error.h"
 #include "openmc/math_functions.h"
 #include "openmc/random_dist.h"
@@ -70,8 +72,8 @@ Uniform::Uniform(pugi::xml_node node)
 {
   auto params = get_node_array<double>(node, "parameters");
   if (params.size() != 2) {
-    openmc::fatal_error("Uniform distribution must have two "
-                        "parameters specified.");
+    fatal_error("Uniform distribution must have two "
+                "parameters specified.");
   }
 
   a_ = params.at(0);
@@ -81,6 +83,32 @@ Uniform::Uniform(pugi::xml_node node)
 double Uniform::sample(uint64_t* seed) const
 {
   return a_ + prn(seed) * (b_ - a_);
+}
+
+//==============================================================================
+// PowerLaw implementation
+//==============================================================================
+
+PowerLaw::PowerLaw(pugi::xml_node node)
+{
+  auto params = get_node_array<double>(node, "parameters");
+  if (params.size() != 3) {
+    fatal_error("PowerLaw distribution must have three "
+                "parameters specified.");
+  }
+
+  const double a = params.at(0);
+  const double b = params.at(1);
+  const double n = params.at(2);
+
+  offset_ = std::pow(a, n + 1);
+  span_ = std::pow(b, n + 1) - offset_;
+  ninv_ = 1 / (n + 1);
+}
+
+double PowerLaw::sample(uint64_t* seed) const
+{
+  return std::pow(offset_ + prn(seed) * span_, ninv_);
 }
 
 //==============================================================================
@@ -288,6 +316,48 @@ double Equiprobable::sample(uint64_t* seed) const
 }
 
 //==============================================================================
+// Mixture implementation
+//==============================================================================
+
+Mixture::Mixture(pugi::xml_node node)
+{
+  double cumsum = 0.0;
+  for (pugi::xml_node pair : node.children("pair")) {
+    // Check that required data exists
+    if (!pair.attribute("probability")) fatal_error("Mixture pair element does not have probability.");
+    if (!pair.child("dist")) fatal_error("Mixture pair element does not have a distribution.");
+
+    // cummulative sum of probybilities
+    cumsum += std::stod(pair.attribute("probability").value());
+
+    // Save cummulative probybility and distrubution
+    distribution_.push_back(
+      std::make_pair(cumsum, distribution_from_xml(pair.child("dist"))));
+  }
+
+  // Normalize cummulative probabilities to 1
+  for (auto& pair : distribution_) {
+    pair.first /= cumsum;
+  }
+}
+
+double Mixture::sample(uint64_t* seed) const
+{
+  // Sample value of CDF
+  const double p = prn(seed);
+
+  // find matching distribution
+  const auto it = std::lower_bound(distribution_.cbegin(), distribution_.cend(),
+    p, [](const DistPair& pair, double p) { return pair.first < p; });
+
+  // This should not happen. Catch it
+  Ensures(it != distribution_.cend());
+
+  // Sample the chosen distribution
+  return it->second->sample(seed);
+}
+
+//==============================================================================
 // Helper function
 //==============================================================================
 
@@ -303,6 +373,8 @@ UPtrDist distribution_from_xml(pugi::xml_node node)
   UPtrDist dist;
   if (type == "uniform") {
     dist = UPtrDist {new Uniform(node)};
+  } else if (type == "powerlaw") {
+    dist = UPtrDist {new PowerLaw(node)};
   } else if (type == "maxwell") {
     dist = UPtrDist {new Maxwell(node)};
   } else if (type == "watt") {
@@ -315,6 +387,8 @@ UPtrDist distribution_from_xml(pugi::xml_node node)
     dist = UPtrDist {new Discrete(node)};
   } else if (type == "tabular") {
     dist = UPtrDist {new Tabular(node)};
+  } else if (type == "mixture") {
+    dist = UPtrDist {new Mixture(node)};
   } else {
     openmc::fatal_error("Invalid distribution type: " + type);
   }

@@ -24,6 +24,14 @@ public:
   virtual double sample(uint64_t* seed) const = 0;
 };
 
+using UPtrDist = unique_ptr<Distribution>;
+
+//! Return univariate probability distribution specified in XML file
+//! \param[in] node XML node representing distribution
+//! \return Unique pointer to distribution
+UPtrDist distribution_from_xml(pugi::xml_node node);
+
+
 //==============================================================================
 //! A discrete distribution (probability mass function)
 //==============================================================================
@@ -70,6 +78,32 @@ public:
 private:
   double a_; //!< Lower bound of distribution
   double b_; //!< Upper bound of distribution
+};
+
+//==============================================================================
+//! PowerLaw distribution over the interval [a,b] with exponent n : p(x)=c x^n
+//==============================================================================
+
+class PowerLaw : public Distribution {
+public:
+  explicit PowerLaw(pugi::xml_node node);
+  PowerLaw(double a, double b, double n)
+    : offset_ {std::pow(a, n + 1)}, span_ {std::pow(b, n + 1) - offset_},
+      ninv_ {1 / (n + 1)} {};
+
+  //! Sample a value from the distribution
+  //! \param seed Pseudorandom number seed pointer
+  //! \return Sampled value
+  double sample(uint64_t* seed) const;
+
+  double a() const { return std::pow(offset_, ninv_); }
+  double b() const { return std::pow(offset_ + span_, ninv_); }
+  double n() const { return 1 / ninv_ - 1; }
+private:
+  //! Store processed values in object to allow for faster sampling
+  double offset_; //!< a^(n+1)
+  double span_; //!< b^(n+1) - a^(n+1)
+  double ninv_; //!< 1/(n+1)
 };
 
 //==============================================================================
@@ -222,12 +256,27 @@ private:
   vector<double> x_; //! Possible outcomes
 };
 
-using UPtrDist = unique_ptr<Distribution>;
+//==============================================================================
+//! Mixture distribution
+//==============================================================================
 
-//! Return univariate probability distribution specified in XML file
-//! \param[in] node XML node representing distribution
-//! \return Unique pointer to distribution
-UPtrDist distribution_from_xml(pugi::xml_node node);
+class Mixture : public Distribution {
+public:
+  explicit Mixture(pugi::xml_node node);
+
+  //! Sample a value from the distribution
+  //! \param seed Pseudorandom number seed pointer
+  //! \return Sampled value
+  double sample(uint64_t* seed) const;
+
+private:
+  // Storrage for probability + distribution
+  using DistPair = std::pair<double, UPtrDist>;
+
+  vector<DistPair>
+    distribution_; //!< sub-distributions + cummulative probabilities
+};
+
 
 } // namespace openmc
 

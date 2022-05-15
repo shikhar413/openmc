@@ -87,7 +87,7 @@ class Region(ABC):
             operators are union '|', intersection ' ', and complement '~'. For
             example, '(1 -2) | 3 ~(4 -5)'.
         surfaces : dict
-            Dictionary whose keys are suface IDs that appear in the Boolean
+            Dictionary whose keys are surface IDs that appear in the Boolean
             expression and whose values are Surface objects.
 
         """
@@ -104,7 +104,7 @@ class Region(ABC):
         while i < len(expression):
             if expression[i] in '()|~ ':
                 # If special character appears immediately after a non-operator,
-                # create a token with the apporpriate half-space
+                # create a token with the appropriate half-space
                 if i_start >= 0:
                     j = int(expression[i_start:i])
                     if j < 0:
@@ -116,14 +116,20 @@ class Region(ABC):
                     # For everything other than intersection, add the operator
                     # to the list of tokens
                     tokens.append(expression[i])
+
+                    # If two parentheses appear immediately adjacent to one
+                    # another, we need an intersection between them
+                    if expression[i:i+2] == ')(':
+                        tokens.append(' ')
                 else:
                     # Find next non-space character
                     while expression[i+1] == ' ':
                         i += 1
 
-                    # If previous token is a halfspace or right parenthesis and next token
-                    # is not a left parenthese or union operator, that implies that the
-                    # whitespace is to be interpreted as an intersection operator
+                    # If previous token is a halfspace or right parenthesis and
+                    # next token is not a left parenthesis or union operator,
+                    # that implies that the whitespace is to be interpreted as
+                    # an intersection operator
                     if (i_start >= 0 or tokens[-1] == ')') and \
                        expression[i+1] not in ')|':
                         tokens.append(' ')

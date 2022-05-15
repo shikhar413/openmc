@@ -619,16 +619,17 @@ variable and whose sub-elements/attributes are as follows:
 
 :type:
   The type of the distribution. Valid options are "uniform", "discrete",
-  "tabular", "maxwell", and "watt". The "uniform" option produces variates
-  sampled from a uniform distribution over a finite interval. The "discrete"
-  option produces random variates that can assume a finite number of values
-  (i.e., a distribution characterized by a probability mass function). The
-  "tabular" option produces random variates sampled from a tabulated
+  "tabular", "maxwell", "watt", and "mixture". The "uniform" option produces
+  variates sampled from a uniform distribution over a finite interval. The
+  "discrete" option produces random variates that can assume a finite number
+  of values (i.e., a distribution characterized by a probability mass function).
+  The "tabular" option produces random variates sampled from a tabulated
   distribution where the density function is either a histogram or
   linearly-interpolated between tabulated points. The "watt" option produces
   random variates is sampled from a Watt fission spectrum (only used for
   energies). The "maxwell" option produce variates sampled from a Maxwell
-  fission spectrum (only used for energies).
+  fission spectrum (only used for energies). The "mixture" option produces samples
+  from univariate sub-distributions with given probabilities.
 
   *Default*: None
 
@@ -636,6 +637,11 @@ variable and whose sub-elements/attributes are as follows:
   For a "uniform" distribution, ``parameters`` should be given as two real
   numbers :math:`a` and :math:`b` that define the interval :math:`[a,b]` over
   which random variates are sampled.
+
+  For a "powerlaw" distribution, ``parameters`` should be given as three real
+  numbers :math:`a` and :math:`b` that define the interval :math:`[a,b]` over
+  which random variates are sampled and :math:`n` that defines the exponent of
+  the probability distribution :math:`p(x)=c x^n`
 
   For a "discrete" or "tabular" distribution, ``parameters`` provides the
   :math:`(x,p)` pairs defining the discrete/tabular distribution. All :math:`x`
@@ -651,11 +657,21 @@ variable and whose sub-elements/attributes are as follows:
 
   .. note:: The above format should be used even when using the multi-group
             :ref:`energy_mode`.
+
 :interpolation:
   For a "tabular" distribution, ``interpolation`` can be set to "histogram" or
   "linear-linear" thereby specifying how tabular points are to be interpolated.
 
   *Default*: histogram
+
+:pair:
+  For a "mixture" distribution, this element provides a distribution and its corresponding probability.
+
+  :probability:
+    An attribute or ``pair`` that provides the probability of a univariate distribution within a "mixture" distribution.
+
+  :dist:
+    This sub-element of a ``pair`` element provides information on the corresponding univariate distribution.
 
 -------------------------
 ``<state_point>`` Element
@@ -715,27 +731,26 @@ attributes/sub-elements:
 
     *Default*: false
 
----------------------------
-``<surf_src_read>`` Element
----------------------------
+------------------------------
+``<surf_source_read>`` Element
+------------------------------
 
-The ``<surf_src_read>`` element specifies a surface source file for OpenMC to
-read source bank for initializing histories.
-This element has the following attributes/sub-elements:
+The ``<surf_source_read>`` element specifies a surface source file for OpenMC to
+read source bank for initializing histories. This element has the following
+attributes/sub-elements:
 
   :path:
     Absolute or relative path to a surface source file to read in source bank.
 
     *Default*: ``surface_source.h5`` in current working directory
 
-----------------------------
-``<surf_src_write>`` Element
-----------------------------
+-------------------------------
+``<surf_source_write>`` Element
+-------------------------------
 
-The ``<surf_src_write>`` element triggers OpenMC to bank particles crossing
+The ``<surf_source_write>`` element triggers OpenMC to bank particles crossing
 certain surfaces and write out the source bank in a separate file called
-``surface_source.h5``.
-This element has the following attributes/sub-elements:
+``surface_source.h5``. This element has the following attributes/sub-elements:
 
   :surface_ids:
     A list of integers separated by spaces indicating the unique IDs of surfaces
@@ -991,3 +1006,61 @@ sub-elements/attributes:
      sample points within.
 
      *Default*: None
+
+----------------------------
+``<weight_windows>`` Element
+----------------------------
+
+The ``<weight_windows>`` element specifies all necessary parameters for
+mesh-based weight windows. This element has the following
+sub-elements/attributes:
+
+  :id:
+    A unique integer that is used to identify the weight windows
+
+  :mesh:
+    ID of a mesh that is to be used for weight windows
+
+    *Default*: None
+
+  :particle_type:
+    The particle that the weight windows will apply to (e.g., 'neutron')
+
+    *Default*: None
+
+  :energy_bins:
+    Monotonically increasing list of bounding energies in [eV] to be used for
+    weight windows
+
+    *Default*: None
+
+  :lower_ww_bounds:
+    Lower weight window bound for each (energy bin, mesh bin) combination.
+
+    *Default*: None
+
+  :upper_ww_bounds:
+    Upper weight window bound for each (energy bin, mesh bin) combination.
+
+    *Default*: None
+
+  :survival:
+    The ratio of survival weight and lower weight window bound.
+
+    *Default*: 3.0
+
+  :max_lower_bound_ratio:
+    Maximum allowed ratio of a particle's weight to the weight window's lower
+    bound. A factor will be applied to raise the weight window to be lower than
+    the particle's weight by a factor of max_lower_bound_ratio during transport
+    if exceeded.
+
+  :max_split:
+    Maximum allowable number of particles when splitting
+
+    *Default*: 10
+
+  :weight_cutoff:
+    Threshold below which particles will be terminated
+
+    *Default*: :math:`10^{-38}`

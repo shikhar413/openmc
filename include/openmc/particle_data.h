@@ -27,6 +27,9 @@ constexpr int MAX_DELAYED_GROUPS {8};
 
 constexpr double CACHE_INVALID {-1.0};
 
+// Maximum number of collisions/crossings
+constexpr int MAX_EVENTS {1000000};
+
 //==========================================================================
 // Aliases and type definitions
 
@@ -44,9 +47,10 @@ struct SourceSite {
   Position r;
   Direction u;
   double E;
-  double wgt;
-  int delayed_group;
-  int surf_id;
+  double time {0.0};
+  double wgt {1.0};
+  int delayed_group {0};
+  int surf_id {0};
   ParticleType particle;
   int64_t parent_id;
   int64_t progeny_id;
@@ -227,9 +231,10 @@ private:
   int g_last_;    //!< pre-collision energy group (MG only)
 
   // Other physical data
-  double wgt_ {1.0};  //!< particle weight
-  double mu_;         //!< angle of scatter
-  bool alive_ {true}; //!< is particle alive?
+  double wgt_ {1.0};       //!< particle weight
+  double mu_;              //!< angle of scatter
+  double time_ {0.0};      //!< time in [s]
+  double time_last_ {0.0}; //!< previous time in [s]
 
   // Other physical data
   Position r_last_current_; //!< coordinates of the last collision or
@@ -238,7 +243,6 @@ private:
   Position r_last_;         //!< previous coordinates
   Direction u_last_;        //!< previous direction coordinates
   double wgt_last_ {1.0};   //!< pre-collision particle weight
-  double wgt_absorb_ {0.0}; //!< weight absorbed for survival biasing
 
   // What event took place
   bool fission_ {false};  //!< did particle cause implicit fission
@@ -302,6 +306,11 @@ private:
 
   int n_event_ {0}; // number of events executed in this particle's history
 
+  // Weight window information
+  int n_split_ {0}; // Number of times this particle has been split
+  double ww_factor_ {
+    0.0}; // Particle-specific factor for on-the-fly weight window adjustment
+
 // DagMC state variables
 #ifdef DAGMC
   moab::DagMC::RayHistory history_;
@@ -331,6 +340,7 @@ public:
   const int& cell_instance() const { return cell_instance_; }
   LocalCoord& coord(int i) { return coord_[i]; }
   const LocalCoord& coord(int i) const { return coord_[i]; }
+  const vector<LocalCoord>& coord() const { return coord_; }
 
   int& n_coord_last() { return n_coord_last_; }
   const int& n_coord_last() const { return n_coord_last_; }
@@ -349,7 +359,11 @@ public:
   double& wgt() { return wgt_; }
   double& mu() { return mu_; }
   const double& mu() const { return mu_; }
-  bool& alive() { return alive_; }
+  double& time() { return time_; }
+  const double& time() const { return time_; }
+  double& time_last() { return time_last_; }
+  const double& time_last() const { return time_last_; }
+  bool alive() const { return wgt_ != 0.0; }
 
   Position& r_last_current() { return r_last_current_; }
   const Position& r_last_current() const { return r_last_current_; }
@@ -359,8 +373,6 @@ public:
   const Position& u_last() const { return u_last_; }
   double& wgt_last() { return wgt_last_; }
   const double& wgt_last() const { return wgt_last_; }
-  double& wgt_absorb() { return wgt_absorb_; }
-  const double& wgt_absorb() const { return wgt_absorb_; }
 
   bool& fission() { return fission_; }
   TallyEvent& event() { return event_; }
@@ -418,6 +430,12 @@ public:
   bool& trace() { return trace_; }
   double& collision_distance() { return collision_distance_; }
   int& n_event() { return n_event_; }
+
+  int n_split() const { return n_split_; }
+  int& n_split() { return n_split_; }
+
+  double ww_factor() const { return ww_factor_; }
+  double& ww_factor() { return ww_factor_; }
 
 #ifdef DAGMC
   moab::DagMC::RayHistory& history() { return history_; }

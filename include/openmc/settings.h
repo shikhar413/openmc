@@ -32,7 +32,8 @@ extern "C" bool cmfd_run;  //!< is a CMFD run?
 extern bool
   delayed_photon_scaling;   //!< Scale fission photon yield to include delayed
 extern "C" bool entropy_on; //!< calculate Shannon entropy?
-extern bool event_based;    //!< use event-based mode (instead of history-based)
+extern "C" bool
+  event_based; //!< use event-based mode (instead of history-based)
 extern bool legendre_to_tabular; //!< convert Legendre distributions to tabular?
 extern bool material_cell_offsets; //!< create material cells offsets?
 extern "C" bool output_summary;    //!< write summary.h5?
@@ -54,6 +55,7 @@ extern "C" bool trigger_on;        //!< tally triggers enabled?
 extern bool trigger_predict;       //!< predict batches for triggers?
 extern bool ufs_on;                //!< uniform fission site method on?
 extern bool urr_ptables_on;        //!< use unresolved resonance prob. tables?
+extern bool weight_windows_on;     //!< are weight windows are enabled?
 extern bool write_all_tracks;      //!< write track files for every particle?
 extern bool write_initial_source;  //!< write out initial source file?
 
@@ -98,6 +100,7 @@ extern std::unordered_set<int>
   statepoint_batch; //!< Batches when state should be written
 extern std::unordered_set<int>
   source_write_surf_id; //!< Surface ids where sources will be written
+extern int max_splits; //!< maximum number of particle splits for weight windows
 extern int64_t max_surface_particles; //!< maximum number of particles to be
                                       //!< banked on surfaces per process
 extern TemperatureMethod
